@@ -1,0 +1,15 @@
+{
+  "name": "mk-captcha-server",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Bridge server + auto-generator for reCAPTCHA tokens (captcha.monoklix.com)",
+  "type": "module",
+  "scripts": {
+    "start": "node bridge-server.js",
+    "start:standalone-generator": "node auto-generator.js"
+  },
+  "dependencies": {
+    "node-fetch": "^3.3.2",
+    "puppeteer": "^21.0.0"
+  }
+}
