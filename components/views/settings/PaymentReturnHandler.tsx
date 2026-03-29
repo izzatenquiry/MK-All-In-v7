@@ -1,8 +1,45 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { handlePaymentReturn, getOrderData, clearOrderData, type PaymentReturnData } from '../../../services/toyyibPayService';
+import { handlePaymentReturn, getOrderData, clearOrderData } from '../../../services/toyyibPayService';
 import { registerTokenUltra, applyCreditPackage, getUserProfile } from '../../../services/userService';
+import { supabase } from '../../../services/supabaseClient';
 import { CheckCircleIcon, AlertTriangleIcon } from '../../Icons';
 import Spinner from '../../common/Spinner';
+
+/** After ToyyibPay redirect, Supabase may not have hydrated JWT yet; RPC apply_credit_package checks auth.uid(). */
+const SESSION_POLL_MS = 200;
+const SESSION_POLL_ATTEMPTS = 30;
+
+async function waitUntilSupabaseUserMatches(
+  expectedUserId: string
+): Promise<{ ok: true } | { ok: false; reason: 'no_session' | 'wrong_account' }> {
+  for (let attempt = 0; attempt < SESSION_POLL_ATTEMPTS; attempt++) {
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+    const uid = session?.user?.id ?? null;
+    if (uid === expectedUserId) {
+      await supabase.auth.getUser().catch(() => undefined);
+      return { ok: true };
+    }
+    if (uid !== null && uid !== expectedUserId) {
+      return { ok: false, reason: 'wrong_account' };
+    }
+    if (attempt === 3) {
+      await supabase.auth.refreshSession().catch(() => undefined);
+    }
+    await new Promise((r) => setTimeout(r, SESSION_POLL_MS));
+  }
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  const uid = user?.id ?? null;
+  if (uid === expectedUserId) {
+    await supabase.auth.getUser().catch(() => undefined);
+    return { ok: true };
+  }
+  if (uid !== null && uid !== expectedUserId) return { ok: false, reason: 'wrong_account' };
+  return { ok: false, reason: 'no_session' };
+}
 
 interface PaymentReturnHandlerProps {
   currentUser: any;
@@ -117,8 +154,21 @@ const PaymentReturnHandler: React.FC<PaymentReturnHandlerProps> = ({
       if (paymentData.status === '1') {
         // ✅ Payment successful - DON'T set success yet, wait for registration
         setStatus('checking'); // Keep as checking until registration complete
+        setMessage('Confirming your login session...');
+
+        const authWait = await waitUntilSupabaseUserMatches(userId);
+        if (!authWait.ok) {
+          setStatus('failed');
+          setMessage(
+            authWait.reason === 'wrong_account'
+              ? 'You are signed in as a different account than the one used for this payment. Log out, sign in with the correct account, then open the payment return link again.'
+              : 'Your session was not ready after returning from payment. Please log in with the account you used to pay, then reload this page (or open the return link from your email again).'
+          );
+          return;
+        }
+
         setMessage('Payment successful! Registering your account...');
-        
+
         setIsRegistering(true);
         try {
           console.log('[PaymentReturn] Calling registerTokenUltra for user:', userId);
