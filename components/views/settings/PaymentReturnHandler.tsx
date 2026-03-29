@@ -143,8 +143,12 @@ const PaymentReturnHandler: React.FC<PaymentReturnHandlerProps> = ({
               if (!creditResult.success) {
                 creditApplyFailed = true;
                 setStatus('failed');
+                const detail =
+                  creditResult.message && creditResult.message.trim().length > 0
+                    ? ` ${creditResult.message}`
+                    : '';
                 setMessage(
-                  `Payment successful but failed to apply ${expectedCredits.toLocaleString()} credits. Please contact support.`
+                  `Payment successful but failed to apply ${expectedCredits.toLocaleString()} credits.${detail} Please contact support if this persists.`
                 );
               }
             }
