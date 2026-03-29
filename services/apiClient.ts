@@ -13,9 +13,7 @@ import { BRAND_CONFIG } from './brandConfig';
 
 // Helper to get brand-aware default server URL
 const getDefaultServerUrl = (): string => {
-  const isEsaie = BRAND_CONFIG.name === 'ESAIE';
-  const domain = isEsaie ? 'esaie.tech' : 'monoklix.com';
-  return `https://s1.${domain}`;
+  return `https://s1.${BRAND_CONFIG.domain}`;
 };
 
 export const getVeoProxyUrl = (): string => {
@@ -225,34 +223,127 @@ async function resolveFlowAccountCodeForVeoAsync(): Promise<string | null> {
 }
 
 /**
- * Get selected captcha provider from localStorage
- * Default: 'anti-captcha' (Anti-Captcha.com Standard) - consistent with FlowLogin component
+ * VEOLY-AI NanoBanana Pro (I2I): one Puppeteer unified session so OAuth matches cookies before upload + generate.
+ * Call with the same `projectId` you pass into `generateImageWithNanobanana2` (config.projectId).
+ * Returns null → caller uses Settings token (legacy).
+ */
+export async function prepareVeolyNanobanana2UnifiedSession(
+  projectId: string,
+  onStatusUpdate?: (status: string) => void
+): Promise<{ oauthToken: string; recaptchaToken: string } | null> {
+  const bridgeUnifiedOptOut =
+    typeof localStorage !== 'undefined' && localStorage.getItem('bridgeUnifiedVideoSession') === '0';
+  if (bridgeUnifiedOptOut) return null;
+  if (!projectId?.trim()) return null;
+
+  const resolvedFlow = await resolveFlowAccountCodeForVeoAsync();
+  const bridgeOk = await checkBridgeServer();
+  if (!bridgeOk || !resolvedFlow) {
+    console.warn('[API Client] prepareVeolyNanobanana2UnifiedSession: bridge unavailable or no flow code');
+    return null;
+  }
+
+  const fullLogin =
+    typeof localStorage !== 'undefined' && localStorage.getItem('bridgeUnifiedVideoSessionFullLogin') !== '0';
+  try {
+    if (onStatusUpdate) onStatusUpdate('Preparing Google Flow session (reference upload + generate)...');
+    const pack = await getBridgeUnifiedVideoSession(
+      undefined,
+      resolvedFlow,
+      projectId,
+      'IMAGE_GENERATION',
+      fullLogin
+    );
+    return { oauthToken: pack.oauthToken, recaptchaToken: pack.recaptchaToken };
+  } catch (e) {
+    console.warn('[API Client] prepareVeolyNanobanana2UnifiedSession failed:', e);
+    return null;
+  }
+}
+
+/**
+ * VEOLY-AI Veo (I2V): same Puppeteer unified session for upload + generate (`VIDEO_GENERATION`).
+ * Use the same `projectId` as `generateVideoWithVeo3` / upload clientContext.
+ */
+export async function prepareVeolyVeoUnifiedSession(
+  projectId: string,
+  onStatusUpdate?: (status: string) => void
+): Promise<{ oauthToken: string; recaptchaToken: string } | null> {
+  const bridgeUnifiedOptOut =
+    typeof localStorage !== 'undefined' && localStorage.getItem('bridgeUnifiedVideoSession') === '0';
+  if (bridgeUnifiedOptOut) return null;
+  if (!projectId?.trim()) return null;
+
+  const resolvedFlow = await resolveFlowAccountCodeForVeoAsync();
+  const bridgeOk = await checkBridgeServer();
+  if (!bridgeOk || !resolvedFlow) {
+    console.warn('[API Client] prepareVeolyVeoUnifiedSession: bridge unavailable or no flow code');
+    return null;
+  }
+
+  const fullLogin =
+    typeof localStorage !== 'undefined' && localStorage.getItem('bridgeUnifiedVideoSessionFullLogin') !== '0';
+  try {
+    if (onStatusUpdate) onStatusUpdate('Preparing Google Flow session (video upload + generate)...');
+    const pack = await getBridgeUnifiedVideoSession(
+      undefined,
+      resolvedFlow,
+      projectId,
+      'VIDEO_GENERATION',
+      fullLogin
+    );
+    return { oauthToken: pack.oauthToken, recaptchaToken: pack.recaptchaToken };
+  } catch (e) {
+    console.warn('[API Client] prepareVeolyVeoUnifiedSession failed:', e);
+    return null;
+  }
+}
+
+/**
+ * Get selected captcha provider from localStorage.
+ * VEOLY-AI: default Bridge Server for all users (unified flow / captcha.veoly-ai.com).
+ * Other brands: non-admin Anti-Captcha only; admin uses saved preference.
  */
 type CaptchaProvider = 'anti-captcha' | 'ez-captcha' | 'capsolver' | 'bridge-server';
+
+const VEOLY_DEFAULT_CAPTCHA_PROVIDER: CaptchaProvider = 'bridge-server';
+
 const getCaptchaProvider = (): CaptchaProvider => {
     const currentUser = getCurrentUserInternal();
     const isAdmin = currentUser?.role === 'admin';
-    
-    // Non-admin: Always use anti-captcha
+    const isVeoly = BRAND_CONFIG.name === 'VEOLY-AI';
+
+    if (isVeoly) {
+        const stored = localStorage.getItem('captchaProvider') as CaptchaProvider | null;
+        if (!isAdmin) {
+            localStorage.setItem('captchaProvider', VEOLY_DEFAULT_CAPTCHA_PROVIDER);
+            return VEOLY_DEFAULT_CAPTCHA_PROVIDER;
+        }
+        const provider =
+            stored && ['bridge-server', 'anti-captcha', 'ez-captcha', 'capsolver'].includes(stored)
+                ? stored
+                : VEOLY_DEFAULT_CAPTCHA_PROVIDER;
+        if (!stored) {
+            localStorage.setItem('captchaProvider', provider);
+        }
+        console.log('[API Client] getCaptchaProvider() VEOLY-AI admin:', { stored, selectedProvider: provider });
+        return provider as CaptchaProvider;
+    }
+
     if (!isAdmin) {
-        // Force save anti-captcha to localStorage to prevent override
         localStorage.setItem('captchaProvider', 'anti-captcha');
         console.log('[API Client] Non-admin user - forcing anti-captcha provider');
         return 'anti-captcha';
     }
-    
-    // Admin: Use saved preference or default to anti-captcha
+
     const stored = localStorage.getItem('captchaProvider') as CaptchaProvider;
     const provider = stored || 'anti-captcha';
-    
-    // Debug logging
     console.log('[API Client] getCaptchaProvider() called:', {
         isAdmin,
         storedValue: stored,
         selectedProvider: provider,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
     });
-    
     return provider;
 };
 
@@ -275,124 +366,7 @@ const getRecaptchaToken = async (projectId?: string, action?: string, onStatusUp
         // Import BRAND_CONFIG dynamically to avoid circular dependency
         const { BRAND_CONFIG } = await import('./brandConfig');
 
-        // For ESAIE: Always use master token
-        if (BRAND_CONFIG.name === 'ESAIE') {
-            const cachedMasterToken = sessionStorage.getItem('master_recaptcha_token');
-            let apiKey: string;
-            
-            if (cachedMasterToken && cachedMasterToken.trim()) {
-                apiKey = cachedMasterToken;
-                console.log('[API Client] Using master recaptcha token (ESAIE user)');
-            } else {
-                // Fallback: try to fetch if not cached
-                console.warn('[API Client] Master token not in cache, fetching...');
-                const masterTokenResult = await getMasterRecaptchaToken();
-                if (masterTokenResult.success && masterTokenResult.apiKey) {
-                    apiKey = masterTokenResult.apiKey;
-                    console.log('[API Client] Using master recaptcha token (ESAIE user - fetched)');
-                } else {
-                    console.error('[API Client] Master token fetch failed for ESAIE user');
-                    return null; // ESAIE must have master token
-                }
-            }
-
-            // Continue with apiKey for ESAIE (skip to end of function)
-            if (!apiKey.trim()) {
-                console.error('[API Client] ❌ Anti-Captcha enabled but no master API key configured for ESAIE');
-                return null;
-            }
-
-            // Use projectId from parameter (from request body), fallback to localStorage, then undefined (will auto-generate)
-            const finalProjectId = projectId || localStorage.getItem('antiCaptchaProjectId') || undefined;
-
-            // Get selected provider
-            const provider = getCaptchaProvider();
-            console.log(`[API Client] Using captcha provider: ${provider}`);
-            if (action) {
-                console.log(`[API Client] Using action: ${action}`);
-            }
-
-            if (onStatusUpdate) onStatusUpdate('Solving reCAPTCHA...');
-            
-            // Route to appropriate provider
-            if (provider === 'bridge-server') {
-                console.log('[API Client] 🌉 Using Bridge Server (Auto Generator)');
-                if (onStatusUpdate) onStatusUpdate('Generating reCAPTCHA token...');
-                
-                // Check if bridge server is available first
-                console.log('[API Client] 🔍 Checking bridge server availability...');
-                const isAvailable = await checkBridgeServer();
-                console.log('[API Client] 🔍 Bridge server check result:', isAvailable ? '✅ AVAILABLE' : '❌ NOT AVAILABLE');
-                
-                if (!isAvailable) {
-                    const errorMsg = 'Bridge server is not available. Localhost: start bridge (port 6003) and auto-generator. Production: ensure https://captcha.monoklix.com is reachable.';
-                    console.error('[API Client] ❌', errorMsg);
-                    if (onStatusUpdate) onStatusUpdate('Bridge server unavailable');
-                    throw new Error(errorMsg);
-                }
-
-                // Get current user's flow_account_code
-                const flowAccountCode = currentUser?.email_code || currentUser?.flow_account_code || null;
-                
-                // Get cookie_file name from user profile (stored in Supabase when auth token was generated)
-                const cookieFileName = currentUser?.lastCookiesFile || null;
-                
-                if (flowAccountCode) {
-                    console.log(`[API Client] 🎯 Using flow account: ${flowAccountCode} for reCAPTCHA token`);
-                } else {
-                    console.warn('[API Client] ⚠️ No flow_account_code found for user - token may not match auth token');
-                }
-                
-                if (cookieFileName) {
-                    console.log(`[API Client] 🎯 Using cookie file: ${cookieFileName} for reCAPTCHA token (same as auth token)`);
-                } else {
-                    console.warn('[API Client] ⚠️ No cookie file name available - reCAPTCHA token may use different cookie file');
-                }
-                
-                if (finalProjectId) {
-                    console.log(`[API Client] 🎯 Using projectId: ${finalProjectId.substring(0, 8)}... for reCAPTCHA token`);
-                }
-                
-                console.log('[API Client] ✅ Bridge server is available, fetching token...');
-                const token = await getTokenFromBridge(undefined, flowAccountCode, finalProjectId, cookieFileName, action);
-
-                if (token) {
-                    console.log('[API Client] ✅ reCAPTCHA token obtained, length:', token.length);
-                } else {
-                    console.error('[API Client] ❌ solveCaptcha returned null/empty token');
-                }
-                return token;
-            } else if (provider === 'anti-captcha') {
-                console.log('[API Client] 🛡️ Using Anti-Captcha service');
-                if (onStatusUpdate) onStatusUpdate('Solving reCAPTCHA with Anti-Captcha...');
-                const token = await solveCaptcha({
-                    apiKey: apiKey,
-                    projectId: finalProjectId,
-                    action: action // Pass dynamic action parameter
-                });
-                return token;
-            } else if (provider === 'ez-captcha') {
-                console.log('[API Client] 🛡️ Using EZ-Captcha service');
-                if (onStatusUpdate) onStatusUpdate('Solving reCAPTCHA with EZ-Captcha...');
-                const token = await solveCaptchaEz({
-                    apiKey: apiKey,
-                    projectId: finalProjectId
-                });
-                return token;
-            } else if (provider === 'capsolver') {
-                console.log('[API Client] 🛡️ Using CapSolver service');
-                if (onStatusUpdate) onStatusUpdate('Solving reCAPTCHA with CapSolver...');
-                const token = await solveCaptchaCap({
-                    apiKey: apiKey,
-                    projectId: finalProjectId
-                });
-                return token;
-            } else {
-                throw new Error(`Unknown captcha provider: ${provider}`);
-            }
-        }
-
-        // For MONOKLIX: Use logic based on Token Ultra status
+        // Token Ultra status logic
         // Default: Use personal token from users.recaptcha_token
         let apiKey = currentUser.recaptchaToken || '';
 
@@ -472,29 +446,32 @@ const getRecaptchaToken = async (projectId?: string, action?: string, onStatusUp
             }
         }
 
-        if (!apiKey.trim()) {
-            console.error('[API Client] ❌ Anti-Captcha enabled but no API key configured', {
-                hasTokenUltra: !!tokenUltraReg,
-                hasUserToken: !!currentUser.recaptchaToken
-            });
-            return null;
-        }
-
         // Use projectId from parameter (from request body), fallback to localStorage, then undefined (will auto-generate)
         const finalProjectId = projectId || localStorage.getItem('antiCaptchaProjectId') || undefined;
 
-        // Get selected provider
         const provider = getCaptchaProvider();
         console.log(`[API Client] Using captcha provider: ${provider}`);
         if (action) {
             console.log(`[API Client] Using action: ${action}`);
         }
 
+        if (provider !== 'bridge-server' && !apiKey.trim()) {
+            console.error('[API Client] ❌ Anti-Captcha enabled but no API key configured', {
+                hasTokenUltra: !!tokenUltraReg,
+                hasUserToken: !!currentUser.recaptchaToken,
+                provider,
+            });
+            return null;
+        }
+        if (provider === 'bridge-server' && !apiKey.trim()) {
+            console.log('[API Client] Bridge Server provider — personal Anti-Captcha key not required');
+        }
+
         if (onStatusUpdate) onStatusUpdate('Solving reCAPTCHA...');
         
         // Route to appropriate provider
         if (provider === 'bridge-server') {
-            console.log('[API Client] 🌉 Using Bridge Server (Auto Generator - MONOKLIX)');
+            console.log('[API Client] 🌉 Using Bridge Server (Auto Generator - VEOLY-AI)');
             if (onStatusUpdate) onStatusUpdate('Generating reCAPTCHA token...');
             
             // Check if bridge server is available first
@@ -503,7 +480,7 @@ const getRecaptchaToken = async (projectId?: string, action?: string, onStatusUp
             console.log('[API Client] 🔍 Bridge server check result:', isAvailable ? '✅ AVAILABLE' : '❌ NOT AVAILABLE');
             
             if (!isAvailable) {
-                const errorMsg = 'Bridge server is not available. Localhost: start bridge (port 6003) and auto-generator. Production: ensure https://captcha.monoklix.com is reachable.';
+                const errorMsg = 'Bridge server is not available. Localhost: start bridge (port 6003) and auto-generator. Production: ensure https://captcha.veoly-ai.com is reachable.';
                 console.error('[API Client] ❌', errorMsg);
                 if (onStatusUpdate) onStatusUpdate('Bridge server unavailable');
                 throw new Error(errorMsg);
@@ -584,117 +561,7 @@ const getRecaptchaToken = async (projectId?: string, action?: string, onStatusUp
     }
 };
 
-/**
- * Get reCAPTCHA token from anti-captcha.com - PERSONAL KEY ONLY
- * For NANOBANANA PRO: Only uses personal key, NEVER uses master key
- * Returns null if personal key is not configured
- * @param projectId - Optional project ID to use for captcha solving (must match request body)
- * @param action - Optional reCAPTCHA action type (VIDEO_GENERATION, IMAGE_GENERATION, etc.)
- * @param onStatusUpdate - Optional callback for status updates
- */
-const getPersonalRecaptchaToken = async (projectId?: string, action?: string, onStatusUpdate?: (status: string) => void): Promise<string | null> => {
-    try {
-        const currentUser = getCurrentUserInternal();
-        if (!currentUser) {
-            console.error('[API Client] getPersonalRecaptchaToken: No current user found');
-            return null;
-        }
-
-        // NANOBANANA PRO: Force use personal key only - NEVER use master key
-        const personalKey = currentUser.recaptchaToken || '';
-        
-        if (!personalKey.trim()) {
-            console.error('[API Client] ❌ NANOBANANA PRO requires personal Anti-Captcha API key');
-            if (onStatusUpdate) onStatusUpdate('Personal Anti-Captcha API key required');
-            return null;
-        }
-
-        console.log('[API Client] Using personal Anti-Captcha API key for NANOBANANA PRO');
-
-        // Use projectId from parameter (from request body), fallback to localStorage, then undefined (will auto-generate)
-        const finalProjectId = projectId || localStorage.getItem('antiCaptchaProjectId') || undefined;
-
-        // Get selected provider
-        const provider = getCaptchaProvider();
-        console.log(`[API Client] Using captcha provider: ${provider}`);
-        if (action) {
-            console.log(`[API Client] Using action: ${action}`);
-        }
-
-        if (onStatusUpdate) onStatusUpdate('Solving reCAPTCHA...');
-        
-        // Route to appropriate provider
-        if (provider === 'bridge-server') {
-            console.log('[API Client] 🌉 Using Bridge Server (Auto Generator - personal key)');
-            if (onStatusUpdate) onStatusUpdate('Generating reCAPTCHA token...');
-            
-            // Check if bridge server is available first
-            console.log('[API Client] 🔍 Checking bridge server availability...');
-            const isAvailable = await checkBridgeServer();
-            console.log('[API Client] 🔍 Bridge server check result:', isAvailable ? '✅ AVAILABLE' : '❌ NOT AVAILABLE');
-            
-            if (!isAvailable) {
-                const errorMsg = 'Bridge server is not available. Localhost: start bridge (port 6003) and auto-generator. Production: ensure https://captcha.monoklix.com is reachable.';
-                console.error('[API Client] ❌', errorMsg);
-                if (onStatusUpdate) onStatusUpdate('Bridge server unavailable');
-                throw new Error(errorMsg);
-            }
-
-            // Get current user's flow_account_code and cookie_file name (if available)
-            const flowAccountCode = currentUser?.email_code || currentUser?.flow_account_code || null;
-            const cookieFileName = currentUser?.lastCookiesFile || null;
-            
-            console.log('[API Client] ✅ Bridge server is available, fetching token...');
-            const token = await getTokenFromBridge(undefined, flowAccountCode, finalProjectId, cookieFileName, action);
-
-            if (token) {
-                console.log('[API Client] ✅ reCAPTCHA token obtained (personal key), length:', token.length);
-                console.log('[API Client] 🔍 Token freshness check:', {
-                    length: token.length,
-                    firstChars: token.substring(0, 20),
-                    lastChars: token.substring(token.length - 20),
-                    timestamp: new Date().toISOString()
-                });
-            } else {
-                console.error('[API Client] ❌ Bridge server returned null/empty token');
-            }
-            // ✅ Ensure token is used immediately (not cached) - return fresh token
-            return token;
-        } else if (provider === 'anti-captcha') {
-            console.log('[API Client] 🛡️ Using Anti-Captcha service (personal key)');
-            if (onStatusUpdate) onStatusUpdate('Solving reCAPTCHA with Anti-Captcha...');
-            const token = await solveCaptcha({
-                apiKey: personalKey,
-                projectId: finalProjectId,
-                action: action // Pass dynamic action parameter
-            });
-            return token;
-        } else if (provider === 'ez-captcha') {
-            console.log('[API Client] 🛡️ Using EZ-Captcha service (personal key)');
-            if (onStatusUpdate) onStatusUpdate('Solving reCAPTCHA with EZ-Captcha...');
-            const token = await solveCaptchaEz({
-                apiKey: personalKey,
-                projectId: finalProjectId
-            });
-            return token;
-        } else if (provider === 'capsolver') {
-            console.log('[API Client] 🛡️ Using CapSolver service (personal key)');
-            if (onStatusUpdate) onStatusUpdate('Solving reCAPTCHA with CapSolver...');
-            const token = await solveCaptchaCap({
-                apiKey: personalKey,
-                projectId: finalProjectId
-            });
-            return token;
-        } else {
-            throw new Error(`Unknown captcha provider: ${provider}`);
-        }
-    } catch (error) {
-        console.error('[API Client] ❌ Failed to get reCAPTCHA token (personal key):', error);
-        return null;
-    }
-};
-
-// --- EXECUTE REQUEST (STRICT PERSONAL TOKEN ONLY) ---
+// --- EXECUTE REQUEST ---
 
 export const executeProxiedRequest = async (
   relativePath: string,
@@ -703,7 +570,9 @@ export const executeProxiedRequest = async (
   logContext: string,
   specificToken?: string,
   onStatusUpdate?: (status: string) => void,
-  overrideServerUrl?: string // New parameter to force a specific server
+  overrideServerUrl?: string,
+  /** NanoBanana Pro I2I / Veo I2V: OAuth + reCAPTCHA from same unified prepare as reference upload (skip second Puppeteer). */
+  unifiedPrefetch?: { oauthToken: string; recaptchaToken: string }
 ): Promise<{ data: any; successfulToken: string; successfulServerUrl: string }> => {
   const isStatusCheck = logContext === 'VEO STATUS';
   const isHealthCheck = logContext.includes('HEALTH CHECK');
@@ -764,6 +633,23 @@ export const executeProxiedRequest = async (
   let tokenGenerationTimestamp = Date.now();
   
   if (needsRecaptcha) {
+    const prefetchOk =
+      unifiedPrefetch &&
+      (isNanobanana2 || serviceType === 'veo') &&
+      unifiedPrefetch.oauthToken?.trim() &&
+      unifiedPrefetch.recaptchaToken?.trim();
+
+    if (prefetchOk) {
+      recaptchaToken = unifiedPrefetch.recaptchaToken;
+      bridgeUnifiedOAuth = unifiedPrefetch.oauthToken;
+      useBridgeUnifiedForVeo = true;
+      console.log(
+        serviceType === 'veo'
+          ? '[API Client] Veo: pre-fetched unified session (same Puppeteer OAuth as image upload)'
+          : '[API Client] NanoBanana Pro: pre-fetched unified session (same Puppeteer OAuth as reference upload)'
+      );
+    }
+
     // ✅ Verify projectId match for debugging
     if (projectIdFromBody) {
       console.log('[API Client] 🔍 Using projectId for reCAPTCHA:', projectIdFromBody.substring(0, 8) + '...' + projectIdFromBody.substring(projectIdFromBody.length - 8));
@@ -774,16 +660,17 @@ export const executeProxiedRequest = async (
     
     console.log('[API Client] 🔄 Generating FRESH reCAPTCHA token for this request (timestamp:', new Date(tokenGenerationTimestamp).toISOString() + ')');
 
-    // Veo (MONOKLIX): default to Puppeteer unified session — one cookie file → OAuth Bearer + reCAPTCHA (no manual Token Setting).
+    // VEOLY-AI — Veo + NanoBanana Pro: default to Puppeteer unified session — fresh login/cookies → OAuth Bearer + reCAPTCHA
+    // (avoids stale flow_*.json cookies; IMAGE_GENERATION used the old cookie path and hit signin?error=Callback).
     // Opt out: localStorage.setItem('bridgeUnifiedVideoSession', '0')
     const bridgeUnifiedOptOut =
       typeof localStorage !== 'undefined' && localStorage.getItem('bridgeUnifiedVideoSession') === '0';
-    const wantAutoUnifiedVeo =
-      serviceType === 'veo' &&
-      BRAND_CONFIG.name !== 'ESAIE' &&
+    const wantBridgeUnifiedFlow =
+      !prefetchOk &&
+      (serviceType === 'veo' || serviceType === 'nanobanana2') &&
       !bridgeUnifiedOptOut;
 
-    if (wantAutoUnifiedVeo) {
+    if (wantBridgeUnifiedFlow) {
       const resolvedFlow = await resolveFlowAccountCodeForVeoAsync();
       try {
         const bridgeOk = await checkBridgeServer();
@@ -793,7 +680,7 @@ export const executeProxiedRequest = async (
           useBridgeUnifiedForVeo = true;
           const fullLogin =
             typeof localStorage !== 'undefined' && localStorage.getItem('bridgeUnifiedVideoSessionFullLogin') !== '0';
-          if (onStatusUpdate) onStatusUpdate('Auto: Puppeteer (login + cookies + OAuth + reCAPTCHA)...');
+          if (onStatusUpdate) onStatusUpdate('Preparing your secure Google Flow session...');
           const pack = await getBridgeUnifiedVideoSession(
             undefined,
             resolvedFlow,
@@ -803,6 +690,10 @@ export const executeProxiedRequest = async (
           );
           recaptchaToken = pack.recaptchaToken;
           bridgeUnifiedOAuth = pack.oauthToken;
+          console.log(
+            '[API Client] ✅ Unified Flow session (reCAPTCHA + Bearer):',
+            serviceType === 'nanobanana2' ? 'NanoBanana Pro' : 'Veo'
+          );
         } else {
           if (!bridgeOk) {
             console.warn(
@@ -813,7 +704,7 @@ export const executeProxiedRequest = async (
               '[API Client] No flow folder code (G1/G2). Set users.email_code, localStorage veoFlowAccountCode, or VITE_DEFAULT_VEO_FLOW_ACCOUNT — or use Token Setting for a manual token.'
             );
           } else if (!projectIdFromBody) {
-            console.warn('[API Client] No projectId in request — skipping unified Veo.');
+            console.warn('[API Client] No projectId in request — skipping unified Flow session.');
           }
         }
       } catch (unifiedErr: unknown) {
@@ -821,7 +712,7 @@ export const executeProxiedRequest = async (
         const msg = unifiedErr instanceof Error ? unifiedErr.message : String(unifiedErr);
         if (resolvedFlow && projectIdFromBody) {
           throw new Error(
-            `Auto Veo (Puppeteer) gagal: ${msg}. Pastikan bridge :6003, auto-generator, Flask :1247, dan kredensial flow (${resolvedFlow}) OK.`
+            `Automatic Google Flow session failed: ${msg}. Check your network connection, local services, and Flow account settings (${resolvedFlow}).`
           );
         }
         console.warn('[API Client] Unified Veo session failed, falling back to standard captcha/token:', msg);
@@ -829,15 +720,9 @@ export const executeProxiedRequest = async (
     }
 
     if (!recaptchaToken && isNanobanana2) {
-        // ESAIE: Use master token (via getRecaptchaToken which auto-handles master for ESAIE)
-        // MONOKLIX: Use personal key only (bypass master key)
-        if (BRAND_CONFIG.name === 'ESAIE') {
-            console.log('[API Client] NANOBANANA 2 (ESAIE): Using master token');
-            recaptchaToken = await getRecaptchaToken(projectIdFromBody, recaptchaAction, onStatusUpdate);
-        } else {
-            console.log('[API Client] NANOBANANA 2 (MONOKLIX): Using personal key only');
-            recaptchaToken = await getPersonalRecaptchaToken(projectIdFromBody, recaptchaAction, onStatusUpdate);
-        }
+        // Same token resolution as Veo / other flows: Settings (personal key), Token Ultra + master when allowed, bridge, etc.
+        console.log('[API Client] NANOBANANA 2: Using standard reCAPTCHA resolution (same concept as video)');
+        recaptchaToken = await getRecaptchaToken(projectIdFromBody, recaptchaAction, onStatusUpdate);
     } else if (!recaptchaToken) {
         // Veo / others: only if unified (or NB2) did not already supply a token
         recaptchaToken = await getRecaptchaToken(projectIdFromBody, recaptchaAction, onStatusUpdate);
@@ -1005,7 +890,7 @@ export const executeProxiedRequest = async (
 
   const currentUser = getCurrentUserInternal();
 
-  // ✅ Check user status before allowing API calls (untuk kedua-dua brand)
+  // ✅ Check user status before allowing API calls (all brands)
   if (currentUser) {
     // Check if user is inactive
     if (currentUser.status === 'inactive') {
@@ -1020,7 +905,7 @@ export const executeProxiedRequest = async (
       }
     }
     
-    // Token Ultra check removed for MONOKLIX - users with personal token + personal anti-captcha key do not require Token Ultra.
+    // Token Ultra check removed for VEOLY-AI — users with personal token + personal anti-captcha key do not require Token Ultra.
   }
 
   // 4.5. Record server usage with timestamp (fire-and-forget, only for Web version and actual API calls)
@@ -1127,13 +1012,7 @@ export const executeProxiedRequest = async (
                       // cause reCAPTCHA evaluation to be rejected.
                       const retryAction = recaptchaAction;
 
-                      if (isNanobanana2) {
-                          if (BRAND_CONFIG.name === 'ESAIE') {
-                              freshToken = await getRecaptchaToken(projectIdFromBody, retryAction, onStatusUpdate);
-                          } else {
-                              freshToken = await getPersonalRecaptchaToken(projectIdFromBody, retryAction, onStatusUpdate);
-                          }
-                      } else if (useBridgeUnifiedForVeo) {
+                      if (useBridgeUnifiedForVeo) {
                           const flowAccountCode = resolveFlowAccountCodeForVeo();
                           const fullLogin =
                               typeof localStorage !== 'undefined' &&

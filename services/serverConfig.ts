@@ -14,12 +14,10 @@ export const getLocalhostServerUrl = (): string => {
   return 'http://localhost:3001';
 };
 
-// Proxy server URLs - Brand-aware (ESAIE uses esaie.tech, MONOKLIX uses monoklix.com)
-// ESAIE: s1-s5 (5 servers), MONOKLIX: s1-s12 (12 servers)
+// Proxy server URLs — VEOLY-AI (s1–s12 on your domain)
 const getProxyServerUrls = (): string[] => {
-  const isEsaie = BRAND_CONFIG.name === 'ESAIE';
-  const domain = isEsaie ? 'esaie.tech' : 'monoklix.com';
-  const maxServers = isEsaie ? 5 : 12; // ESAIE: 5 servers, MONOKLIX: 12 servers
+  const domain = BRAND_CONFIG.domain;
+  const maxServers = 12;
   const servers: string[] = [];
   for (let i = 1; i <= maxServers; i++) {
     servers.push(`https://s${i}.${domain}`);
@@ -81,8 +79,7 @@ export const getServerUrl = (): string => {
   
   // Production: use default server (s1) instead of localhost
   // This prevents CORS errors when health check runs before server assignment
-  const isEsaie = BRAND_CONFIG.name === 'ESAIE';
-  const domain = isEsaie ? 'esaie.tech' : 'monoklix.com';
+  const domain = BRAND_CONFIG.domain;
   return `https://s1.${domain}`;
 };
 

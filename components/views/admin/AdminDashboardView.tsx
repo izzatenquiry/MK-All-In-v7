@@ -6,7 +6,7 @@ import { updateUserStatus, forceUserLogout, updateUserSubscription, saveUserPers
 import { assignEmailCodeToUser, getAllFlowAccounts, resetEmailCodeFromUser, type FlowAccount } from '../../../services/flowAccountService';
 import { getAllTokenUltraRegistrations, type TokenUltraRegistrationWithUser } from '../../../services/tokenUltraService';
 import { type User, type UserStatus, type UserRole, type Language, type TokenUltraRegistration } from '../../../types';
-import { UsersIcon, XIcon, DownloadIcon, UploadIcon, CheckCircleIcon, AlertTriangleIcon, VideoIcon, TrashIcon, DatabaseIcon, KeyIcon, PencilIcon } from '../../Icons';
+import { UsersIcon, XIcon, DownloadIcon, UploadIcon, AlertTriangleIcon, VideoIcon, TrashIcon, KeyIcon, PencilIcon } from '../../Icons';
 import Spinner from '../../common/Spinner';
 import ConfirmationModal from '../../common/ConfirmationModal';
 
@@ -82,116 +82,6 @@ const getTimeAgo = (date: Date): string => {
 interface AdminDashboardViewProps {
   language: Language;
 }
-
-const StatBox: React.FC<{ title: string; icon: React.ReactNode; data: { label: string; value: number }[]; total: number; color: string; }> = ({ title, icon, data, total, color }) => {
-    const sortedData = [...data].sort((a, b) => b.value - a.value);
-
-    return (
-        <div className="bg-white dark:bg-neutral-900 p-4 rounded-lg shadow-sm border border-neutral-200 dark:border-neutral-800 flex flex-col">
-            <div className="flex items-center gap-2 mb-4">
-                {icon}
-                <h4 className="font-bold text-neutral-800 dark:text-neutral-200">{title}</h4>
-            </div>
-            <div className="space-y-3 text-sm overflow-y-auto custom-scrollbar pr-2 flex-1 max-h-48">
-                {sortedData.length > 0 ? sortedData.map(({ label, value }) => {
-                    const percentage = total > 0 ? (value / total) * 100 : 0;
-                    return (
-                        <div key={label}>
-                            <div className="flex justify-between text-xs mb-1">
-                                <span className="font-mono text-neutral-600 dark:text-neutral-400 truncate max-w-[60%]">{label}</span>
-                                <span className="font-semibold text-neutral-800 dark:text-neutral-200">{value}</span>
-                            </div>
-                            <div className="w-full bg-neutral-200 dark:bg-neutral-700 rounded-full h-1.5">
-                                <div 
-                                    className={`h-1.5 rounded-full ${color}`}
-                                    style={{ width: `${percentage}%` }}
-                                ></div>
-                            </div>
-                        </div>
-                    );
-                }) : <p className="text-xs text-neutral-500">No active users.</p>}
-            </div>
-        </div>
-    );
-};
-
-const UsageDashboard: React.FC<{ users: User[] }> = ({ users }) => {
-    const stats = useMemo(() => {
-        const now = new Date().getTime();
-        const oneHour = 60 * 60 * 1000;
-        
-        const activeUsers = users.filter(user => 
-            user.role !== 'admin' && user.lastSeenAt && (now - new Date(user.lastSeenAt).getTime()) < oneHour
-        );
-        const totalActive = activeUsers.length;
-
-        const appVersionStats = activeUsers.reduce((acc, user) => {
-            const version = user.appVersion || 'Unknown';
-            acc[version] = (acc[version] || 0) + 1;
-            return acc;
-        }, {} as Record<string, number>);
-
-        const proxyServerStats = activeUsers.reduce((acc, user) => {
-            const server = user.proxyServer ? user.proxyServer.replace('https://', '').replace(/\.(monoklix\.com|esai\.tech)/, '') : 'None';
-            acc[server] = (acc[server] || 0) + 1;
-            return acc;
-        }, {} as Record<string, number>);
-        
-        const allNonAdminUsers = users.filter(u => u.role !== 'admin');
-        const totalUsers = allNonAdminUsers.length;
-        const batchStats = allNonAdminUsers.reduce((acc, user) => {
-            if (user.batch_02 === 'batch_02') {
-                acc.batch02 += 1;
-            } else {
-                acc.batch01 += 1;
-            }
-            return acc;
-        }, { batch01: 0, batch02: 0 });
-
-        return {
-            appVersionData: Object.entries(appVersionStats).map(([label, value]) => ({ label, value })),
-            proxyServerData: Object.entries(proxyServerStats).map(([label, value]) => ({ label, value })),
-            batchData: [
-                { label: 'Batch 01', value: batchStats.batch01 },
-                { label: 'Batch 02', value: batchStats.batch02 }
-            ],
-            totalActive,
-            totalUsers
-        };
-    }, [users]);
-    
-    return (
-        <div className="mb-8">
-            <h3 className="text-xl font-semibold mb-4 text-neutral-800 dark:text-neutral-200">Usage Dashboard</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                <StatBox 
-                    title="App Version (Active)" 
-                    icon={<CheckCircleIcon className="w-5 h-5 text-green-500" />}
-                    data={stats.appVersionData}
-                    total={stats.totalActive}
-                    color="bg-gradient-to-r from-green-400 to-green-600"
-                />
-                
-                <StatBox 
-                    title="Proxy Server (Active)" 
-                    icon={<UsersIcon className="w-5 h-5 text-blue-500" />}
-                    data={stats.proxyServerData}
-                    total={stats.totalActive}
-                    color="bg-gradient-to-r from-blue-400 to-blue-600"
-                />
-
-                <StatBox 
-                    title="Batch Number (All Users)" 
-                    icon={<DatabaseIcon className="w-5 h-5 text-purple-500" />}
-                    data={stats.batchData}
-                    total={stats.totalUsers}
-                    color="bg-gradient-to-r from-purple-400 to-purple-600"
-                />
-            </div>
-        </div>
-    );
-};
-
 
 const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({ language }) => {
     const [registrations, setRegistrations] = useState<TokenUltraRegistrationWithUser[] | null>([]);
@@ -575,7 +465,7 @@ const handleRemoveUser = () => {
                                                     {reg.user?.last_device || '-'}
                                                 </td>
                                                 <td className="px-6 py-4 text-sm text-neutral-600 dark:text-neutral-300">
-                                                    {reg.user?.proxy_server ? reg.user.proxy_server.replace('https://', '').replace(/\.(monoklix\.com|esai\.tech)/, '') : '-'}
+                                                    {reg.user?.proxy_server ? reg.user.proxy_server.replace('https://', '').replace(/\.(monoklix\.com|esai\.tech|veoly\.ai)/, '') : '-'}
                                                 </td>
                                                 <td className="px-6 py-4 font-mono text-xs text-neutral-500 dark:text-neutral-400">
                                                     {reg.user?.personal_auth_token ? `...${reg.user.personal_auth_token.slice(-6)}` : '-'}

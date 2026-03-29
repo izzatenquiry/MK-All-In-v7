@@ -9,36 +9,33 @@ import { BRAND_CONFIG } from './brandConfig';
 
 // --- AI Support ---
 export const getSupportPrompt = (): string => {
-  // Format: ESAIE.TECH or MONOklix.com (matching original format)
-  const brandDomain = BRAND_CONFIG.name === 'ESAIE' 
-    ? `${BRAND_CONFIG.name}.${BRAND_CONFIG.domain.split('.').pop()?.toUpperCase()}` 
-    : `${BRAND_CONFIG.shortName}.${BRAND_CONFIG.domain.split('.').pop()}`;
+  const brandDomain = `${BRAND_CONFIG.shortName}.${BRAND_CONFIG.domain}`;
   return `You are a helpful AI Customer Support Agent for ${brandDomain}.
-Always reply in Bahasa Melayu Malaysia (unless customer asks in English).
+Reply in the same language the customer writes in when possible; if unclear, use clear, simple English.
 Your replies must be polite, clear, friendly, and SHORT (max 340 characters per reply).
 
 Guidelines:
-1. Sentiasa mesra, profesional, dan gunakan bahasa mudah.
-2. Jawab step by step untuk bantu user.
-3. Kalau isu teknikal → beri arahan ringkas (contoh: refresh, re-login, clear cache, check internet).
-4. Kalau tak pasti → beritahu akan escalate kepada team teknikal.
-5. Pastikan jawapan mudah difahami oleh normal user (bukan developer).
+1. Stay friendly, professional, and use plain language.
+2. Answer step by step when it helps the user.
+3. For technical issues → give brief actions (e.g. refresh, sign in again, clear cache, check internet).
+4. If unsure → say you will escalate to the technical team.
+5. Keep answers understandable for non-developers.
 
 Persona:
-- Tone: Mesra + professional.
-- Style: Ringkas, elakkan jargon teknikal berlebihan.
-- Target: Pengguna biasa.
+- Tone: Friendly and professional.
+- Style: Concise; avoid unnecessary jargon.
+- Audience: Everyday users.
 
 Example replies:
-- "Hai 👋 boleh jelaskan masalah anda? Saya cuba bantu."
-- "Cuba refresh page dan login semula ya, kadang-kadang ini boleh selesaikan isu."
-- "Kalau error masih ada, boleh share screenshot? Saya check sama-sama."
-- "Baik, saya escalate isu ni kepada team teknikal kami."`;
+- "Hi — what issue are you seeing? I will try to help."
+- "Try refreshing the page and signing in again; that often fixes it."
+- "If the error persists, share a screenshot and we can look together."
+- "I will pass this to our technical team for you."`;
 };
 
 // --- Content Ideas ---
 export const getContentIdeasPrompt = (topic: string, language: string): string => `
-    Generate a list of 5 engaging content ideas (e.g., blog posts, social media updates, video scripts) for the following topic: "${topic}".
+    Generate a list of 5 engaging content ideas (e.g. blog posts, social media updates, video scripts) for the following topic: "${topic}".
     The ideas should be trendy, relevant, and aimed at capturing audience attention. For each idea, provide a catchy title and a brief description of the concept.
     The final output language must be strictly in ${language}.
 `;
@@ -139,11 +136,10 @@ export const getProductReviewStoryboardPrompt = (details: {
   creativeDirection: CreativeDirectionState;
 }): string => {
   const { vibe, style, lighting, camera, composition, lensType, filmSim, effect, creativityLevel } = details.creativeDirection;
-  const isMalay = details.selectedLanguage === 'Bahasa Malaysia';
-  const sceneTitle = isMalay ? 'Babak' : 'Scene';
-  const voiceoverTitle = isMalay ? 'Skrip Suara Latar' : 'Voiceover';
-  const captionTitle = isMalay ? 'Kapsyen' : 'Captions';
-  const visualTitle = isMalay ? 'Visual' : 'Visuals';
+  const sceneTitle = 'Scene';
+  const voiceoverTitle = 'Voiceover';
+  const captionTitle = 'Captions';
+  const visualTitle = 'Visuals';
 
   // Dynamically build the list of required elements and instructions
   const structureElements = [`"**${visualTitle}:**"`];
@@ -151,12 +147,12 @@ export const getProductReviewStoryboardPrompt = (details: {
 
   if (details.includeVoiceover === 'Yes') {
     structureElements.push(`"**${voiceoverTitle}:**"`);
-    dynamicExtraInstructions += "Also, write a natural-sounding voiceover script (max 120 characters). Local Dialek Bahasa Pasar Malaysia";
+    dynamicExtraInstructions += " Also, write a natural-sounding voiceover script (max 120 characters). When the output language is Malay, use a natural conversational Malaysian Malay speaking style.";
   }
 
   if (details.includeCaptions === 'Yes') {
     structureElements.push(`"**${captionTitle}:**"`);
-    dynamicExtraInstructions += "Also, provide short, punchy on-screen captions.";
+    dynamicExtraInstructions += " Also, provide short, punchy on-screen captions.";
   }
 
   return `
@@ -333,7 +329,7 @@ The image must naturally feature the provided product image.
 
 **Final Requirements:**
 - The result must be a high-quality, authentic-looking, and engaging image for affiliate marketing.
-- CRITICAL: The image must be purely visual. Do NOT add text, watermarks, or logos.
+- CRITICAL: The image must be purely visual. Do NOT add any text, watermarks, or logos.
 `;
   }
 };
@@ -478,6 +474,9 @@ export const getStaffMonoklixPrompt = (details: {
 
     return `${baseInstruction}\n\n${agentSpecificInstruction}`;
 };
+
+/** VEOLY-AI Staff agents — same behaviour as Monoklix staff prompts. */
+export const getStaffVeolyPrompt = getStaffMonoklixPrompt;
 
 // --- Social Post Studio AI Writer ---
 export const getSocialPostStudioCaptionPrompt = (details: {

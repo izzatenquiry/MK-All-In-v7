@@ -534,10 +534,7 @@ const UserManagementView: React.FC<UserManagementViewProps> = ({ language }) => 
       // Helper to calculate cookie pool info (filtered by brand)
       const getCookiePoolInfo = (code: string): { cookie_count: number; cookie_pool_status: 'good' | 'needs_more' | 'none' } => {
         // Only check cookies from folders that match the brand
-        const isEsaie = BRAND_CONFIG.name === 'ESAIE';
-        const folderMatchBrand = code === 'Root' || 
-          (isEsaie && /^E\d+$/i.test(code)) || 
-          (!isEsaie && /^G\d+$/i.test(code));
+        const folderMatchBrand = code === 'Root' || /^G\d+$/i.test(code);
         
         if (!folderMatchBrand) {
           // Folder doesn't match brand, return empty
@@ -753,8 +750,8 @@ const UserManagementView: React.FC<UserManagementViewProps> = ({ language }) => 
               .from('users')
               .update({
                 status: 'subscription',
-                subscription_expiry: expiryDate.toISOString(), // Untuk ESAIE backward compatibility
-                expires_at: expiryDate.toISOString(), // Standardized untuk kedua-dua brand
+                subscription_expiry: expiryDate.toISOString(),
+                expires_at: expiryDate.toISOString(),
               })
               .eq('id', userId);
           } catch (expiryError) {
@@ -902,8 +899,8 @@ const UserManagementView: React.FC<UserManagementViewProps> = ({ language }) => 
             .from('users')
             .update({
               status: 'subscription',
-              subscription_expiry: expiryDateISO, // Untuk ESAIE backward compatibility
-              expires_at: expiryDateISO, // Standardized untuk kedua-dua brand
+              subscription_expiry: expiryDateISO,
+              expires_at: expiryDateISO,
             })
             .eq('id', selectedUser.id);
 
@@ -1168,7 +1165,7 @@ const UserManagementView: React.FC<UserManagementViewProps> = ({ language }) => 
             <div className="flex-1 relative">
               <input
                 type="text"
-                placeholder={`Search by email, username, flow account code (${BRAND_CONFIG.name === 'ESAIE' ? 'E1, E2, E3' : 'G1, G2, G3'}) or flow account email...`}
+                placeholder="Search by email, username, flow account code (G1, G2, G3) or flow account email..."
                 value={searchTerm}
                 onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearchTerm(e.target.value)}
                 className="w-full px-4 py-2 pl-10 border border-neutral-300 dark:border-neutral-700 rounded-lg bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white"

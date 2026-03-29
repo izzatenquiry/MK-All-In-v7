@@ -6,7 +6,7 @@ import DashboardView from './components/views/DashboardView'; // New Home
 import AiTextSuiteView from './components/views/ai-text/AiTextSuiteView';
 import AiImageSuiteView from './components/views/ai-image/AiImageSuiteView';
 import AiVideoSuiteView from './components/views/ai-video/AiVideoSuiteView';
-import SettingsView from './components/views/settings/SettingsView';
+import SettingsView, { type SettingsTabId } from './components/views/settings/SettingsView';
 import PaymentReturnHandler from './components/views/settings/PaymentReturnHandler';
 import LoginPage from './LoginPage';
 import { GalleryView } from './components/views/GalleryView';
@@ -290,7 +290,7 @@ const App: React.FC = () => {
     const initSystem = async () => {
         if (!currentUser) return;
 
-        // 1. Shared API Key - SAMA untuk kedua-dua
+        // 1. Shared API Key — same for all builds
         if (!activeApiKey) {
             const key = await getSharedMasterApiKey();
             if (key) {
@@ -658,7 +658,33 @@ const App: React.FC = () => {
          return <SuiteLayout title="Get Started"><GetStartedView language={language} /></SuiteLayout>;
       
       case 'settings':
-         return <SuiteLayout title="Settings"><SettingsView currentUser={currentUser} tempApiKey={null} onUserUpdate={handleUserUpdate} language={language} setLanguage={setLanguage} veoTokenRefreshedAt={veoTokenRefreshedAt} assignTokenProcess={assignTokenProcess} onOpenChangeServerModal={() => setShowServerModal(true)} /></SuiteLayout>;
+      case 'settings-faq': {
+        const settingsInitialTab: SettingsTabId = activeView === 'settings-faq' ? 'faq' : 'profile';
+        return (
+          <SuiteLayout
+            title={activeView === 'settings-faq' ? 'Support and FAQ' : 'Settings'}
+            subtitle={activeView === 'settings-faq' ? 'Help and common questions' : 'Token & app controls'}
+          >
+            <SettingsView
+              currentUser={currentUser}
+              tempApiKey={null}
+              onUserUpdate={handleUserUpdate}
+              language={language}
+              setLanguage={setLanguage}
+              veoTokenRefreshedAt={veoTokenRefreshedAt}
+              assignTokenProcess={assignTokenProcess}
+              onOpenChangeServerModal={() => setShowServerModal(true)}
+              initialTab={settingsInitialTab}
+              hideSettingsTabBar={activeView === 'settings-faq'}
+              onTabChange={tab => {
+                if (activeView === 'settings-faq' && tab !== 'faq') {
+                  setActiveView('settings');
+                }
+              }}
+            />
+          </SuiteLayout>
+        );
+      }
 
       case 'token-management-suite':
           return (
@@ -712,6 +738,8 @@ const App: React.FC = () => {
         return { title: 'Get Started', subtitle: 'Setup and onboarding guidance' };
       case 'settings':
         return { title: 'Settings', subtitle: 'Token & app controls' };
+      case 'settings-faq':
+        return { title: 'Support and FAQ', subtitle: 'Help and common questions' };
       case 'token-management-suite':
         return { title: 'Token Management', subtitle: 'Manage tokens, cookies, and account access' };
       case 'ultra-ai-sales':

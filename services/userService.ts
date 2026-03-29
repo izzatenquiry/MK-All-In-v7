@@ -44,7 +44,7 @@ const getErrorMessage = (error: unknown): string => {
 const mapProfileToUser = (
   profile: UserProfileData
 ): User => {
-  // Standardize: Guna expires_at sahaja untuk kedua-dua brand
+  // Standardize: use expires_at only for all brands
   // ESAIE: Sync dari subscription_expiry jika expires_at tiada (backward compatibility)
   let expiresAt: string | undefined = undefined;
   if ((profile as any).expires_at) {
@@ -79,35 +79,54 @@ const mapProfileToUser = (
     lastDevice: profile.last_device || undefined,
     telegramId: (profile as any).telegram_id || undefined,
     email_code: (profile as any).email_code || undefined,
+    accessCode: (profile as any).access_code ?? undefined,
     flow_account_code: (profile as any).flow_account_code || undefined,
-    // Standardized: expires_at untuk kedua-dua brand
+    // Standardized: expires_at for all brands
     expires_at: expiresAt || undefined,
     registered_at: (profile as any).registered_at || undefined,
     lastCookiesFile: (profile as any).last_cookies_file || undefined,
     creditBalance: (profile as any).credit_balance ?? null,
-    creditExpiresAt: (profile as any).credit_expires_at || undefined,
   };
 };
 
 // Log in a user by checking their email directly against the database.
-export const loginUser = async (email: string): Promise<LoginResult> => {
+// Access code is mandatory (non-empty input). It must match `users.access_code` (set by admin).
+export const loginUser = async (email: string, accessCodeInput?: string): Promise<LoginResult> => {
     const cleanedEmail = email.trim().toLowerCase();
     if (!cleanedEmail) {
         return { success: false, message: 'emailRequired' };
     }
-    
+
+    const provided = (accessCodeInput ?? '').trim();
+    if (!provided) {
+        return { success: false, message: 'accessCodeRequired' };
+    }
+
     // FIX: Use the correct table name 'users'.
     const { data: userData, error: userError } = await supabase
         .from('users')
         .select('*')
         .eq('email', cleanedEmail)
         .single();
-    
+
     if (userData && !userError) {
         const typedData = userData as UserProfileData;
+        const storedAccess = typedData.access_code;
+        const storedTrimmed =
+            storedAccess != null && String(storedAccess).trim() !== ''
+                ? String(storedAccess).trim()
+                : '';
+
+        if (!storedTrimmed) {
+            return { success: false, message: 'accessCodeNotConfigured' };
+        }
+        if (provided !== storedTrimmed) {
+            return { success: false, message: 'invalidAccessCode' };
+        }
+
         const user = mapProfileToUser(typedData);
         
-        // ✅ Check user status (untuk kedua-dua brand)
+        // ✅ Check user status (all brands)
         if (user.status === 'inactive') {
             return { success: false, message: 'accountInactive' };
         }
@@ -166,13 +185,13 @@ export const updateUserStatus = async (userId: string, status: UserStatus): Prom
     const updatePayload: { 
         status: UserStatus; 
         subscription_expiry?: string | null;
-        expires_at?: string | null; // Standardized untuk kedua-dua brand
+        expires_at?: string | null;
     } = { status: status };
 
-    // If status is NOT subscription, clear both expiry dates
+    // If status is NOT subscription, clear expiry dates
     if (status !== 'subscription') {
         updatePayload.subscription_expiry = null;
-        updatePayload.expires_at = null; // Standardized untuk kedua-dua brand
+        updatePayload.expires_at = null;
     }
 
     // FIX: Use the correct table name 'users'.
@@ -196,13 +215,12 @@ export const updateUserSubscription = async (userId: string, expiryMonths: 1 | 6
     expiryDate.setMonth(expiryDate.getMonth() + expiryMonths);
     const expiryDateISO = expiryDate.toISOString();
 
-    // Standardize: Update kedua-dua column untuk sync (ESAIE guna subscription_expiry, MONOKLIX guna expires_at)
     const { error } = await supabase
         .from('users')
         .update({ 
             status: 'subscription', 
-            subscription_expiry: expiryDateISO, // Untuk ESAIE backward compatibility
-            expires_at: expiryDateISO, // Standardized untuk kedua-dua brand
+            subscription_expiry: expiryDateISO,
+            expires_at: expiryDateISO,
         })
         .eq('id', userId);
 
@@ -627,14 +645,6 @@ export const hasActiveTokenUltraWithRegistration = async (
   forceRefresh: boolean = false
 ): Promise<{ isActive: boolean; registration: TokenUltraRegistration | null }> => {
   try {
-    // For ESAIE: Token Ultra feature not available, return inactive
-    const { BRAND_CONFIG } = await import('./brandConfig');
-    const isEsaie = BRAND_CONFIG.name === 'ESAIE';
-    if (isEsaie) {
-      // ESAIE doesn't have Token Ultra feature, always return inactive
-      return { isActive: false, registration: null };
-    }
-    
     // Check cache first
     if (!forceRefresh) {
       const cached = sessionStorage.getItem(`token_ultra_active_${userId}`);
@@ -1112,14 +1122,6 @@ export const logActivity = async (
  * @returns {Promise<{ token: string; createdAt: string; totalUser: number }[] | null>} An array of token objects or null if not found/error.
  */
 export const getVeoAuthTokens = async (): Promise<{ token: string; createdAt: string; totalUser: number }[] | null> => {
-    // For ESAIE: token_new_active table doesn't exist, return null
-    const { BRAND_CONFIG } = await import('./brandConfig');
-    const isEsaie = BRAND_CONFIG.name === 'ESAIE';
-    if (isEsaie) {
-        // ESAIE doesn't have token_new_active table, skip
-        return null;
-    }
-    
     // FIX: Use the correct table name 'token_new_active'.
     const { data, error } = await supabase
         .from('token_new_active')
@@ -1219,8 +1221,7 @@ export const getAvailableServersForUser = async (user: User): Promise<string[]> 
     }
 
     // RESTRICT S12: Only for Admin or Special Role users
-    const isEsaie = BRAND_CONFIG.name === 'ESAIE';
-    const domain = isEsaie ? 'esaie.tech' : 'monoklix.com';
+    const domain = BRAND_CONFIG.domain;
     const s12Url = `https://s12.${domain}`;
     // Check for admin OR special_user role.
     // Also checking for 'special user' string just in case user inputs it with space in DB.
@@ -1318,8 +1319,7 @@ export const consumePackageCredits = async (
 
 /**
  * Apply a purchased credit package to a user.
- * Adds the given credits and resets credit_expires_at to 26 days from now.
- * This relies on the Supabase RPC function `apply_credit_package`.
+ * Adds credits via RPC `apply_credit_package` (DB should update `credit_balance` and `expires_at` only).
  */
 export const applyCreditPackage = async (
     userId: string,
@@ -1565,14 +1565,6 @@ export const updateUserBatch02 = async (userId: string, batch_02: string | null)
 };
 
 export const addTokenToPool = async (token: string, pool: 'veo' | 'imagen'): Promise<{ success: boolean; message?: string }> => {
-    // For ESAIE: token_new_active and token_imagen_only_active tables don't exist, skip
-    const { BRAND_CONFIG } = await import('./brandConfig');
-    const isEsaie = BRAND_CONFIG.name === 'ESAIE';
-    if (isEsaie) {
-        // ESAIE doesn't have token pool tables, skip
-        return { success: false, message: 'Token pool tables are not available for ESAIE' };
-    }
-    
     const tableName = pool === 'veo' ? 'token_new_active' : 'token_imagen_only_active';
     
     const { error } = await supabase
@@ -1586,14 +1578,6 @@ export const addTokenToPool = async (token: string, pool: 'veo' | 'imagen'): Pro
 };
 
 export const deleteTokenFromPool = async (token: string): Promise<{ success: boolean; message?: string }> => {
-    // For ESAIE: token_new_active table doesn't exist, skip
-    const { BRAND_CONFIG } = await import('./brandConfig');
-    const isEsaie = BRAND_CONFIG.name === 'ESAIE';
-    if (isEsaie) {
-        // ESAIE doesn't have token pool tables, skip
-        return { success: false, message: 'Token pool tables are not available for ESAIE' };
-    }
-    
     // Try deleting from veo pool first
     const { error: veoError } = await supabase
         .from('token_new_active')

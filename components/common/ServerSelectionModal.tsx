@@ -78,7 +78,7 @@ const ServerSelectionModal: React.FC<ServerSelectionModalProps> = ({ isOpen, onC
                             
                             // Format server display name
                             // Localhost is not counted in server numbering
-                            // Server 1 = s1.monoklix.com, Server 2 = s2.monoklix.com, etc.
+                            // Server 1 = s1.{domain}, Server 2 = s2.{domain}, etc.
                             let displayName: string;
                             let displayUrl: string;
                             
@@ -94,7 +94,9 @@ const ServerSelectionModal: React.FC<ServerSelectionModalProps> = ({ isOpen, onC
                                 const serverIndex = nonLocalhostServers.indexOf(server);
                                 displayName = `Server ${serverIndex + 1}`;
                                 
-                                const serverDomainPattern = BRAND_CONFIG.name === 'ESAIE' ? /\.esai\.tech/ : /\.monoklix\.com/;
+                                const serverDomainPattern = new RegExp(
+                                  '\\.' + BRAND_CONFIG.domain.replace(/\./g, '\\.') + '$'
+                                );
                                 if (serverDomainPattern.test(server)) {
                                     displayUrl = server.replace('https://', '').replace(serverDomainPattern, '');
                                 } else {

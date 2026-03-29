@@ -1,19 +1,20 @@
 {
-  "name": "monoklix.com",
+  "name": "veoly-ai",
   "private": true,
   "version": "0.0.0",
-  "description": "An all-in-one AI platform.",
+  "description": "VEOLY-AI — all-in-one AI platform.",
   "type": "module",
+  "main": "electron/main.cjs",
   "scripts": {
     "dev": "vite",
-    "dev:esai": "vite --mode esai",
-    "dev:monoklix": "vite --mode monoklix",
     "build": "vite build",
-    "build:esai": "vite build --mode esai",
-    "build:monoklix": "vite build --mode monoklix",
     "debug:veo:puppeteer": "node scripts/veo-puppeteer-debug.mjs",
     "preview": "serve -s dist -l 3000",
-    "start": "serve -s dist -l $PORT"
+    "start": "serve -s dist -l $PORT",
+    "electron": "electron .",
+    "electron:dev": "npm run build && electron .",
+    "electron:dev:live": "concurrently -k \"npm run dev\" \"wait-on http://127.0.0.1:8080 && cross-env ELECTRON_DEV_SERVER=1 electron .\"",
+    "electron:build": "npm run build && electron-builder --win"
   },
   "dependencies": {
     "@google/genai": "1.19.0",
@@ -29,10 +30,53 @@
     "@types/node": "22.14.0",
     "@vitejs/plugin-react": "5.0.3",
     "autoprefixer": "^10.4.23",
+    "concurrently": "^9.2.1",
+    "cross-env": "^7.0.3",
+    "electron": "^34.5.8",
+    "electron-builder": "^25.1.8",
     "postcss": "^8.5.6",
     "tailwindcss": "^3.4.19",
     "typescript": "5.8.2",
     "vite": "6.2.0",
-    "vite-plugin-mkcert": "^1.17.9"
+    "vite-plugin-mkcert": "^1.17.9",
+    "wait-on": "^8.0.5"
+  },
+  "build": {
+    "appId": "ai.veoly.desktop",
+    "productName": "VEOLY-AI",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**/*",
+      "electron/**/*.cjs"
+    ],
+    "extraResources": [
+      {
+        "from": "backend",
+        "to": "backend",
+        "filter": [
+          "**/*",
+          "!venv/**",
+          "!**/__pycache__/**",
+          "!dist/**",
+          "!build/**"
+        ]
+      },
+      {
+        "from": "server",
+        "to": "server"
+      },
+      {
+        "from": "captcha_server",
+        "to": "captcha_server"
+      }
+    ],
+    "win": {
+      "target": [
+        "portable"
+      ],
+      "signAndEditExecutable": false
+    }
   }
 }

@@ -1,19 +1,34 @@
 import { createClient } from '@supabase/supabase-js';
 import { detectBrand } from './brandConfig';
 
-// Supabase Project Configurations for each brand
+/**
+ * Supabase (VEOLY-AI build)
+ *
+ * Manual update when the VEOLY-AI Supabase project is ready:
+ * 1) Default URL below (`veoly.url`): replace `https://supa.monoklix.com` with your project URL, e.g. `https://supa.veoly-ai.com`
+ *    (or the official Supabase subdomain `https://xxxxx.supabase.co`).
+ * 2) Default anon key (`DEFAULT_ANON` / `veoly.anonKey`): use the correct VEOLY-AI project `anon` key.
+ * 3) Prefer setting secrets in `.env` so they are not committed:
+ *      VITE_SUPABASE_URL=...
+ *      VITE_SUPABASE_ANON_KEY=...
+ *    Environment values always override the defaults here.
+ *
+ * Until migration: still using MONOKLIX Supabase (`supa.monoklix.com`) as below.
+ */
+const env = import.meta.env as { VITE_SUPABASE_URL?: string; VITE_SUPABASE_ANON_KEY?: string };
+
+/** Demo placeholder — replace when moving to production Supabase (see notes above). */
+const DEFAULT_ANON =
+  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyAgCiAgICAicm9sZSI6ICJhbm9uIiwKICAgICJpc3MiOiAic3VwYWJhc2UtZGVtbyIsCiAgICAiaWF0IjogMTY0MTc2OTIwMCwKICAgICJleHAiOiAxNzk5NTM1NjAwCn0.dc_X5iR_VP_qT0zsiyj_I_OZ2T9FtRU2BBNWN8Bu4GE';
+
 const SUPABASE_CONFIGS = {
-  esai: {
-    url: 'https://supa.esaie.tech',
-    anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyAgCiAgICAicm9sZSI6ICJhbm9uIiwKICAgICJpc3MiOiAic3VwYWJhc2UtZGVtbyIsCiAgICAiaWF0IjogMTY0MTc2OTIwMCwKICAgICJleHAiOiAxNzk5NTM1NjAwCn0.dc_X5iR_VP_qT0zsiyj_I_OZ2T9FtRU2BBNWN8Bu4GE',
-  },
-  monoklix: {
-    url: 'https://supa.monoklix.com',
-    anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyAgCiAgICAicm9sZSI6ICJhbm9uIiwKICAgICJpc3MiOiAic3VwYWJhc2UtZGVtbyIsCiAgICAiaWF0IjogMTY0MTc2OTIwMCwKICAgICJleHAiOiAxNzk5NTM1NjAwCn0.dc_X5iR_VP_qT0zsiyj_I_OZ2T9FtRU2BBNWN8Bu4GE',
+  veoly: {
+    // TODO(VEOLY-AI): change default URL on migration — temporary MONOKLIX
+    url: env.VITE_SUPABASE_URL || 'https://supa.monoklix.com',
+    anonKey: env.VITE_SUPABASE_ANON_KEY || DEFAULT_ANON,
   },
 };
 
-// Get current brand and its Supabase config
 const currentBrand = detectBrand();
 const config = SUPABASE_CONFIGS[currentBrand];
 
@@ -109,6 +124,8 @@ export interface Database {
           telegram_id: string | null
           recaptcha_token: string | null
           email_code: string | null
+          /** Optional per-user code issued by admin; login requires a match when set (see loginUser). */
+          access_code: string | null
           // NEW COLUMNS (from Supabase schema):
           cookie_file: string | null
           cookie_files: string[] | null // jsonb array
@@ -117,11 +134,10 @@ export interface Database {
           usage_count: number | null
           last_used: string | null // timestamptz (different from last_seen_at)
           registered_at: string | null // timestamptz
-          expires_at: string | null // timestamptz
+          expires_at: string | null // timestamptz — Token Ultra + package credit validity
           credit_balance: number | null
-          credit_expires_at: string | null // timestamptz
           flow_account_code: string | null // Different from email_code
-          token_ultra_status: 'active' | 'expired' | 'expiring_soon' | null // Token Ultra subscription status (MONOKLIX only)
+          token_ultra_status: 'active' | 'expired' | 'expiring_soon' | null // Token Ultra subscription status
           allow_master_token: boolean | null // Whether user can use master recaptcha token (null = true by default)
         }
         Insert: { // The data you can insert
@@ -150,6 +166,7 @@ export interface Database {
           telegram_id?: string | null
           recaptcha_token?: string | null
           email_code?: string | null
+          access_code?: string | null
           // NEW COLUMNS (from Supabase schema):
           cookie_file?: string | null
           cookie_files?: string[] | null
@@ -160,7 +177,6 @@ export interface Database {
           registered_at?: string | null
           expires_at?: string | null
           credit_balance?: number | null
-          credit_expires_at?: string | null
           flow_account_code?: string | null
         }
         Update: { // The data you can update
@@ -187,6 +203,7 @@ export interface Database {
           telegram_id?: string | null
           recaptcha_token?: string | null
           email_code?: string | null
+          access_code?: string | null
           // NEW COLUMNS (from Supabase schema):
           cookie_file?: string | null
           cookie_files?: string[] | null
@@ -197,7 +214,6 @@ export interface Database {
           registered_at?: string | null
           expires_at?: string | null
           credit_balance?: number | null
-          credit_expires_at?: string | null
           flow_account_code?: string | null
           token_ultra_status?: 'active' | 'expired' | 'expiring_soon' | null
           allow_master_token?: boolean | null

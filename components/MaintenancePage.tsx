@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
+import { BRAND_CONFIG } from '../services/brandConfig';
 
 /**
  * “IP blocked by Google” style page – full-page layout.
- * Shown when maintenanceMode is true in brandConfig (esai or monoklix).
+ * Shown when maintenanceMode is true in brandConfig (VEOLY-AI).
  */
 const MaintenancePage: React.FC = () => {
   const timestamp = new Date().toISOString().replace('T', ' ').slice(0, 19) + ' UTC';
@@ -69,7 +70,7 @@ const MaintenancePage: React.FC = () => {
                       <svg className="w-2.5 h-2.5 sm:w-3 sm:h-3" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"><path d="M5 13l4 4L19 7" /></svg>
                     </span>
                   </div>
-                  <span className="text-xs sm:text-sm font-medium text-neutral-800 truncate max-w-full">Monoklix.com</span>
+                  <span className="text-xs sm:text-sm font-medium text-neutral-800 truncate max-w-full">{BRAND_CONFIG.domain}</span>
                   <span className="text-[10px] sm:text-xs text-blue-600">Network</span>
                   <span className="text-[10px] sm:text-xs font-medium text-green-600 mt-0.5">Working</span>
                 </div>

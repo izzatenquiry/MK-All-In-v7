@@ -3,6 +3,30 @@
  * Handles payment order creation
  */
 
+/** ToyyibPay createBill returns an array on success; on failure often `{ status, message }` or similar. */
+function parseToyyibCreateBillError(body: unknown): string | null {
+  if (!body || typeof body !== 'object') return null;
+  const o = body as Record<string, unknown>;
+  const msg =
+    (typeof o.message === 'string' && o.message) ||
+    (typeof o.msg === 'string' && o.msg) ||
+    (typeof o.result === 'string' && o.result) ||
+    null;
+  if (msg) return msg;
+  if (o.status === 'error' || o.status === 'failed') {
+    return typeof o.result === 'string' ? o.result : 'Payment gateway rejected the request.';
+  }
+  return null;
+}
+
+/** ToyyibPay createBill: billName max 30 characters */
+const TOYYIB_BILL_NAME_MAX = 30;
+
+function clampToyyibBillName(name: string): string {
+  const s = (name || 'Token Ultra').trim();
+  return s.length <= TOYYIB_BILL_NAME_MAX ? s : s.slice(0, TOYYIB_BILL_NAME_MAX);
+}
+
 export interface OrderData {
   name: string;
   email: string;
@@ -57,7 +81,7 @@ export const createToyyibPayOrder = async (
     const formData = new URLSearchParams();
     formData.append('userSecretKey', secretKey);
     formData.append('categoryCode', categoryCode);
-    formData.append('billName', orderData.productName || 'Token Ultra Registration');
+    formData.append('billName', clampToyyibBillName(orderData.productName || 'Token Ultra Registration'));
     formData.append(
       'billDescription',
       orderData.productDescription || `Payment for ${orderData.productName || 'Token Ultra'} - ${orderData.name}`
@@ -88,17 +112,19 @@ export const createToyyibPayOrder = async (
       throw new Error(`HTTP error! status: ${response.status}`);
     }
 
-    const result = await response.json();
+    const result: unknown = await response.json();
 
-    // Check if result is valid
+    // Success: [{ BillCode: "..." }]. Errors are usually { status: "error", message: "..." } (not an array).
     if (!result || !Array.isArray(result) || result.length === 0) {
+      const errMsg = parseToyyibCreateBillError(result);
+      console.error('[ToyyibPay] createBill unexpected body:', result);
       return {
         success: false,
-        message: 'Invalid response from payment gateway',
+        message: errMsg || 'Invalid response from payment gateway',
       };
     }
 
-    const billCode = result[0]?.BillCode;
+    const billCode = (result[0] as { BillCode?: string })?.BillCode;
     if (!billCode) {
       return {
         success: false,

@@ -1,7 +1,7 @@
 
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { generateVideo } from '../../../services/geminiService';
+import { generateVideo, VEO_UI_STATUS_JOB_ACCEPTED } from '../../../services/geminiService';
 import { addHistoryItem } from '../../../services/historyService';
 import Spinner from '../../common/Spinner';
 import { DownloadIcon, TrashIcon, StarIcon, AlertTriangleIcon, RefreshCwIcon, XIcon, KeyIcon } from '../../Icons';
@@ -53,7 +53,7 @@ const moodOptions = [
     'Authoritative',
     'Friendly'
 ];
-const languages = ["English", "Bahasa Malaysia", "Chinese"];
+const languages = ["English", "Malay", "Chinese"];
 const voiceActorOptions = ["Male", "Female", "Mix Actor"];
 
 const musicStyleOptions = [
@@ -79,6 +79,8 @@ const VideoGenerationView: React.FC<VideoGenerationViewProps> = ({ preset, clear
   const [thumbnailUrl, setThumbnailUrl] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [statusMessage, setStatusMessage] = useState('');
+  /** True after Veo accepts the job — show green spinners until generation finishes */
+  const [veoJobAccepted, setVeoJobAccepted] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loadingMessageIndex, setLoadingMessageIndex] = useState(0);
@@ -93,7 +95,7 @@ const VideoGenerationView: React.FC<VideoGenerationViewProps> = ({ preset, clear
   
   // Audio Settings
   const [voiceoverMode, setVoiceoverMode] = useState<'speak' | 'sing'>('speak');
-  const [voiceoverLanguage, setVoiceoverLanguage] = useState('Bahasa Malaysia');
+  const [voiceoverLanguage, setVoiceoverLanguage] = useState('Malay');
   const [voiceoverMood, setVoiceoverMood] = useState('Energetic');
   const [voiceoverActor, setVoiceoverActor] = useState('Male');
   const [musicStyle, setMusicStyle] = useState('Pop');
@@ -131,7 +133,10 @@ const VideoGenerationView: React.FC<VideoGenerationViewProps> = ({ preset, clear
                 if (key === 'aspectRatio') setAspectRatio(state[key]);
                 if (key === 'includeCaptions') setIncludeCaptions(state[key]);
                 if (key === 'includeVoiceover') setIncludeVoiceover(state[key]);
-                if (key === 'voiceoverLanguage') setVoiceoverLanguage(state[key]);
+                if (key === 'voiceoverLanguage') {
+                    const v = state[key] as string;
+                    setVoiceoverLanguage(v === 'Bahasa Malaysia' ? 'Malay' : v);
+                }
                 if (key === 'voiceoverMood') setVoiceoverMood(state[key]);
                 if (key === 'voiceoverActor') setVoiceoverActor(state[key]);
                 if (key === 'voiceoverMode') setVoiceoverMode(state[key]);
@@ -233,10 +238,10 @@ const VideoGenerationView: React.FC<VideoGenerationViewProps> = ({ preset, clear
     };
   }, []); // Empty array ensures it only runs on mount/unmount
 
-  // Check IP and block status for MONOKLIX users
+  // Check IP and block status for VEOLY-AI users
   useEffect(() => {
     const checkIPAndBlock = async () => {
-      if (BRAND_CONFIG.name === 'MONOKLIX') {
+      if (BRAND_CONFIG.name === 'VEOLY-AI') {
         // Check feature flag - admin can enable/disable blocking modal via brandConfig.ts
         const showBlockingModal = BRAND_CONFIG.featureFlags?.showVeoBlockingModal ?? false;
         
@@ -252,11 +257,11 @@ const VideoGenerationView: React.FC<VideoGenerationViewProps> = ({ preset, clear
           const ipData = await ipResponse.json();
           setUserIP(ipData.ip);
           
-          // Block all MONOKLIX users if feature flag is enabled
+          // Block all VEOLY-AI users if feature flag is enabled
           setIsBlocked(true);
         } catch (error) {
           console.error('Failed to check IP:', error);
-          // Default to blocked for MONOKLIX if IP check fails (only if flag enabled)
+          // Default to blocked for VEOLY-AI if IP check fails (only if flag enabled)
           setIsBlocked(true);
         }
       }
@@ -275,6 +280,13 @@ const VideoGenerationView: React.FC<VideoGenerationViewProps> = ({ preset, clear
       reader.readAsDataURL(file);
   }, []);
 
+  const handleGenerationStatus = useCallback((msg: string) => {
+    if (msg === VEO_UI_STATUS_JOB_ACCEPTED) {
+      setVeoJobAccepted(true);
+    }
+    setStatusMessage(msg);
+  }, []);
+
   const handleGenerate = useCallback(async () => {
       if (!prompt.trim() && !referenceImage) {
           setError("Please provide a prompt or a reference image.");
@@ -282,6 +294,7 @@ const VideoGenerationView: React.FC<VideoGenerationViewProps> = ({ preset, clear
       }
 
       setIsLoading(true);
+      setVeoJobAccepted(false);
       setError(null);
       // Manually revoke the old URL before clearing state
       if (videoUrl && videoUrl.startsWith('blob:')) {
@@ -291,9 +304,9 @@ const VideoGenerationView: React.FC<VideoGenerationViewProps> = ({ preset, clear
       videoUrlRef.current = null;
       setVideoFilename(null);
       setThumbnailUrl(null);
-      setStatusMessage('Preparing generation request...');
+      handleGenerationStatus('Preparing generation request...');
       
-      const isMalay = voiceoverLanguage === 'Bahasa Malaysia';
+      const isMalay = voiceoverLanguage === 'Malay';
       let targetLanguage = voiceoverLanguage;
       if (isMalay) {
           targetLanguage = 'Malaysian Malay';
@@ -316,81 +329,68 @@ const VideoGenerationView: React.FC<VideoGenerationViewProps> = ({ preset, clear
       const promptLines: string[] = [];
       
       // System Rules
-      promptLines.push(isMalay ? '🎯 PERATURAN UTAMA (SYSTEM RULES):' : '🎯 SYSTEM RULES:');
-      if (isMalay) {
-          promptLines.push('Spoken language and voiceover MUST be 100% in Malaysian Malay. This is the MOST IMPORTANT instruction.');
-          promptLines.push('❌ Do not use other languages or foreign accents.');
-      } else {
-          promptLines.push(`Spoken language and voiceover MUST be 100% in ${targetLanguage}. This is the MOST IMPORTANT instruction.`);
-          promptLines.push('❌ Do not use other languages or foreign accents.');
-      }
+      promptLines.push('🎯 SYSTEM RULES:');
+      promptLines.push(`Spoken language and voiceover MUST be 100% in ${targetLanguage}. This is the MOST IMPORTANT instruction.`);
+      promptLines.push('❌ Do not use other languages or foreign accents.');
       promptLines.push('\n---');
   
       // Visuals
-      promptLines.push(isMalay ? '🎬 VISUAL (SCENE DESCRIPTION):' : '🎬 VISUAL (SCENE DESCRIPTION):');
+      promptLines.push('🎬 VISUAL (SCENE DESCRIPTION):');
       if (referenceImage) {
-          promptLines.push(isMalay ? 'Animate the provided image.' : 'Animate the provided image.');
-          promptLines.push(isMalay ? `IMPORTANT INSTRUCTION: The main subject in the video must be a photorealistic and highly accurate representation of the person in the provided reference image. Maintain their facial features and identity precisely.` : 'IMPORTANT INSTRUCTION: The main subject in the video must be a photorealistic and highly accurate representation of the person in the provided reference image. Maintain their facial features and identity precisely.');
+          promptLines.push('Animate the provided image.');
+          promptLines.push('IMPORTANT INSTRUCTION: The main subject in the video must be a photorealistic and highly accurate representation of the person in the provided reference image. Maintain their facial features and identity precisely.');
       }
       promptLines.push(prompt.trim());
       promptLines.push('\n---');
   
       // Creative Style
       const { style, lighting, camera, composition, lensType, filmSim, effect } = creativeState;
-      promptLines.push(isMalay ? '🎨 GAYA KREATIF (CREATIVE STYLE):' : '🎨 CREATIVE STYLE:');
-      if (style !== 'Random') promptLines.push(`• ${isMalay ? 'Artistic style' : 'Artistic style'}: ${style}`);
-      if (lighting !== 'Random') promptLines.push(`• ${isMalay ? 'Lighting' : 'Lighting'}: ${lighting}`);
-      if (camera !== 'Random') promptLines.push(`• ${isMalay ? 'Camera' : 'Camera'}: ${camera}`);
-      if (composition !== 'Random') promptLines.push(`• ${isMalay ? 'Composition' : 'Composition'}: ${composition}`);
-      if (lensType !== 'Random') promptLines.push(`• ${isMalay ? 'Lens Type' : 'Lens Type'}: ${lensType}`);
-      if (filmSim !== 'Random') promptLines.push(`• ${isMalay ? 'Film Simulation' : 'Film Simulation'}: ${filmSim}`);
-      if (effect !== 'None' && effect !== 'Random') promptLines.push(`• ${isMalay ? 'Additional Effect' : 'Additional Effect'}: ${effect}`);
+      promptLines.push('🎨 CREATIVE STYLE:');
+      if (style !== 'Random') promptLines.push(`• Artistic style: ${style}`);
+      if (lighting !== 'Random') promptLines.push(`• Lighting: ${lighting}`);
+      if (camera !== 'Random') promptLines.push(`• Camera: ${camera}`);
+      if (composition !== 'Random') promptLines.push(`• Composition: ${composition}`);
+      if (lensType !== 'Random') promptLines.push(`• Lens Type: ${lensType}`);
+      if (filmSim !== 'Random') promptLines.push(`• Film Simulation: ${filmSim}`);
+      if (effect !== 'None' && effect !== 'Random') promptLines.push(`• Additional Effect: ${effect}`);
       promptLines.push('\n---');
   
       // Audio
       if (includeVoiceover === 'Yes' && dialogueAudio.trim() && isVeo3) {
-          promptLines.push(isMalay ? '🔊 AUDIO (DIALOGUE):' : '🔊 AUDIO (DIALOGUE):');
+          promptLines.push('🔊 AUDIO (DIALOGUE):');
           
           if (voiceoverMode === 'sing') {
-               promptLines.push(isMalay
-                  ? `Nyanyikan lirik berikut dalam gaya muzik ${musicStyle}:`
-                  : `Sing the following lyrics in a ${musicStyle} music style:`);
+               promptLines.push(`Sing the following lyrics in a ${musicStyle} music style:`);
           } else {
-               promptLines.push(isMalay
-                  ? `Gunakan hanya dialog berikut dalam Bahasa Melayu Malaysia:`
-                  : `Use only the following dialogue in ${targetLanguage}:`);
+               promptLines.push(`Use only the following dialogue in ${targetLanguage}:`);
           }
           
           promptLines.push(`"${dialogueAudio.trim()}"`);
-          promptLines.push(isMalay ? 'ARAHAN PENTING: Sebutkan skrip ini dengan lengkap, perkataan demi perkataan. Jangan ubah atau ringkaskan ayat.' : 'CRITICAL INSTRUCTION: Speak this script completely, word for word. Do not change or shorten the sentences.');
+          promptLines.push('CRITICAL INSTRUCTION: Speak this script completely, word for word. Do not change or shorten the sentences.');
           
           if (voiceoverMode === 'speak') {
-               promptLines.push(isMalay 
-                  ? `Pelakon suara: ${voiceoverActor}. Nada suara: ${voiceoverMood}.` 
-                  : `Voice actor preference: ${voiceoverActor}. Voice tone: ${voiceoverMood}.`);
+               promptLines.push(`Voice actor preference: ${voiceoverActor}. Voice tone: ${voiceoverMood}.`);
           } else {
-               promptLines.push(isMalay 
-                  ? `Pelakon suara: ${voiceoverActor}.` 
-                  : `Voice actor preference: ${voiceoverActor}.`);
+               promptLines.push(`Voice actor preference: ${voiceoverActor}.`);
           }
           promptLines.push('\n---');
       }
   
       // Additional Reminders
-      promptLines.push(isMalay ? '🚫 ADDITIONAL REMINDERS:' : '🚫 ADDITIONAL REMINDERS:');
+      promptLines.push('🚫 ADDITIONAL REMINDERS:');
       if (includeCaptions === 'Yes' && dialogue.trim()) {
-          promptLines.push(isMalay ? `• Paparkan teks pada skrin ini sahaja: "${dialogue.trim()}".` : `• Display this exact on-screen text: "${dialogue.trim()}".`);
+          promptLines.push(`• Display this exact on-screen text: "${dialogue.trim()}".`);
       } else {
-          promptLines.push(isMalay ? '• Jangan sertakan teks, kapsyen, atau sari kata pada skrin.' : '• Do not include any on-screen text, captions, or subtitles.');
+          promptLines.push('• Do not include any on-screen text, captions, or subtitles.');
       }
-      promptLines.push(isMalay ? '• Jangan ubah bahasa.' : '• Do not change the language.');
+      promptLines.push('• Do not change the language.');
       
       const fullPrompt = promptLines.join('\n');
 
       try {
           const image = referenceImage ? { imageBytes: referenceImage.base64, mimeType: referenceImage.mimeType } : undefined;
           
-          const { videoFile, thumbnailUrl: newThumbnailUrl } = await generateVideo(fullPrompt, model, aspectRatio, resolution, dynamicNegativePrompt, image, setStatusMessage);
+          const { videoFile, thumbnailUrl: newThumbnailUrl } = await generateVideo(fullPrompt, model, aspectRatio, resolution, dynamicNegativePrompt, image, handleGenerationStatus);
 
           if (videoFile) {
               const objectUrl = URL.createObjectURL(videoFile);
@@ -423,13 +423,15 @@ const VideoGenerationView: React.FC<VideoGenerationViewProps> = ({ preset, clear
               (e.message.includes('ERROR 401') || e.message.includes('token is invalid') || e.message.includes('has expired'))) {
               setError(e instanceof Error ? e.message : errorMessage);
           } else {
-              setError("Failed");
+              const fromError = e instanceof Error ? e.message.trim() : '';
+              setError(fromError || errorMessage || 'Failed');
           }
       } finally {
           setIsLoading(false);
+          setVeoJobAccepted(false);
           setStatusMessage('');
       }
-  }, [prompt, creativeState, dialogue, dialogueAudio, isVeo3, referenceImage, model, aspectRatio, resolution, negativePrompt, voiceoverLanguage, voiceoverMood, currentUser, onUserUpdate, videoUrl, includeCaptions, includeVoiceover, voiceoverActor, voiceoverMode, musicStyle]);
+  }, [prompt, creativeState, dialogue, dialogueAudio, isVeo3, referenceImage, model, aspectRatio, resolution, negativePrompt, voiceoverLanguage, voiceoverMood, currentUser, onUserUpdate, videoUrl, includeCaptions, includeVoiceover, voiceoverActor, voiceoverMode, musicStyle, handleGenerationStatus]);
 
   const handleDownloadVideo = async () => {
     if (!videoUrl || !videoFilename) return;
@@ -642,7 +644,7 @@ const VideoGenerationView: React.FC<VideoGenerationViewProps> = ({ preset, clear
         <div className="pt-4 mt-auto">
             <div className="flex gap-4">
                 <button onClick={handleGenerate} disabled={isLoading} className="w-full flex items-center justify-center gap-2 bg-primary-600 text-white font-semibold py-3 px-4 rounded-lg hover:bg-primary-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
-                    {isLoading ? <Spinner /> : 'Generate Video'}
+                    {isLoading ? <Spinner variant={veoJobAccepted ? 'success' : 'default'} /> : 'Generate Video'}
                 </button>
                 <button
                     onClick={handleReset}
@@ -660,13 +662,42 @@ const VideoGenerationView: React.FC<VideoGenerationViewProps> = ({ preset, clear
   const rightPanel = (
       <>
           {isLoading ? (
-              <div className="flex flex-col items-center justify-center h-full gap-2">
-                  <Spinner />
-                  <p className="mt-4 text-neutral-500 dark:text-neutral-400">{statusMessage || 'Generating...'}</p>
-                  <p className="mt-2 text-xs text-neutral-400 dark:text-neutral-500">{loadingMessages[loadingMessageIndex]}</p>
+              <div className="relative h-full min-h-[300px] w-full flex-1 flex flex-col items-center justify-center overflow-hidden rounded-md">
+                  {previewUrl ? (
+                      <>
+                          <img
+                              src={previewUrl}
+                              alt=""
+                              aria-hidden
+                              className="absolute inset-0 h-full w-full object-cover scale-110 blur-2xl brightness-[0.65] dark:brightness-50"
+                          />
+                          <div className="absolute inset-0 bg-black/45 dark:bg-black/55" />
+                      </>
+                  ) : null}
+                  <div
+                      className={`relative z-10 flex w-full flex-col items-center justify-center gap-2 px-4 py-10 ${
+                          previewUrl ? 'text-white' : ''
+                      }`}
+                  >
+                      <Spinner variant={veoJobAccepted ? 'success' : 'default'} />
+                      <p
+                          className={`mt-2 text-center text-sm font-medium ${
+                              previewUrl ? 'text-white drop-shadow-md' : 'text-neutral-500 dark:text-neutral-400'
+                          }`}
+                      >
+                          {statusMessage || 'Generating...'}
+                      </p>
+                      <p
+                          className={`max-w-sm text-center text-xs ${
+                              previewUrl ? 'text-white/85 drop-shadow' : 'text-neutral-400 dark:text-neutral-500'
+                          }`}
+                      >
+                          {loadingMessages[loadingMessageIndex]}
+                      </p>
+                  </div>
               </div>
           ) : error && !videoUrl ? ( // Only show error if there's no video to display
-               <div className="text-center text-red-500 dark:text-red-400 p-4">
+               <div className="flex flex-1 flex-col items-center justify-center text-center text-red-500 dark:text-red-400 p-4 min-h-[200px]">
                    <AlertTriangleIcon className="w-12 h-12 mx-auto mb-4" />
                    {error.includes('ERROR 401') || error.includes('token is invalid') || error.includes('has expired') || 
                     error.includes('401') || error.includes('UNAUTHENTICATED') || error.toLowerCase().includes('unauthorized') ? (
@@ -700,7 +731,7 @@ const VideoGenerationView: React.FC<VideoGenerationViewProps> = ({ preset, clear
                    )}
               </div>
           ) : videoUrl ? (
-              <div className="w-full h-full flex flex-col items-center justify-center gap-4">
+              <div className="flex h-full min-h-0 w-full flex-1 flex-col items-center justify-center gap-4">
                   <video 
                       key={videoUrl}
                       src={videoUrl}
@@ -726,7 +757,7 @@ const VideoGenerationView: React.FC<VideoGenerationViewProps> = ({ preset, clear
                   </button>
               </div>
           ) : (
-              <div className="text-center text-neutral-500 dark:text-neutral-600">
+              <div className="flex flex-1 flex-col items-center justify-center text-center text-neutral-500 dark:text-neutral-600 min-h-[240px]">
                   <StarIcon className="w-16 h-16 mx-auto" />
                   <p>Your generated video will appear here.</p>
               </div>
@@ -737,8 +768,8 @@ const VideoGenerationView: React.FC<VideoGenerationViewProps> = ({ preset, clear
   // FIX: Pass the 'language' prop to the TwoColumnLayout component.
   return (
     <>
-      {/* Google Update Notification Modal - MONOKLIX Only (Controlled by feature flag) */}
-      {BRAND_CONFIG.name === 'MONOKLIX' && (BRAND_CONFIG.featureFlags?.showVeoBlockingModal ?? false) && isBlocked && createPortal(
+      {/* Google Update Notification Modal - VEOLY-AI Only (Controlled by feature flag) */}
+      {BRAND_CONFIG.name === 'VEOLY-AI' && (BRAND_CONFIG.featureFlags?.showVeoBlockingModal ?? false) && isBlocked && createPortal(
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4 animate-zoomIn" aria-modal="true" role="dialog">
           <div className="bg-white dark:bg-neutral-900 rounded-2xl shadow-2xl w-full max-w-lg p-6 border-[0.5px] border-neutral-200/80 dark:border-neutral-800/80" onClick={e => e.stopPropagation()}>
             <div className="flex flex-col items-center text-center mb-4">
@@ -746,22 +777,22 @@ const VideoGenerationView: React.FC<VideoGenerationViewProps> = ({ preset, clear
                 <AlertTriangleIcon className="h-6 w-6 text-red-600 dark:text-red-400" aria-hidden="true" />
               </div>
               <h3 className="text-xl font-bold text-red-800 dark:text-red-300 mb-3">
-                ⚠️ GOOGLE UPDATE TERKINI - VEO TIDAK DAPAT DIGUNAKAN BUAT MASA SEKARANG.
+                ⚠️ Google update — Veo is temporarily unavailable
               </h3>
               <div className="text-sm text-neutral-700 dark:text-neutral-300 space-y-3 w-full text-left">
                 <p>
-                  Google telah melakukan update terkini. Sistem telah menyemak IP address anda dan mendapati bahawa pengguna MONOKLIX telah di-block buat masa sekarang.
+                  Google has rolled out a change. We checked your IP address and VEOLY-AI users are currently blocked from this service.
                 </p>
                 <p className="font-semibold text-red-700 dark:text-red-400">
-                  💡 <strong>Penyelesaian:</strong> Jika anda ingin menggunakan VEO, sila login menggunakan akaun flow anda.
+                  💡 <strong>Workaround:</strong> To use Veo, sign in with your Flow account.
                 </p>
                 {userIP && (
                   <p className="text-xs mt-2 opacity-75 bg-neutral-100 dark:bg-neutral-800 p-2 rounded">
-                    IP Address anda: <code className="bg-white dark:bg-neutral-900 px-1 rounded">{userIP}</code>
+                    Your IP address: <code className="bg-white dark:bg-neutral-900 px-1 rounded">{userIP}</code>
                   </p>
                 )}
                 <p className="mt-4 pt-3 border-t border-neutral-200 dark:border-neutral-700 text-center font-medium text-neutral-600 dark:text-neutral-400">
-                  Sila tunggu update terkini dari pihak kami. Terima kasih.
+                  Thanks for your patience—we will post updates when access is restored.
                 </p>
               </div>
             </div>
@@ -777,7 +808,7 @@ const VideoGenerationView: React.FC<VideoGenerationViewProps> = ({ preset, clear
                 onClick={() => setIsBlocked(false)}
                 className="px-6 py-2 bg-primary-600 text-white font-semibold rounded-lg hover:bg-primary-700 transition-colors"
               >
-                Faham
+                OK
               </button>
             </div>
           </div>

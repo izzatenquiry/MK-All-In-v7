@@ -22,6 +22,8 @@ interface CreativeDirectionPanelProps {
     showEffect?: boolean;
     showAspectRatio?: boolean;
     // Props for integrating AI Settings (Image Count & Aspect Ratio)
+    /** When omitted, Image Count offers 1–4 (e.g. standard NanoBanana). Pass [1, 2] for NanoBanana Pro. */
+    imageCountOptions?: number[];
     numberOfImages?: number;
     setNumberOfImages?: (val: number) => void;
     aspectRatio?: string;
@@ -53,6 +55,7 @@ const CreativeDirectionPanel: React.FC<CreativeDirectionPanelProps> = ({
     showPose = false, 
     showEffect = true,
     showAspectRatio = false,
+    imageCountOptions = [1, 2, 3, 4],
     numberOfImages,
     setNumberOfImages,
     aspectRatio,
@@ -78,7 +81,7 @@ const CreativeDirectionPanel: React.FC<CreativeDirectionPanelProps> = ({
                                     onChange={(e) => setNumberOfImages(Number(e.target.value))}
                                     className="w-full bg-white dark:bg-neutral-900 border border-gray-300 dark:border-neutral-600 rounded-lg p-2 text-sm focus:ring-2 focus:ring-primary-500 focus:outline-none"
                                 >
-                                    {[1, 2, 3, 4].map(n => <option key={n} value={n}>{n} Image{n > 1 ? 's' : ''}</option>)}
+                                    {imageCountOptions.map(n => <option key={n} value={n}>{n} Image{n > 1 ? 's' : ''}</option>)}
                                 </select>
                             </div>
                         )}

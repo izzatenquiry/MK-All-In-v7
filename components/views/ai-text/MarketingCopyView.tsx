@@ -11,7 +11,7 @@ import { type Language } from '../../../types';
 
 
 const tones = ["Professional", "Casual", "Witty", "Persuasive", "Empathetic", "Bold"];
-const languages = ["English", "Bahasa Malaysia"];
+const languages = ["English", "Malay"];
 
 const downloadText = (text: string, fileName: string) => {
     const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
@@ -36,7 +36,7 @@ const MarketingCopyView: React.FC<MarketingCopyViewProps> = ({ language }) => {
     const [targetAudience, setTargetAudience] = useState('');
     const [keywords, setKeywords] = useState('');
     const [selectedTone, setSelectedTone] = useState(tones[0]);
-    const [selectedLanguage, setSelectedLanguage] = useState("Bahasa Malaysia");
+    const [selectedLanguage, setSelectedLanguage] = useState("Malay");
     const [generatedCopy, setGeneratedCopy] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -51,7 +51,9 @@ const MarketingCopyView: React.FC<MarketingCopyViewProps> = ({ language }) => {
                 if (state.targetAudience) setTargetAudience(state.targetAudience);
                 if (state.keywords) setKeywords(state.keywords);
                 if (state.selectedTone) setSelectedTone(state.selectedTone);
-                if (state.selectedLanguage) setSelectedLanguage(state.selectedLanguage);
+                if (state.selectedLanguage) {
+                    setSelectedLanguage(state.selectedLanguage === 'Bahasa Malaysia' ? 'Malay' : state.selectedLanguage);
+                }
                 if (state.generatedCopy) setGeneratedCopy(state.generatedCopy);
             }
         } catch (e) { console.error("Failed to load state from session storage", e); }
@@ -114,7 +116,7 @@ const MarketingCopyView: React.FC<MarketingCopyViewProps> = ({ language }) => {
         setTargetAudience('');
         setKeywords('');
         setSelectedTone(tones[0]);
-        setSelectedLanguage("Bahasa Malaysia");
+        setSelectedLanguage("Malay");
         setGeneratedCopy('');
         setError(null);
         sessionStorage.removeItem(SESSION_KEY);
@@ -127,6 +129,7 @@ const MarketingCopyView: React.FC<MarketingCopyViewProps> = ({ language }) => {
                 <p className="text-sm sm:text-base text-neutral-500 dark:text-neutral-400 mt-1">Generate persuasive copy for ads, posts, and websites.</p>
             </div>
 
+            <div className="flex flex-col gap-4">
             <div>
                 <label htmlFor="product-details" className="block text-sm font-medium text-gray-600 dark:text-gray-400 mb-2">Product/Service Details</label>
                 <textarea
@@ -135,7 +138,7 @@ const MarketingCopyView: React.FC<MarketingCopyViewProps> = ({ language }) => {
                     onChange={(e) => setProductDetails(e.target.value)}
                     placeholder="e.g., A high-end coffee maker that brews in 30 seconds..."
                     rows={5}
-                    className="w-full bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg p-3 focus:ring-2 focus:ring-primary-500 focus:outline-none transition"
+                    className="w-full bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg p-3 text-sm focus:ring-2 focus:ring-primary-500 focus:outline-none transition"
                 />
             </div>
 
@@ -147,7 +150,7 @@ const MarketingCopyView: React.FC<MarketingCopyViewProps> = ({ language }) => {
                     value={targetAudience}
                     onChange={(e) => setTargetAudience(e.target.value)}
                     placeholder="e.g., Busy professionals, coffee lovers..."
-                    className="w-full bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg p-3 focus:ring-2 focus:ring-primary-500 focus:outline-none transition"
+                    className="w-full bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg p-3 text-sm focus:ring-2 focus:ring-primary-500 focus:outline-none transition"
                 />
             </div>
 
@@ -159,7 +162,7 @@ const MarketingCopyView: React.FC<MarketingCopyViewProps> = ({ language }) => {
                     value={keywords}
                     onChange={(e) => setKeywords(e.target.value)}
                     placeholder="e.g., quick, premium, morning coffee"
-                    className="w-full bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg p-3 focus:ring-2 focus:ring-primary-500 focus:outline-none transition"
+                    className="w-full bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg p-3 text-sm focus:ring-2 focus:ring-primary-500 focus:outline-none transition"
                 />
             </div>
 
@@ -169,22 +172,23 @@ const MarketingCopyView: React.FC<MarketingCopyViewProps> = ({ language }) => {
                     id="tone"
                     value={selectedTone}
                     onChange={(e) => setSelectedTone(e.target.value)}
-                    className="w-full bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg p-3 focus:ring-2 focus:ring-primary-500 focus:outline-none transition"
+                    className="w-full bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg p-3 text-sm focus:ring-2 focus:ring-primary-500 focus:outline-none transition"
                 >
                     {tones.map(tone => <option key={tone} value={tone}>{tone}</option>)}
                 </select>
             </div>
-            
+
             <div>
                 <label htmlFor="language" className="block text-sm font-medium text-gray-600 dark:text-gray-400 mb-2">Output Language</label>
                 <select
                     id="language"
                     value={selectedLanguage}
                     onChange={(e) => setSelectedLanguage(e.target.value)}
-                    className="w-full bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg p-3 focus:ring-2 focus:ring-primary-500 focus:outline-none transition"
+                    className="w-full bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg p-3 text-sm focus:ring-2 focus:ring-primary-500 focus:outline-none transition"
                 >
                     {languages.map(lang => <option key={lang} value={lang}>{lang}</option>)}
                 </select>
+            </div>
             </div>
 
             <div className="pt-4 mt-auto">
@@ -192,14 +196,14 @@ const MarketingCopyView: React.FC<MarketingCopyViewProps> = ({ language }) => {
                     <button
                         onClick={handleGenerate}
                         disabled={isLoading}
-                        className="w-full flex items-center justify-center gap-2 bg-primary-600 text-white font-semibold py-3 px-4 rounded-lg hover:bg-primary-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="w-full flex items-center justify-center gap-2 bg-primary-600 text-white font-semibold py-3 px-4 rounded-lg hover:bg-primary-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm"
                     >
                         {isLoading ? <Spinner /> : "Generate Copy"}
                     </button>
                     <button
                         onClick={handleReset}
                         disabled={isLoading}
-                        className="flex-shrink-0 bg-neutral-200 dark:bg-neutral-700 text-neutral-700 dark:text-neutral-200 font-semibold py-3 px-4 rounded-lg hover:bg-neutral-300 dark:hover:bg-neutral-600 transition-colors disabled:opacity-50"
+                        className="flex-shrink-0 bg-neutral-200 dark:bg-neutral-700 text-neutral-700 dark:text-neutral-200 font-semibold py-3 px-4 rounded-lg hover:bg-neutral-300 dark:hover:bg-neutral-600 transition-colors disabled:opacity-50 text-sm"
                     >
                         Reset
                     </button>
@@ -221,7 +225,7 @@ const MarketingCopyView: React.FC<MarketingCopyViewProps> = ({ language }) => {
                       {copied ? "Copied!" : "Copy"}
                     </button>
                     <button
-                        onClick={() => downloadText(generatedCopy, `monoklix-marketing-copy-${Date.now()}.txt`)}
+                        onClick={() => downloadText(generatedCopy, `veoly-marketing-copy-${Date.now()}.txt`)}
                         className="flex items-center gap-1.5 bg-neutral-200 dark:bg-neutral-700 text-neutral-700 dark:text-neutral-300 font-semibold py-1.5 px-3 rounded-full hover:bg-neutral-300 dark:hover:bg-neutral-600 transition-colors"
                     >
                         <DownloadIcon className="w-4 h-4" /> Download

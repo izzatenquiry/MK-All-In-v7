@@ -66,7 +66,21 @@ let availableFlowAccounts = [];
 
 let browser = null;
 let generationInterval = null;
-// Removed isGenerating flag - browser can handle multiple pages simultaneously
+
+/**
+ * Serialize all Puppeteer token jobs. Concurrent unified/full-login runs share one global `browser`
+ * and race (close + relaunch, double launch) → Puppeteer "Requesting main frame too early!".
+ */
+let puppeteerExclusiveChain = Promise.resolve();
+
+function runExclusivePuppeteerJob(fn) {
+    const run = puppeteerExclusiveChain.then(() => fn());
+    puppeteerExclusiveChain = run.then(
+        () => undefined,
+        () => undefined
+    );
+    return run;
+}
 
 /**
  * Scan and get all available flow accounts (G1/, G2/, etc.)
@@ -647,9 +661,7 @@ function loadCookiesFromFlowAccount(flowAccountCode) {
  * @param {string} action - Optional: reCAPTCHA action type (VIDEO_GENERATION, IMAGE_GENERATION, etc.)
  * @param {object} [options] - { freshCookiesPerVideo?, fullLogin? } — fullLogin: Puppeteer logs in with email/password from Flask (port 1247), then opens project URL (needs BOT_ADMIN_API_URL / backend running).
  */
-async function generateToken(flowAccountCode = null, projectId = null, cookieFileName = null, action = null, options = null) {
-    // Removed isGenerating check - browser can handle multiple pages simultaneously
-    // Each request will create its own page and close it when done
+async function generateTokenInner(flowAccountCode = null, projectId = null, cookieFileName = null, action = null, options = null) {
     let page = null;
     let cookieInfo = null;
     let retryCount = 0;
@@ -1038,6 +1050,11 @@ async function generateToken(flowAccountCode = null, projectId = null, cookieFil
             }
         }
     }
+}
+
+/** Public entry: one browser job at a time (see `runExclusivePuppeteerJob`). */
+async function generateToken(...args) {
+    return runExclusivePuppeteerJob(() => generateTokenInner(...args));
 }
 
 /**

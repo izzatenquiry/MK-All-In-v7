@@ -180,7 +180,7 @@ export const getFlowAccountByCode = async (
 };
 
 /**
- * Assign email code to user (G1, G2, G3, etc. for MONOKLIX; E1, E2, E3, etc. for ESAIE)
+ * Assign email code to user (G1, G2, G3, etc.)
  * If flowAccountCode is provided, assign to that specific account
  * Otherwise, find the first available account with space
  */
@@ -189,10 +189,6 @@ export const assignEmailCodeToUser = async (
   flowAccountCode?: string
 ): Promise<{ success: true; emailCode: string; email: string; password: string } | { success: false; message: string }> => {
   try {
-    // Import BRAND_CONFIG dynamically to avoid circular dependency
-    const { BRAND_CONFIG } = await import('./brandConfig');
-    const isEsaie = BRAND_CONFIG.name === 'ESAIE';
-
     let availableEmail: FlowAccount | null = null;
 
     if (flowAccountCode) {
@@ -236,116 +232,11 @@ export const assignEmailCodeToUser = async (
       return { success: false, message: 'No available flow account found.' };
     }
 
-    // Always use base code directly (G1, G2, G3, etc. for MONOKLIX; E1, E2, E3, etc. for ESAIE) - same as flow account code
+    // Always use base code directly (G1, G2, G3, etc.) — same as flow account code
     // Limit is enforced by current_users_count in flow account (max 10)
     const nextCode = availableEmail.code;
 
-    if (isEsaie) {
-      // ESAIE: Update users.email_code directly (no token_ultra_registrations table)
-      console.log('[assignEmailCodeToUser] ESAIE: Starting assignment for userId:', userId, 'to code:', nextCode);
-      
-      // Get current email_code from users table
-      const { data: user, error: userError } = await supabase
-        .from('users')
-        .select('email_code')
-        .eq('id', userId)
-        .single();
-
-      if (userError) {
-        console.error('[assignEmailCodeToUser] ESAIE: Failed to fetch user:', userError);
-        return { success: false, message: getErrorMessage(userError) };
-      }
-      
-      console.log('[assignEmailCodeToUser] ESAIE: Current email_code:', user.email_code, 'New code:', nextCode);
-
-      // If user already has an email_code, decrement the old flow account count first
-      if (user.email_code && user.email_code !== nextCode) {
-        console.log('[assignEmailCodeToUser] ESAIE: User has existing code, decrementing old flow account:', user.email_code);
-        const { data: oldFlowAccount } = await supabase
-          .from('ultra_ai_email_pool')
-          .select('id, current_users_count')
-          .eq('code', user.email_code)
-          .eq('status', 'active')
-          .maybeSingle();
-
-        if (oldFlowAccount && oldFlowAccount.current_users_count > 0) {
-          const newCount = oldFlowAccount.current_users_count - 1;
-          console.log('[assignEmailCodeToUser] ESAIE: Decrementing old flow account count from', oldFlowAccount.current_users_count, 'to', newCount);
-          const { error: decrementError } = await supabase
-            .from('ultra_ai_email_pool')
-            .update({ 
-              current_users_count: newCount
-            })
-            .eq('id', oldFlowAccount.id);
-          
-          if (decrementError) {
-            console.error('[assignEmailCodeToUser] ESAIE: Failed to decrement old flow account:', decrementError);
-          } else {
-            console.log('[assignEmailCodeToUser] ESAIE: Old flow account decremented successfully');
-          }
-        }
-      }
-
-      // Update users.email_code directly
-      console.log('[assignEmailCodeToUser] ESAIE: Updating users.email_code to:', nextCode);
-      const { error: updateError, data: updateData } = await supabase
-        .from('users')
-        .update({ email_code: nextCode })
-        .eq('id', userId)
-        .select('email_code'); // Add select to verify update
-
-      if (updateError) {
-        console.error('[assignEmailCodeToUser] ESAIE: Update failed:', updateError);
-        return { success: false, message: `Failed to update email_code: ${getErrorMessage(updateError)}` };
-      }
-      
-      console.log('[assignEmailCodeToUser] ESAIE: Update successful, verified email_code:', updateData?.[0]?.email_code);
-
-      // Fetch fresh flow account data before incrementing to avoid stale count
-      const { data: freshFlowAccount, error: freshError } = await supabase
-        .from('ultra_ai_email_pool')
-        .select('id, current_users_count')
-        .eq('id', availableEmail.id)
-        .single();
-      
-      if (freshError) {
-        console.error('[assignEmailCodeToUser] ESAIE: Failed to fetch fresh flow account:', freshError);
-      }
-
-      // Only increment if email_code actually changed (not reassigning to same code)
-      if (user.email_code !== nextCode) {
-        const currentCount = freshFlowAccount?.current_users_count ?? availableEmail.current_users_count;
-        const newCount = currentCount + 1;
-        console.log('[assignEmailCodeToUser] ESAIE: Incrementing flow account count from', currentCount, 'to', newCount);
-        
-        // Increment current_users_count in email pool
-        const { error: incrementError } = await supabase
-          .from('ultra_ai_email_pool')
-          .update({ 
-            current_users_count: newCount
-          })
-          .eq('id', availableEmail.id);
-
-        if (incrementError) {
-          console.error('[assignEmailCodeToUser] ESAIE: Failed to increment user count:', incrementError);
-          // Still return success since email_code was updated
-        } else {
-          console.log('[assignEmailCodeToUser] ESAIE: Flow account count incremented successfully');
-        }
-      } else {
-        console.log('[assignEmailCodeToUser] ESAIE: Email code unchanged, skipping increment');
-      }
-
-      console.log('[assignEmailCodeToUser] ESAIE: Assignment completed successfully');
-      return {
-        success: true,
-        emailCode: nextCode,
-        email: availableEmail.email,
-        password: availableEmail.password
-      };
-    } else {
-      // MONOKLIX: Use users table (token_ultra_registrations migrated to users)
-      console.log('[assignEmailCodeToUser] MONOKLIX: Starting assignment for userId:', userId, 'to code:', nextCode);
+      console.log('[assignEmailCodeToUser] Starting assignment for userId:', userId, 'to code:', nextCode);
       
       // Get user record from users table
       const { data: existingUser, error: userError } = await supabase
@@ -405,10 +296,11 @@ export const assignEmailCodeToUser = async (
         const registeredAt = new Date();
         const expiresAt = new Date();
         expiresAt.setDate(expiresAt.getDate() + 30); // 30 days from now
+        const expiryIso = expiresAt.toISOString();
         
         updateData.token_ultra_status = 'active';
         updateData.registered_at = registeredAt.toISOString();
-        updateData.expires_at = expiresAt.toISOString();
+        updateData.expires_at = expiryIso;
         console.log('[assignEmailCodeToUser] MONOKLIX: Initializing Token Ultra registration for user');
       }
 
@@ -469,7 +361,6 @@ export const assignEmailCodeToUser = async (
         email: availableEmail.email,
         password: availableEmail.password
       };
-    }
   } catch (error) {
     return { success: false, message: getErrorMessage(error) };
   }
@@ -553,9 +444,7 @@ export const assignFlowCodeToUserByEmail = async (
   flowAccountCode: string
 ): Promise<{ success: boolean; message?: string }> => {
   try {
-    // Import BRAND_CONFIG dynamically to avoid circular dependency
     const { BRAND_CONFIG } = await import('./brandConfig');
-    const isEsaie = BRAND_CONFIG.name === 'ESAIE';
 
     const cleanedEmail = email.trim().toLowerCase();
     
@@ -613,79 +502,16 @@ export const assignFlowCodeToUserByEmail = async (
     
     console.log('[assignFlowCodeToUserByEmail] Flow account found:', { id: flowAccount.id, current: flowAccount.current_users_count, max: MAX_USERS_PER_ACCOUNT });
 
-    if (isEsaie) {
-      // ESAIE: Update users.email_code directly (no token_ultra_registrations table)
-      
-      // If user already has this email_code, no need to do anything
-      if (currentEmailCode === flowAccountCode) {
-        return { success: true, message: 'User already has this flow code assigned' };
-      }
-      
-      // If user has different email_code, decrement old flow account
-      if (currentEmailCode) {
-        const { data: oldFlow } = await supabase
-          .from('ultra_ai_email_pool')
-          .select('id, current_users_count')
-          .eq('code', currentEmailCode)
-          .eq('status', 'active')
-          .maybeSingle();
-        
-        if (oldFlow && oldFlow.current_users_count > 0) {
-          await supabase
-            .from('ultra_ai_email_pool')
-            .update({ current_users_count: oldFlow.current_users_count - 1 })
-            .eq('id', oldFlow.id);
-        }
-      }
-      
-      // Update users.email_code directly
-      const { error: updateError } = await supabase
-        .from('users')
-        .update({ email_code: flowAccountCode })
-        .eq('id', userId);
-      
-      if (updateError) {
-        console.error('[assignFlowCodeToUserByEmail] Update user error:', updateError);
-        return { success: false, message: `Failed to update user: ${getErrorMessage(updateError)}` };
-      }
-      
-      console.log('[assignFlowCodeToUserByEmail] User email_code updated successfully');
-      
-      // Increment flow account user count (only if email_code changed)
-      if (currentEmailCode !== flowAccountCode) {
-        const newCount = flowAccount.current_users_count + 1;
-        const { error: incrementError } = await supabase
-          .from('ultra_ai_email_pool')
-          .update({ 
-            current_users_count: newCount
-          })
-          .eq('id', flowAccount.id);
-        
-        if (incrementError) {
-          console.error('[assignFlowCodeToUserByEmail] Failed to increment user count:', incrementError);
-          // Don't fail if increment fails - assignment succeeded
-          return { success: true, message: `Flow code ${flowAccountCode} assigned, but failed to update count: ${getErrorMessage(incrementError)}` };
-        }
-        
-        console.log('[assignFlowCodeToUserByEmail] Flow account count incremented:', { from: flowAccount.current_users_count, to: newCount });
-      }
-      
-      console.log('[assignFlowCodeToUserByEmail] Success!');
-      return { success: true, message: `Flow code ${flowAccountCode} assigned successfully` };
-      
-    } else {
-      // MONOKLIX: Use users table (token_ultra_registrations migrated to users)
-      
-      // Step 3: Check if user exists and get current email_code
-      const { data: existingUser, error: userError } = await supabase
+      // Step 3: Refresh user row for token_ultra_status
+      const { data: existingUser, error: existingUserError } = await supabase
         .from('users')
         .select('id, email_code, token_ultra_status')
         .eq('id', userId)
         .maybeSingle();
       
-      if (userError) {
-        console.error('[assignFlowCodeToUserByEmail] User lookup error:', userError);
-        return { success: false, message: `Error checking user: ${getErrorMessage(userError)}` };
+      if (existingUserError) {
+        console.error('[assignFlowCodeToUserByEmail] User lookup error:', existingUserError);
+        return { success: false, message: `Error checking user: ${getErrorMessage(existingUserError)}` };
       }
       
       if (!existingUser) {
@@ -768,7 +594,6 @@ export const assignFlowCodeToUserByEmail = async (
       
       console.log('[assignFlowCodeToUserByEmail] Success!');
       return { success: true, message: `Flow code ${flowAccountCode} assigned successfully` };
-    }
     
   } catch (error) {
     console.error('[assignFlowCodeToUserByEmail] Unexpected error:', error);

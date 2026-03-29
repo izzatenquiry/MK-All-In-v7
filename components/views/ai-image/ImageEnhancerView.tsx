@@ -4,9 +4,9 @@ import { addHistoryItem } from '../../../services/historyService';
 import ImageUpload from '../../common/ImageUpload';
 import Spinner from '../../common/Spinner';
 import { type MultimodalContent } from '../../../services/geminiService';
-import { DownloadIcon, WandIcon, VideoIcon } from '../../Icons';
+import { DownloadIcon, WandIcon, VideoIcon, ScissorsIcon } from '../../Icons';
 import TwoColumnLayout from '../../common/TwoColumnLayout';
-import { getImageEnhancementPrompt } from '../../../services/promptManager';
+import { getImageEnhancementPrompt, getBackgroundRemovalPrompt } from '../../../services/promptManager';
 import { handleApiError } from '../../../services/errorHandler';
 import { editOrComposeWithNanoBanana } from '../../../services/imagenV3Service';
 import { incrementImageUsage } from '../../../services/userService';
@@ -19,7 +19,9 @@ interface ImageData extends MultimodalContent {
   previewUrl: string;
 }
 
-type EnhancementType = 'upscale' | 'colors';
+type EnhancementType = 'upscale' | 'colors' | 'removeBg';
+
+type ResultKind = 'enhance' | 'removeBg';
 
 const triggerDownload = (data: string, fileNameBase: string) => {
     const link = document.createElement('a');
@@ -57,7 +59,15 @@ const ImageEnhancerView: React.FC<ImageEnhancerViewProps> = ({ onReEdit, onCreat
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [enhancementType, setEnhancementType] = useState<EnhancementType>('upscale');
+  const [resultKind, setResultKind] = useState<ResultKind | null>(null);
   const [imageUploadKey, setImageUploadKey] = useState(Date.now());
+
+  const modeButtonClass = (active: boolean) =>
+    `flex-1 min-w-0 px-2 sm:px-3 py-2 rounded-full font-semibold transition-colors text-xs sm:text-sm text-center ${
+      active
+        ? 'bg-primary-600 text-white'
+        : 'bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 hover:bg-gray-300 dark:hover:bg-gray-600'
+    }`;
 
   useEffect(() => {
     try {
@@ -67,7 +77,9 @@ const ImageEnhancerView: React.FC<ImageEnhancerViewProps> = ({ onReEdit, onCreat
         // Do not load image data
         // if (imageData) setImageData(imageData);
         // if (resultImage) setResultImage(resultImage);
-        if (enhancementType) setEnhancementType(enhancementType);
+        if (enhancementType === 'upscale' || enhancementType === 'colors' || enhancementType === 'removeBg') {
+          setEnhancementType(enhancementType);
+        }
       }
     } catch (e) { console.error("Failed to load state from session storage", e); }
   }, []);
@@ -87,6 +99,7 @@ const ImageEnhancerView: React.FC<ImageEnhancerViewProps> = ({ onReEdit, onCreat
   const handleImageUpload = useCallback((base64: string, mimeType: string, file: File) => {
     setImageData({ base64, mimeType, previewUrl: URL.createObjectURL(file) });
     setResultImage(null);
+    setResultKind(null);
     setError(null);
   }, []);
 
@@ -96,43 +109,59 @@ const ImageEnhancerView: React.FC<ImageEnhancerViewProps> = ({ onReEdit, onCreat
 
   const handleEnhance = useCallback(async () => {
     if (!imageData) {
-      setError("Please upload an image to enhance.");
+      setError(
+        enhancementType === 'removeBg'
+          ? 'Please upload an image to remove its background.'
+          : 'Please upload an image to enhance.'
+      );
       return;
     }
-    
+
     setIsLoading(true);
     setError(null);
     setResultImage(null);
-    
-    const prompt = getImageEnhancementPrompt(enhancementType);
-    const historyPrompt = enhancementType === 'upscale' ? "Image Upscaled" : "Image Colors Enhanced";
+    setResultKind(null);
+
+    const isRemoveBg = enhancementType === 'removeBg';
+    const prompt = isRemoveBg ? getBackgroundRemovalPrompt() : getImageEnhancementPrompt(enhancementType);
+    const historyPrompt = isRemoveBg
+      ? 'Background Removed'
+      : enhancementType === 'upscale'
+        ? 'Image Upscaled'
+        : 'Image Colors Enhanced';
+    const caption = isRemoveBg ? 'image for background removal' : 'image to enhance';
 
     try {
-       const result = await editOrComposeWithNanoBanana({
-          prompt,
-          images: [{ ...imageData, category: 'MEDIA_CATEGORY_SUBJECT', caption: 'image to enhance' }],
-          config: { aspectRatio: '1:1' }
+      const result = await editOrComposeWithNanoBanana({
+        prompt,
+        images: [{ ...imageData, category: 'MEDIA_CATEGORY_SUBJECT', caption }],
+        config: { aspectRatio: '1:1' },
       });
       const imageBase64 = result.imagePanels[0]?.generatedImages[0]?.encodedImage;
 
       if (imageBase64) {
         setResultImage(imageBase64);
+        setResultKind(isRemoveBg ? 'removeBg' : 'enhance');
         await addHistoryItem({
-            type: 'Image',
-            prompt: historyPrompt,
-            result: imageBase64,
+          type: 'Image',
+          prompt: historyPrompt,
+          result: imageBase64,
         });
 
         const updateResult = await incrementImageUsage(currentUser);
         if (updateResult.success && updateResult.user) {
-            onUserUpdate(updateResult.user);
+          onUserUpdate(updateResult.user);
         }
       } else {
-        setError("The AI was unable to enhance the image. Please try a different image.");
+        setError(
+          isRemoveBg
+            ? 'The AI was unable to remove the background. Please try a different image.'
+            : 'The AI was unable to enhance the image. Please try a different image.'
+        );
       }
     } catch (e) {
       handleApiError(e);
-      setError("Failed"); // Set a generic state for UI, details are in console.
+      setError('Failed');
     } finally {
       setIsLoading(false);
     }
@@ -141,6 +170,7 @@ const ImageEnhancerView: React.FC<ImageEnhancerViewProps> = ({ onReEdit, onCreat
   const handleReset = useCallback(() => {
     setImageData(null);
     setResultImage(null);
+    setResultKind(null);
     setError(null);
     setEnhancementType('upscale');
     setImageUploadKey(Date.now());
@@ -151,7 +181,9 @@ const ImageEnhancerView: React.FC<ImageEnhancerViewProps> = ({ onReEdit, onCreat
     <>
       <div>
         <h1 className="text-xl font-bold sm:text-3xl">AI Image Enhancer</h1>
-        <p className="text-sm sm:text-base text-neutral-500 dark:text-neutral-400 mt-1">Improve the quality and colors of your images.</p>
+        <p className="text-sm sm:text-base text-neutral-500 dark:text-neutral-400 mt-1">
+          Upscale, enhance colors, or remove the background in one place.
+        </p>
       </div>
       
       <div className="flex-1 flex flex-col justify-center">
@@ -160,9 +192,16 @@ const ImageEnhancerView: React.FC<ImageEnhancerViewProps> = ({ onReEdit, onCreat
       </div>
       
       <div className="space-y-4 pt-4 mt-auto">
-          <div className="flex justify-center gap-4">
-              <button onClick={() => setEnhancementType('upscale')} className={`px-6 py-2 rounded-full font-semibold transition-colors text-sm ${enhancementType === 'upscale' ? 'bg-primary-600 text-white' : 'bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 hover:bg-gray-300 dark:hover:bg-gray-600'}`}>Upscale & Sharpen</button>
-              <button onClick={() => setEnhancementType('colors')} className={`px-6 py-2 rounded-full font-semibold transition-colors text-sm ${enhancementType === 'colors' ? 'bg-primary-600 text-white' : 'bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 hover:bg-gray-300 dark:hover:bg-gray-600'}`}>Enhance Colors</button>
+          <div className="flex flex-row gap-2 w-full" role="group" aria-label="Enhancement mode">
+              <button type="button" onClick={() => setEnhancementType('upscale')} className={modeButtonClass(enhancementType === 'upscale')}>
+                Upscale &amp; Sharpen
+              </button>
+              <button type="button" onClick={() => setEnhancementType('colors')} className={modeButtonClass(enhancementType === 'colors')}>
+                Enhance Colors
+              </button>
+              <button type="button" onClick={() => setEnhancementType('removeBg')} className={modeButtonClass(enhancementType === 'removeBg')}>
+                Remove Bg
+              </button>
           </div>
           <div className="flex gap-4">
             <button
@@ -170,7 +209,13 @@ const ImageEnhancerView: React.FC<ImageEnhancerViewProps> = ({ onReEdit, onCreat
               disabled={isLoading || !imageData}
               className="w-full flex items-center justify-center gap-2 bg-primary-600 text-white font-semibold py-3 px-4 rounded-lg hover:bg-primary-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {isLoading ? <Spinner /> : "Enhance Image"}
+              {isLoading ? (
+                <Spinner />
+              ) : enhancementType === 'removeBg' ? (
+                'Remove Bg'
+              ) : (
+                'Enhance Image'
+              )}
             </button>
             <button
               onClick={handleReset}
@@ -190,9 +235,11 @@ const ImageEnhancerView: React.FC<ImageEnhancerViewProps> = ({ onReEdit, onCreat
       {isLoading ? (
         <div className="flex flex-col items-center justify-center h-full gap-4">
             <Spinner />
-            <p className="text-neutral-500 dark:text-neutral-400">Enhancing image...</p>
+            <p className="text-neutral-500 dark:text-neutral-400">
+              {enhancementType === 'removeBg' ? 'Removing background...' : 'Enhancing image...'}
+            </p>
         </div>
-      ) : resultImage && imageData ? (
+      ) : resultImage && imageData && resultKind ? (
         <div className="w-full h-full flex flex-col items-center justify-center p-4">
             <div className="w-full max-w-2xl space-y-4">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-center">
@@ -201,13 +248,56 @@ const ImageEnhancerView: React.FC<ImageEnhancerViewProps> = ({ onReEdit, onCreat
                         <img src={imageData.previewUrl} alt="Original" className="rounded-lg w-full" />
                     </div>
                     <div>
-                        <h4 className="font-semibold text-center mb-2 text-gray-500 dark:text-gray-400">Enhanced</h4>
-                        <div className="relative group">
-                            <img src={`data:image/png;base64,${resultImage}`} alt="Enhanced" className="rounded-lg w-full" />
+                        <h4 className="font-semibold text-center mb-2 text-gray-500 dark:text-gray-400">
+                          {resultKind === 'removeBg' ? 'Result (Transparent)' : 'Enhanced'}
+                        </h4>
+                        <div
+                          className={`relative group rounded-lg ${resultKind === 'removeBg' ? 'bg-gray-200 dark:bg-gray-700' : ''}`}
+                          style={
+                            resultKind === 'removeBg'
+                              ? {
+                                  backgroundImage: 'repeating-conic-gradient(#e5e7eb 0 25%, transparent 0 50%)',
+                                  backgroundSize: '16px 16px',
+                                }
+                              : undefined
+                          }
+                        >
+                            <img
+                              src={`data:image/png;base64,${resultImage}`}
+                              alt={resultKind === 'removeBg' ? 'Background removed' : 'Enhanced'}
+                              className="rounded-lg w-full"
+                            />
                             <div className="absolute top-2 right-2 flex flex-col gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
                                <button onClick={() => onReEdit({ base64: resultImage, mimeType: 'image/png' })} title="Re-edit this image" className="flex items-center justify-center w-8 h-8 bg-black/60 text-white rounded-full hover:bg-black/80 transition-colors"><WandIcon className="w-4 h-4" /></button>
-                               <button onClick={() => onCreateVideo({ prompt: 'Video of this enhanced image', image: { base64: resultImage, mimeType: 'image/png' } })} title="Create video from this image" className="flex items-center justify-center w-8 h-8 bg-black/60 text-white rounded-full hover:bg-black/80 transition-colors"><VideoIcon className="w-4 h-4" /></button>
-                               <button onClick={() => triggerDownload(resultImage, `${BRAND_CONFIG.shortName.toLowerCase()}-enhanced`)} title="Download Image" className="flex items-center justify-center w-8 h-8 bg-black/60 text-white rounded-full hover:bg-black/80 transition-colors"><DownloadIcon className="w-4 h-4" /></button>
+                               <button
+                                 onClick={() =>
+                                   onCreateVideo({
+                                     prompt:
+                                       resultKind === 'removeBg'
+                                         ? 'Video of this subject with a transparent background'
+                                         : 'Video of this enhanced image',
+                                     image: { base64: resultImage, mimeType: 'image/png' },
+                                   })
+                                 }
+                                 title="Create video from this image"
+                                 className="flex items-center justify-center w-8 h-8 bg-black/60 text-white rounded-full hover:bg-black/80 transition-colors"
+                               >
+                                 <VideoIcon className="w-4 h-4" />
+                               </button>
+                               <button
+                                 onClick={() =>
+                                   triggerDownload(
+                                     resultImage,
+                                     resultKind === 'removeBg'
+                                       ? `${BRAND_CONFIG.shortName.toLowerCase()}-bg-removed`
+                                       : `${BRAND_CONFIG.shortName.toLowerCase()}-enhanced`
+                                   )
+                                 }
+                                 title="Download Image"
+                                 className="flex items-center justify-center w-8 h-8 bg-black/60 text-white rounded-full hover:bg-black/80 transition-colors"
+                               >
+                                 <DownloadIcon className="w-4 h-4" />
+                               </button>
                             </div>
                         </div>
                     </div>
@@ -216,8 +306,16 @@ const ImageEnhancerView: React.FC<ImageEnhancerViewProps> = ({ onReEdit, onCreat
         </div>
       ) : (
         <div className="text-center text-neutral-500 dark:text-neutral-600">
-          <WandIcon className="w-16 h-16 mx-auto" />
-          <p className="mt-2">Your enhanced image will appear here.</p>
+          {enhancementType === 'removeBg' ? (
+            <ScissorsIcon className="w-16 h-16 mx-auto" />
+          ) : (
+            <WandIcon className="w-16 h-16 mx-auto" />
+          )}
+          <p className="mt-2">
+            {enhancementType === 'removeBg'
+              ? 'Your background-removed image will appear here.'
+              : 'Your enhanced image will appear here.'}
+          </p>
         </div>
       )}
     </>

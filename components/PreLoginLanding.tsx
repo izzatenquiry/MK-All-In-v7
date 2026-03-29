@@ -14,7 +14,7 @@ interface PreLoginLandingProps {
 }
 
 /**
- * Marketing-style hero + highlights for the pre-login screen (MONOKLIX).
+ * Marketing-style hero + highlights for the pre-login screen (VEOLY-AI).
  * Mobile-first: single column, readable type, touch-friendly CTAs.
  */
 const PreLoginLanding: React.FC<PreLoginLandingProps> = ({ onOpenLogin }) => {
@@ -167,14 +167,14 @@ const PreLoginLanding: React.FC<PreLoginLandingProps> = ({ onOpenLogin }) => {
             <div className="absolute inset-0 bg-[linear-gradient(to_right,rgba(148,163,184,0.10)_1px,transparent_1px),linear-gradient(to_bottom,rgba(148,163,184,0.10)_1px,transparent_1px)] bg-[size:22px_22px] dark:opacity-30 opacity-20" />
           </div>
 
-          <div className="inline-flex justify-center mb-6 sm:mb-8 relative">
-            <div className="relative">
+          <div className="flex justify-center mb-6 sm:mb-8 relative w-full px-1">
+            <div className="relative w-full max-w-md sm:max-w-lg md:max-w-xl">
               <div
                 className="absolute inset-0 rounded-3xl bg-gradient-to-br from-brand-start/35 to-brand-end/30 blur-2xl scale-110"
                 aria-hidden
               />
               <div className="absolute inset-[-18%] rounded-[28px] border border-white/50 dark:border-white/10 animate-[spin_20s_linear_infinite]" />
-              <LogoIcon className="relative w-36 sm:w-44 h-auto text-neutral-900 dark:text-white drop-shadow-lg" />
+              <LogoIcon className="relative block w-full h-auto text-neutral-900 dark:text-white drop-shadow-lg" />
             </div>
           </div>
 
@@ -191,7 +191,7 @@ const PreLoginLanding: React.FC<PreLoginLandingProps> = ({ onOpenLogin }) => {
           </h1>
 
           <p className="mt-4 sm:mt-5 text-sm sm:text-base text-neutral-600 dark:text-neutral-400 max-w-2xl mx-auto leading-relaxed">
-            MONOklix helps content creators and digital marketers{' '}
+            VEOLY-AI helps content creators and digital marketers{' '}
             <span className="text-neutral-800 dark:text-neutral-200 font-medium">produce daily content faster</span> with
             beginner-friendly AI tools in one platform.
           </p>
@@ -206,7 +206,7 @@ const PreLoginLanding: React.FC<PreLoginLandingProps> = ({ onOpenLogin }) => {
               <SparklesIcon className="w-4 h-4 opacity-90" />
             </button>
             <a
-              href="https://monoklix.com/step/checkout/"
+              href="https://veoly-ai.com/step/checkout/"
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center justify-center min-h-[48px] px-6 sm:px-8 rounded-2xl font-semibold text-neutral-800 dark:text-neutral-100 bg-white/90 dark:bg-white/5 border border-neutral-200/90 dark:border-white/10 hover:bg-neutral-50 dark:hover:bg-white/10 transition-colors"
@@ -220,7 +220,7 @@ const PreLoginLanding: React.FC<PreLoginLandingProps> = ({ onOpenLogin }) => {
       {/* Highlights */}
       <section className="mt-14 sm:mt-20" aria-labelledby="prelogin-why-heading">
         <h2 id="prelogin-why-heading" className="sr-only">
-          MONOklix advantages
+          VEOLY-AI advantages
         </h2>
         <ul className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
           {highlights.map(text => (
@@ -235,19 +235,19 @@ const PreLoginLanding: React.FC<PreLoginLandingProps> = ({ onOpenLogin }) => {
         </ul>
       </section>
 
-      {/* About MONOklix */}
-      <section className="mt-10 sm:mt-14" aria-labelledby="about-monoklix-heading">
+      {/* About VEOLY-AI */}
+      <section className="mt-10 sm:mt-14" aria-labelledby="about-veoly-heading">
         <div className="rounded-2xl border border-neutral-200/80 dark:border-white/10 bg-white/75 dark:bg-white/[0.03] backdrop-blur-sm p-5 sm:p-7 transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_18px_45px_rgba(74,108,247,0.12)] hover:border-brand-start/30">
           <h2
-            id="about-monoklix-heading"
+            id="about-veoly-heading"
             className="text-xl sm:text-2xl font-bold text-neutral-900 dark:text-white text-center"
           >
-            What is MONOklix?
+            What is VEOLY-AI?
           </h2>
           <div className="mt-5 grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-5">
             <div className="rounded-xl border border-neutral-200/80 dark:border-white/10 bg-neutral-50/90 dark:bg-neutral-900/50 p-4 sm:p-5 transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_14px_34px_rgba(59,130,246,0.14)]">
               <p className="text-sm text-neutral-700 dark:text-neutral-300 leading-relaxed">
-                MONOklix is an all-in-one AI tool designed for beginners who want to produce daily content fast,
+                VEOLY-AI is an all-in-one AI tool designed for beginners who want to produce daily content fast,
                 even without advanced technical skills.
               </p>
               <p className="mt-3 text-sm text-neutral-700 dark:text-neutral-300 leading-relaxed">
@@ -279,7 +279,7 @@ const PreLoginLanding: React.FC<PreLoginLandingProps> = ({ onOpenLogin }) => {
             <iframe
               className="absolute inset-0 w-full h-full"
               src="https://www.youtube.com/embed/G6G8JJrV9VM?start=2&rel=0"
-              title="MONOklix tutorial video"
+              title="VEOLY-AI tutorial video"
               loading="lazy"
               allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
               referrerPolicy="strict-origin-when-cross-origin"
@@ -317,7 +317,7 @@ const PreLoginLanding: React.FC<PreLoginLandingProps> = ({ onOpenLogin }) => {
             <p className="text-xs uppercase tracking-wider font-semibold text-neutral-500 dark:text-neutral-400">
               One-time Payment
             </p>
-            <h3 className="mt-2 text-xl font-extrabold text-red-600 dark:text-red-400">With MONOklix</h3>
+            <h3 className="mt-2 text-xl font-extrabold text-red-600 dark:text-red-400">With VEOLY-AI</h3>
             <ul className="mt-4 space-y-2 text-sm text-neutral-700 dark:text-neutral-300">
               {newWay.map(item => (
                 <li key={item} className="flex gap-2">
@@ -376,15 +376,15 @@ const PreLoginLanding: React.FC<PreLoginLandingProps> = ({ onOpenLogin }) => {
               <p className="text-xs uppercase tracking-wider font-semibold text-neutral-500 dark:text-neutral-400">
                 Package 1
               </p>
-              <p className="mt-1 text-xl font-extrabold text-brand-start">RM39.00</p>
+              <p className="mt-1 text-xl font-extrabold text-brand-start">RM38.50</p>
               <p className="mt-1 text-sm font-semibold text-neutral-800 dark:text-neutral-200">3,000 credits</p>
             </li>
             <li className="rounded-xl bg-white/80 dark:bg-white/[0.05] border border-neutral-200/90 dark:border-white/10 p-4 transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_12px_28px_rgba(74,108,247,0.12)]">
               <p className="text-xs uppercase tracking-wider font-semibold text-neutral-500 dark:text-neutral-400">
                 Package 2
               </p>
-              <p className="mt-1 text-xl font-extrabold text-brand-start">RM79.00</p>
-              <p className="mt-1 text-sm font-semibold text-neutral-800 dark:text-neutral-200">25,000 credits</p>
+              <p className="mt-1 text-xl font-extrabold text-brand-start">RM88.50</p>
+              <p className="mt-1 text-sm font-semibold text-neutral-800 dark:text-neutral-200">15,000 credits</p>
             </li>
           </ul>
 
@@ -469,7 +469,7 @@ const PreLoginLanding: React.FC<PreLoginLandingProps> = ({ onOpenLogin }) => {
                       >
                         <img
                           src={imageUrl}
-                          alt={`MONOklix testimonial ${slideIdx * testimonialsPerSlide + idx + 1}`}
+                          alt={`VEOLY-AI testimonial ${slideIdx * testimonialsPerSlide + idx + 1}`}
                           loading="lazy"
                           className="w-full h-full object-contain aspect-[3/5]"
                         />
@@ -524,7 +524,7 @@ const PreLoginLanding: React.FC<PreLoginLandingProps> = ({ onOpenLogin }) => {
           </h2>
           <p className="mt-3 text-sm sm:text-base text-neutral-600 dark:text-neutral-400 max-w-2xl mx-auto">
             Stop wasting time and high production costs. Join creators and marketers who already run faster with
-            MONOklix.
+            VEOLY-AI.
           </p>
           <div className="mt-5 flex flex-col sm:flex-row items-stretch sm:items-center justify-center gap-3">
             <button
@@ -535,7 +535,7 @@ const PreLoginLanding: React.FC<PreLoginLandingProps> = ({ onOpenLogin }) => {
               Log in now
             </button>
             <a
-              href="https://monoklix.com/step/checkout/"
+              href="https://veoly-ai.com/step/checkout/"
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center justify-center min-h-[48px] px-6 rounded-xl border border-neutral-300 dark:border-white/10 text-neutral-800 dark:text-neutral-100 font-semibold hover:bg-neutral-50 dark:hover:bg-white/10 transition-colors"
@@ -548,7 +548,7 @@ const PreLoginLanding: React.FC<PreLoginLandingProps> = ({ onOpenLogin }) => {
 
       {/* Footer strip */}
       <footer className="mt-14 sm:mt-16 pt-8 border-t border-neutral-200/80 dark:border-white/10 text-center transition-colors duration-300">
-        <p className="text-xs text-neutral-500 dark:text-neutral-500">Copyright © 2026 MONOklix.com</p>
+        <p className="text-xs text-neutral-500 dark:text-neutral-500">Copyright © 2026 VEOLY-AI.com</p>
         <p className="mt-1 text-xs text-neutral-500 dark:text-neutral-500">Built with ❤️ for Malaysian creators</p>
       </footer>
     </div>

@@ -279,68 +279,37 @@ export const LightbulbIcon: React.FC<{ className?: string }> = (props) => (
 
 export const LogoIcon: React.FC<{ className?: string }> = (props) => {
   const { className, ...restProps } = props;
-  
-  // Dynamic import to avoid circular dependency
-  // Check if we need to use SVG component (MONOKLIX) or image (ESAIE)
-  const getBrandConfig = () => {
-    // Try to get brand from environment or detect from window
-    const envBrand = (import.meta.env.VITE_BRAND as string | undefined)?.toLowerCase();
-    if (envBrand === 'monoklix') {
-      return 'monoklix';
-    }
-    if (envBrand === 'esai') {
-      return 'esai';
-    }
-    
-    if (typeof window !== 'undefined') {
-      const hostname = window.location.hostname.toLowerCase();
-      if (hostname.includes('monoklix')) {
-        return 'monoklix';
-      }
-      if (hostname.includes('esai')) {
-        return 'esai';
-      }
-    }
-    
-    return 'monoklix'; // Default: MONOKLIX (main project)
-  };
-  
-  const brand = getBrandConfig();
-  
-  // MONOKLIX uses SVG component
-  if (brand === 'monoklix') {
-    return (
-      <svg {...props} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 60" aria-label="MONOklix.com Logo" className={className}>
-        <defs>
-          <linearGradient id="grad1" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" style={{ stopColor: '#38bdf8' }} />
-            <stop offset="50%" style={{ stopColor: '#60a5fa' }} />
-            <stop offset="100%" style={{ stopColor: '#a78bfa' }} />
-          </linearGradient>
-        </defs>
-        <style>
-          {`.heavy { font-family: "Arial Black", Gadget, sans-serif; font-weight: 900; font-size: 48px; letter-spacing: -2px; }`}
-          {`.light { font-family: "Arial", sans-serif; font-weight: 400; font-size: 48px; letter-spacing: -1px; }`}
-          {`.domain { font-family: "Arial", sans-serif; font-weight: 600; font-size: 24px; }`}
-        </style>
-        <text x="0" y="48" fill="url(#grad1)">
-          <tspan className="heavy">MONO</tspan>
-          <tspan className="light" dx="-5">klix</tspan>
-        </text>
-        <text x="220" y="48" className="domain" fill="currentColor">.com</text>
-      </svg>
-    );
-  }
-  
-  // ESAIE uses image
+  const gradId = `veoly-logo-grad-${React.useId().replace(/:/g, '')}`;
   return (
-    <img 
-      src="https://monoklix.com/wp-content/uploads/2025/11/ESAIE-Logo-latest.png" 
-      alt="ESAIE Logo" 
-      className={className}
+    <svg
       {...restProps}
-      style={{ objectFit: 'contain' }}
-    />
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 600 104"
+      aria-label="VEOLY-AI Logo"
+      className={className}
+      role="img"
+    >
+      <defs>
+        <linearGradient id={gradId} x1="0%" y1="0%" x2="100%" y2="0%">
+          <stop offset="0%" stopColor="#4A6CF7" />
+          <stop offset="55%" stopColor="#6366F1" />
+          <stop offset="100%" stopColor="#A05BFF" />
+        </linearGradient>
+      </defs>
+      <text
+        x="300"
+        y="52"
+        textAnchor="middle"
+        dominantBaseline="central"
+        fill={`url(#${gradId})`}
+        fontFamily="system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif"
+        fontSize="72"
+        fontWeight="800"
+        letterSpacing="-0.04em"
+      >
+        VEOLY-AI
+      </text>
+    </svg>
   );
 };
 

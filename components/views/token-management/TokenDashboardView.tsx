@@ -6,8 +6,7 @@ import { getDashboardStats, type DashboardStats } from '../../../services/dashbo
 import { getApiRequests } from '../../../services/apiRequestService';
 import { type Language, type User } from '../../../types';
 import Spinner from '../../common/Spinner';
-import { ActivityIcon, UsersIcon, CheckCircleIcon, AlertTriangleIcon, XIcon, KeyIcon, DatabaseIcon } from '../../Icons';
-import { BRAND_CONFIG } from '../../../services/brandConfig';
+import { ActivityIcon, UsersIcon, CheckCircleIcon, AlertTriangleIcon, XIcon, KeyIcon } from '../../Icons';
 
 interface TokenDashboardViewProps {
   language: Language;
@@ -32,131 +31,8 @@ interface EnhancedUser extends User {
   batch_02?: string;
 }
 
-const ACTIVE_USER_THRESHOLD_MS = 60 * 60 * 1000; // 1 hour
-
-const useActiveUsers = (users: EnhancedUser[]) => {
-  return useMemo(() => {
-    const now = new Date().getTime();
-    return users.filter(user => 
-      user.role !== 'admin' && 
-      (user.last_seen_at || user.lastSeenAt) && 
-      (now - new Date(user.last_seen_at || user.lastSeenAt || '').getTime()) < ACTIVE_USER_THRESHOLD_MS
-    );
-  }, [users]);
-};
-
-const StatBox: React.FC<{ 
-  title: string; 
-  icon: React.ReactNode; 
-  data: { label: string; value: number }[]; 
-  total: number; 
-  color: string; 
-}> = ({ title, icon, data, total, color }) => {
-  const sortedData = [...data].sort((a, b) => b.value - a.value);
-
-  return (
-    <div className="bg-white dark:bg-neutral-900 p-4 rounded-lg shadow-sm border border-neutral-200 dark:border-neutral-800 flex flex-col">
-      <div className="flex items-center gap-2 mb-4">
-        {icon}
-        <h4 className="font-bold text-neutral-800 dark:text-neutral-200">{title}</h4>
-      </div>
-      <div className="space-y-3 text-sm overflow-y-auto custom-scrollbar pr-2 flex-1 max-h-48">
-        {sortedData.length > 0 ? sortedData.map(({ label, value }) => {
-          const percentage = total > 0 ? (value / total) * 100 : 0;
-          return (
-            <div key={label}>
-              <div className="flex justify-between text-xs mb-1">
-                <span className="font-mono text-neutral-600 dark:text-neutral-400 truncate max-w-[60%]">{label}</span>
-                <span className="font-semibold text-neutral-800 dark:text-neutral-200">{value}</span>
-              </div>
-              <div className="w-full bg-neutral-200 dark:bg-neutral-700 rounded-full h-1.5">
-                <div 
-                  className={`h-1.5 rounded-full ${color}`}
-                  style={{ width: `${percentage}%` }}
-                ></div>
-              </div>
-            </div>
-          );
-        }) : <p className="text-xs text-neutral-500">No active users.</p>}
-      </div>
-    </div>
-  );
-};
-
-const UsageDashboard: React.FC<{ users: EnhancedUser[] }> = ({ users }) => {
-  const activeUsers = useActiveUsers(users);
-  
-  const stats = useMemo(() => {
-    const totalActive = activeUsers.length;
-
-    const appVersionStats = activeUsers.reduce((acc: Record<string, number>, user: EnhancedUser) => {
-      const version = user.app_version || user.appVersion || 'Unknown';
-      acc[version] = (acc[version] || 0) + 1;
-      return acc;
-    }, {});
-
-    const proxyServerStats = activeUsers.reduce((acc: Record<string, number>, user: EnhancedUser) => {
-      const server = user.proxy_server || user.proxyServer 
-        ? (user.proxy_server || user.proxyServer || '').replace('https://', '').replace(/\.(monoklix\.com|esai\.tech)/, '') 
-        : 'None';
-      acc[server] = (acc[server] || 0) + 1;
-      return acc;
-    }, {});
-    
-    const allNonAdminUsers = users.filter((u: EnhancedUser) => u.role !== 'admin');
-    const totalUsers = allNonAdminUsers.length;
-    const batchStats = allNonAdminUsers.reduce((acc: { batch01: number; batch02: number }, user: EnhancedUser) => {
-      if (user.batch_02 === 'batch_02') {
-        acc.batch02 += 1;
-      } else {
-        acc.batch01 += 1;
-      }
-      return acc;
-    }, { batch01: 0, batch02: 0 });
-
-    return {
-      appVersionData: Object.entries(appVersionStats).map(([label, value]) => ({ label, value })),
-      proxyServerData: Object.entries(proxyServerStats).map(([label, value]) => ({ label, value })),
-      batchData: [
-        { label: 'Batch 01', value: batchStats.batch01 },
-        { label: 'Batch 02', value: batchStats.batch02 }
-      ],
-      totalActive,
-      totalUsers
-    };
-  }, [users, activeUsers]);
-  
-  return (
-    <div className="mb-8">
-      <h3 className="text-xl font-semibold mb-4 text-neutral-800 dark:text-neutral-200">Usage Dashboard</h3>
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        <StatBox 
-          title="App Version (Active)" 
-          icon={<CheckCircleIcon className="w-5 h-5 text-green-500" />}
-          data={stats.appVersionData}
-          total={stats.totalActive}
-          color="bg-gradient-to-r from-green-400 to-green-600"
-        />
-        
-        <StatBox 
-          title="Proxy Server (Active)" 
-          icon={<UsersIcon className="w-5 h-5 text-blue-500" />}
-          data={stats.proxyServerData}
-          total={stats.totalActive}
-          color="bg-gradient-to-r from-blue-400 to-blue-600"
-        />
-
-        <StatBox 
-          title="Batch Number (All Users)" 
-          icon={<DatabaseIcon className="w-5 h-5 text-purple-500" />}
-          data={stats.batchData}
-          total={stats.totalUsers}
-          color="bg-gradient-to-r from-purple-400 to-purple-600"
-        />
-      </div>
-    </div>
-  );
-};
+/** Same window as before: "active" = last seen within this many ms (1 hour). */
+const ACTIVE_USER_THRESHOLD_MS = 60 * 60 * 1000;
 
 const TokenDashboardView: React.FC<TokenDashboardViewProps> = ({ language }) => {
   const [stats, setStats] = useState<DashboardStats | null>(null);
@@ -231,18 +107,11 @@ const TokenDashboardView: React.FC<TokenDashboardViewProps> = ({ language }) => 
     };
   }, []);
 
-  // Filter cookies based on brand: ESAIE shows E folders, MONOKLIX shows G folders
   const filteredCookiesByFolder = useMemo(() => {
-    const isEsaie = BRAND_CONFIG.name === 'ESAIE';
     const filtered: Record<string, BackendCookie[]> = {};
     
     Object.entries(cookiesByFolder).forEach(([folderName, cookies]) => {
-      // For ESAIE: only show folders starting with 'E' (E1, E2, E10, etc.)
-      // For MONOKLIX: only show folders starting with 'G' (G1, G2, G10, etc.)
-      // Also keep 'Root' folder for both brands
-      const shouldInclude = folderName === 'Root' || 
-        (isEsaie && /^E\d+$/i.test(folderName)) || 
-        (!isEsaie && /^G\d+$/i.test(folderName));
+      const shouldInclude = folderName === 'Root' || /^G\d+$/i.test(folderName);
       
       if (shouldInclude) {
         filtered[folderName] = cookies;
@@ -284,16 +153,13 @@ const TokenDashboardView: React.FC<TokenDashboardViewProps> = ({ language }) => 
     };
   }, [users]);
 
-  // Calculate brand-specific flow account stats (from Supabase - filtered by brand E/G folders)
   const brandFlowAccountStats = useMemo(() => {
-    const isEsaie = BRAND_CONFIG.name === 'ESAIE';
     let assignedSlots = 0;
     let totalSlots = 0;
     
-    // Filter flow accounts by brand (E folders for ESAIE, G folders for MONOKLIX)
     const brandFlowAccounts = flowAccounts.filter(acc => {
       const code = acc.code?.toUpperCase() || '';
-      return isEsaie ? /^E\d+$/.test(code) : /^G\d+$/.test(code);
+      return /^G\d+$/.test(code);
     });
     
     // Calculate slots from brand flow accounts only
@@ -441,7 +307,7 @@ const TokenDashboardView: React.FC<TokenDashboardViewProps> = ({ language }) => 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
         <div className="bg-neutral-50 dark:bg-neutral-800/30 rounded-lg p-4">
           <h3 className="font-semibold mb-2 text-neutral-800 dark:text-neutral-200">
-            Cookie Status ({BRAND_CONFIG.name === 'ESAIE' ? 'E folders' : 'G folders'})
+            Cookie Status (G folders)
           </h3>
           <div className="space-y-2 text-sm">
             <div className="flex justify-between">
@@ -479,9 +345,6 @@ const TokenDashboardView: React.FC<TokenDashboardViewProps> = ({ language }) => 
           </div>
         </div>
       </div>
-
-      {/* Usage Dashboard - Moved to bottom */}
-      {users.length > 0 && <UsageDashboard users={users} />}
     </div>
   );
 };

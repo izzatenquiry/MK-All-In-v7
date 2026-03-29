@@ -16,23 +16,23 @@ import { BRAND_CONFIG } from '../../services/brandConfig';
 const slideshowVideos = [
   {
     title: "Video 1: Platform Overview",
-    src: "https://monoklix.com/wp-content/uploads/2025/11/WhatsApp-Video-2025-11-13-at-10.41.36-PM.mp4",
+    src: "https://veoly-ai.com/wp-content/uploads/2025/11/WhatsApp-Video-2025-11-13-at-10.41.36-PM.mp4",
   },
   {
     title: "Video 2: AI Image Suite",
-    src: "https://monoklix.com/wp-content/uploads/2025/11/WhatsApp-Video-2025-11-13-at-10.41.37-PM.mp4",
+    src: "https://veoly-ai.com/wp-content/uploads/2025/11/WhatsApp-Video-2025-11-13-at-10.41.37-PM.mp4",
   },
   {
     title: "Video 3: AI Video Suite",
-    src: "https://monoklix.com/wp-content/uploads/2025/11/WhatsApp-Video-2025-11-13-at-10.41.37-PM-1.mp4",
+    src: "https://veoly-ai.com/wp-content/uploads/2025/11/WhatsApp-Video-2025-11-13-at-10.41.37-PM-1.mp4",
   },
   {
     title: "Video 4: Content Ideas",
-    src: "https://monoklix.com/wp-content/uploads/2025/11/WhatsApp-Video-2025-11-13-at-10.41.36-PM-1.mp4",
+    src: "https://veoly-ai.com/wp-content/uploads/2025/11/WhatsApp-Video-2025-11-13-at-10.41.36-PM-1.mp4",
   },
   {
     title: "Video 5: Prompt Gallery",
-    src: "https://monoklix.com/wp-content/uploads/2025/11/WhatsApp-Video-2025-11-13-at-10.41.37-PM-2.mp4",
+    src: "https://veoly-ai.com/wp-content/uploads/2025/11/WhatsApp-Video-2025-11-13-at-10.41.37-PM-2.mp4",
   },
 ];
 
@@ -139,198 +139,198 @@ const GetStartedView: React.FC<GetStartedViewProps> = () => {
 
             <div className="text-center mb-10 sm:mb-16">
                 <h1 className="text-2xl sm:text-4xl md:text-5xl font-extrabold text-neutral-900 dark:text-white tracking-tight mb-3 sm:mb-4">
-                    Panduan Mula
+                    Getting Started
                 </h1>
                 <p className="text-sm sm:text-lg text-neutral-500 dark:text-neutral-400 max-w-2xl mx-auto">
-                    Panduan komprehensif anda untuk menguasai platform AI {BRAND_CONFIG.name}.
+                    Your complete guide to mastering the {BRAND_CONFIG.name} AI platform.
                 </p>
             </div>
 
             <div className="bg-white dark:bg-neutral-900 p-6 sm:p-12 rounded-3xl shadow-soft border border-neutral-100 dark:border-neutral-800">
 
-                <Section title={`Gambaran Keseluruhan: Cara ${BRAND_CONFIG.name} Berfungsi`} icon={InformationCircleIcon}>
-                    <p className="text-base sm:text-lg">Sebelum anda bermula, penting untuk memahami dua bahagian perkhidmatan kami. Fikirkan platform kami seperti kereta berprestasi tinggi:</p>
+                <Section title={`Overview: How ${BRAND_CONFIG.name} Works`} icon={InformationCircleIcon}>
+                    <p className="text-base sm:text-lg">Before you begin, it helps to understand the two parts of our service. Think of the platform like a high-performance car:</p>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">
                         <div className="bg-blue-50 dark:bg-blue-900/10 p-5 rounded-xl border border-blue-100 dark:border-blue-900/30">
-                            <h5 className="font-bold text-brand-start mb-2">🚗 Platform {BRAND_CONFIG.name} (Kereta)</h5>
-                            <p className="text-xs sm:text-sm">Akaun anda memberi anda akses kepada papan pemuka, alatan (seperti Suite Imej dan Video), dan garaj (Galeri anda). Anda berada di tempat duduk pemandu.</p>
+                            <h5 className="font-bold text-brand-start mb-2">🚗 The {BRAND_CONFIG.name} Platform (the car)</h5>
+                            <p className="text-xs sm:text-sm">Your account gives you access to the dashboard, tools (such as the Image and Video suites), and your garage (your Gallery). You are in the driver&apos;s seat.</p>
                         </div>
                         <div className="bg-purple-50 dark:bg-purple-900/10 p-5 rounded-xl border border-purple-100 dark:border-purple-900/30">
-                            <h5 className="font-bold text-brand-end mb-2">⛽ Token {BRAND_CONFIG.name} (Bahan Api)</h5>
-                            <p className="text-xs sm:text-sm">Untuk membuat kereta bergerak (untuk menjana kandungan), anda memerlukan bahan api. Ini disediakan oleh enjin AI Google yang berkuasa, dan ia memerlukan **Token** untuk diakses.</p>
+                            <h5 className="font-bold text-brand-end mb-2">⛽ {BRAND_CONFIG.name} Tokens (the fuel)</h5>
+                            <p className="text-xs sm:text-sm">To make the car move (to generate content), you need fuel. That comes from Google&apos;s powerful AI engines, and it requires **Tokens** to access.</p>
                         </div>
                     </div>
-                    <p>Panduan ini akan menerangkan bagaimana "bahan api" disediakan secara automatik dan bagaimana perkhidmatan ini berfungsi.</p>
+                    <p>This guide explains how that &quot;fuel&quot; is provided automatically and how the service fits together.</p>
                 </Section>
 
-                <Section title="Bab 1: Akaun & Token" icon={KeyIcon}>
-                    <SubSection title="Cara Log Masuk">
-                        <p>Platform ini menggunakan sistem log masuk yang mudah dan tanpa kata laluan. Hanya masukkan alamat e-mel yang anda gunakan untuk pendaftaran di laman web utama kami dan klik 'Log Masuk'. Sesi anda akan disimpan secara automatik.</p>
+                <Section title="Chapter 1: Account &amp; Tokens" icon={KeyIcon}>
+                    <SubSection title="How to sign in">
+                        <p>This platform uses simple, passwordless sign-in. Enter the email address you used to register on our main website and click &apos;Sign In&apos;. Your session is saved automatically.</p>
                     </SubSection>
-                    <SubSection title="Token: Automatik Sepenuhnya!">
-                        <p className="font-bold text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/20 p-3 rounded-lg inline-block mb-2 text-xs sm:text-sm">Berita baik: Anda tidak perlu mendapatkan atau mengurus token anda sendiri.</p>
-                        <p>Platform {BRAND_CONFIG.name} menguruskan semuanya untuk anda. Apabila anda log masuk, sistem secara automatik memuatkan token pusat yang dikongsi yang memberi anda akses kepada semua ciri AI. Anda boleh mengesahkan token itu aktif dengan mencari ikon <KeyIcon className="w-4 h-4 inline-block text-green-500" /> di penjuru kanan atas skrin.</p>
-                        <p>Sistem ini memastikan anda mempunyai pengalaman yang lancar tanpa sebarang persediaan yang rumit.</p>
+                    <SubSection title="Tokens: fully automatic">
+                        <p className="font-bold text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/20 p-3 rounded-lg inline-block mb-2 text-xs sm:text-sm">Good news: you do not need to obtain or manage tokens yourself.</p>
+                        <p>The {BRAND_CONFIG.name} platform handles everything for you. When you sign in, the system automatically loads a shared central token that unlocks all AI features. You can confirm it is active by looking for the <KeyIcon className="w-4 h-4 inline-block text-green-500" /> icon in the top-right corner.</p>
+                        <p>This keeps your experience smooth without complicated setup.</p>
                     </SubSection>
                 </Section>
                 
-                <Section title="Bab 2: Memahami Kos & Pengebilan" icon={CreditCardIcon}>
-                    <p className="font-semibold text-neutral-800 dark:text-neutral-200">{BRAND_CONFIG.name} beroperasi berdasarkan langganan, yang merangkumi akses anda ke platform dan kos penggunaan AI.</p>
+                <Section title="Chapter 2: Costs &amp; billing" icon={CreditCardIcon}>
+                    <p className="font-semibold text-neutral-800 dark:text-neutral-200">{BRAND_CONFIG.name} runs on a subscription that covers platform access and AI usage.</p>
                     <ul className="space-y-3 mt-4">
-                        <li className="flex gap-3"><span className="w-1.5 h-1.5 rounded-full bg-neutral-400 mt-2 flex-shrink-0"></span><span><strong>Tiada Pengebilan Setiap Penggunaan:</strong> Anda tidak dibilkan untuk setiap imej atau video yang anda jana. Status akaun anda (cth., Seumur Hidup, Langganan) menentukan akses anda kepada ciri-ciri AI.</span></li>
-                        <li className="flex gap-3"><span className="w-1.5 h-1.5 rounded-full bg-neutral-400 mt-2 flex-shrink-0"></span><span><strong>Polisi Penggunaan Adil:</strong> Walaupun kami tidak mempunyai had yang ketat, perkhidmatan ini tertakluk kepada polisi penggunaan adil untuk memastikan prestasi yang stabil untuk semua pengguna. Token unik anda mempunyai kuota harian yang tinggi, yang lebih daripada mencukupi untuk kegunaan profesional.</span></li>
-                        <li className="flex gap-3"><span className="w-1.5 h-1.5 rounded-full bg-neutral-400 mt-2 flex-shrink-0"></span><span><strong>Anda Mengawal Sepenuhnya:</strong> Akses anda diuruskan sepenuhnya melalui status akaun anda di {BRAND_CONFIG.domain}. Anda tidak memerlukan akaun Google Cloud atau persediaan pengebilan yang berasingan.</span></li>
+                        <li className="flex gap-3"><span className="w-1.5 h-1.5 rounded-full bg-neutral-400 mt-2 flex-shrink-0"></span><span><strong>No per-use billing:</strong> You are not charged per image or video. Your account status (e.g. Lifetime, Subscription) determines which AI features you can use.</span></li>
+                        <li className="flex gap-3"><span className="w-1.5 h-1.5 rounded-full bg-neutral-400 mt-2 flex-shrink-0"></span><span><strong>Fair use policy:</strong> While we do not enforce a hard cap for everyone, the service is subject to fair use so performance stays stable for all users. Your unique token has a generous daily quota—enough for professional workflows.</span></li>
+                        <li className="flex gap-3"><span className="w-1.5 h-1.5 rounded-full bg-neutral-400 mt-2 flex-shrink-0"></span><span><strong>You stay in control:</strong> Access is managed through your account status on {BRAND_CONFIG.domain}. You do not need a separate Google Cloud account or billing setup.</span></li>
                     </ul>
                 </Section>
                 
-                <Section title="Bab 3: Suite Idea Kandungan AI" icon={LightbulbIcon}>
-                    <p>Suite ini direka untuk membantu anda sumbang saran dan mencipta kandungan bertulis untuk keperluan pemasaran anda.</p>
+                <Section title="Chapter 3: AI Content Ideas Suite" icon={LightbulbIcon}>
+                    <p>This suite helps you brainstorm and create written content for marketing.</p>
                      <ul className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-                        <li className="bg-neutral-50 dark:bg-neutral-800/30 p-4 rounded-xl text-xs sm:text-sm"><strong className="block text-brand-start mb-1">Staf {BRAND_CONFIG.name}</strong> Satu pasukan ejen AI khusus. Pilih ejen (seperti Penyelidik Pasaran atau Penulis Iklan), berikan input anda, dan dapatkan output peringkat pakar untuk tugas-tugas tertentu.</li>
-                        <li className="bg-neutral-50 dark:bg-neutral-800/30 p-4 rounded-xl text-xs sm:text-sm"><strong className="block text-brand-start mb-1">Idea Kandungan</strong> Atasi kebuntuan kreatif dengan memasukkan topik. AI menggunakan Carian Google untuk mencari trend semasa dan menjana 5 idea kandungan segar dengan tajuk dan penerangan.</li>
-                        <li className="bg-neutral-50 dark:bg-neutral-800/30 p-4 rounded-xl text-xs sm:text-sm"><strong className="block text-brand-start mb-1">Teks Pemasaran</strong> Cipta teks pemasaran yang meyakinkan untuk iklan, media sosial, atau laman web. Hanya terangkan produk, sasaran audiens, dan nada yang dikehendaki.</li>
-                        <li className="bg-neutral-50 dark:bg-neutral-800/30 p-4 rounded-xl text-xs sm:text-sm"><strong className="block text-brand-start mb-1">Penjana Jalan Cerita</strong> Titik permulaan yang sempurna untuk iklan video. Muat naik imej produk, tulis penerangan ringkas, dan AI akan menjana konsep papan cerita 1 babak yang lengkap.</li>
+                        <li className="bg-neutral-50 dark:bg-neutral-800/30 p-4 rounded-xl text-xs sm:text-sm"><strong className="block text-brand-start mb-1">{BRAND_CONFIG.name} Staff</strong> A team of specialist AI agents. Pick an agent (e.g. Market Researcher or Ad Writer), provide your input, and get expert-level output for specific tasks.</li>
+                        <li className="bg-neutral-50 dark:bg-neutral-800/30 p-4 rounded-xl text-xs sm:text-sm"><strong className="block text-brand-start mb-1">Content Ideas</strong> Beat creative block by entering a topic. AI uses Google Search for current trends and generates five fresh content ideas with titles and descriptions.</li>
+                        <li className="bg-neutral-50 dark:bg-neutral-800/30 p-4 rounded-xl text-xs sm:text-sm"><strong className="block text-brand-start mb-1">Marketing Copy</strong> Create persuasive copy for ads, social posts, or websites. Describe the product, audience, and tone you want.</li>
+                        <li className="bg-neutral-50 dark:bg-neutral-800/30 p-4 rounded-xl text-xs sm:text-sm"><strong className="block text-brand-start mb-1">Ad Storyline Generator</strong> A great starting point for video ads. Upload a product image, add a short description, and AI generates a complete one-scene storyboard concept.</li>
                     </ul>
                 </Section>
                 
-                <Section title="Bab 4: Suite Imej AI" icon={ImageIcon}>
-                    <p>Suite ini mengandungi alat yang berkuasa untuk mencipta dan memanipulasi imej.</p>
+                <Section title="Chapter 4: AI Image Suite" icon={ImageIcon}>
+                    <p>Powerful tools to create and edit images.</p>
                     <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div className="p-6 border border-green-200 dark:border-green-800 rounded-2xl bg-green-50/50 dark:bg-green-900/10">
                             <h5 className="font-bold text-green-700 dark:text-green-400 flex items-center gap-2 mb-3 text-sm sm:text-base">
                                 <CheckCircleIcon className="w-5 h-5" />
-                                Apa yang Ia Boleh Lakukan
+                                What it can do
                             </h5>
                             <ul className="space-y-2 text-xs sm:text-sm text-neutral-700 dark:text-neutral-300">
-                                <li>• Menjana imej baru dari teks (Teks-ke-Imej).</li>
-                                <li>• Mengedit imej sedia ada menggunakan arahan teks (Imej-ke-Imej).</li>
-                                <li>• Meletakkan produk anda ke dalam latar belakang studio profesional.</li>
-                                <li>• Mencipta foto model realistik menggunakan produk anda.</li>
-                                <li>• Meningkatkan resolusi imej dan mempertingkatkan warna.</li>
-                                <li>• Membuang latar belakang dari foto.</li>
+                                <li>• Generate new images from text (text-to-image).</li>
+                                <li>• Edit existing images with text instructions (image-to-image).</li>
+                                <li>• Place your product into professional studio backgrounds.</li>
+                                <li>• Create realistic model shots featuring your product.</li>
+                                <li>• Upscale resolution and enhance colours.</li>
+                                <li>• Remove backgrounds from photos.</li>
                             </ul>
                         </div>
                         <div className="p-6 border border-red-200 dark:border-red-800 rounded-2xl bg-red-50/50 dark:bg-red-900/10">
                             <h5 className="font-bold text-red-600 dark:text-red-400 flex items-center gap-2 mb-3 text-sm sm:text-base">
                                 <XIcon className="w-5 h-5" />
-                                Apa yang Ia Tidak Boleh Lakukan
+                                What it cannot do
                             </h5>
                             <ul className="space-y-2 text-xs sm:text-sm text-neutral-700 dark:text-neutral-300">
-                                <li>• Menjana imej dengan teks tertentu yang boleh dibaca.</li>
-                                <li>• Meniru logo atau tanda jenama yang kompleks dengan sempurna.</li>
-                                <li>• Mencipta wajah fotorealistik selebriti terkenal disebabkan oleh dasar keselamatan.</li>
-                                <li>• Menjamin tangan atau bentuk anatomi yang sempurna dalam setiap penjanaan.</li>
+                                <li>• Render specific readable text in images reliably.</li>
+                                <li>• Perfectly replicate complex logos or brand marks.</li>
+                                <li>• Create photorealistic faces of famous people (safety policy).</li>
+                                <li>• Guarantee perfect hands or anatomy in every generation.</li>
                             </ul>
                         </div>
                     </div>
-                     <SubSection title="Memahami Penapis Keselamatan">
-                        <p>Semua penjanaan imej dan teks AI tertakluk kepada penapis keselamatan Google. Permintaan anda mungkin disekat jika ia mengandungi kandungan yang berkaitan dengan:</p>
+                     <SubSection title="Understanding safety filters">
+                        <p>All image and text generation is subject to Google&apos;s safety filters. Your request may be blocked if it relates to:</p>
                          <ul className="list-disc pl-5 space-y-1 font-medium text-neutral-800 dark:text-neutral-200 mt-2 text-xs sm:text-sm">
-                            <li>Ucapan kebencian, gangguan, atau keganasan.</li>
-                            <li>Mencederakan diri sendiri.</li>
-                            <li>Bahan lucah secara eksplisit.</li>
+                            <li>Hate, harassment, or violence.</li>
+                            <li>Self-harm.</li>
+                            <li>Explicit sexual content.</li>
                         </ul>
-                        <p className="mt-3 text-neutral-500">Jika permintaan anda disekat, cuba permudahkan prompt anda atau gunakan imej yang berbeza. Kami tidak boleh melumpuhkan penapis keselamatan ini.</p>
+                        <p className="mt-3 text-neutral-500">If your request is blocked, simplify your prompt or try a different image. We cannot disable these safety filters.</p>
                     </SubSection>
                 </Section>
 
-                <Section title="Bab 5: Suite Video & Suara AI" icon={VideoIcon}>
-                    <p className="text-base sm:text-lg mb-4">Cipta video yang menakjubkan dan suara latar profesional dengan mudah.</p>
+                <Section title="Chapter 5: AI Video &amp; Voice Suite" icon={VideoIcon}>
+                    <p className="text-base sm:text-lg mb-4">Create stunning videos and professional voice-overs with ease.</p>
                     <div className="grid grid-cols-1 gap-6">
-                        <SubSection title="Penjanaan Video">
-                            <p>Cipta video dari prompt teks. Anda juga boleh menyediakan imej permulaan. AI akan menganimasikan imej tersebut berdasarkan prompt anda. Untuk hasil terbaik, gunakan prompt deskriptif yang memperincikan babak dan aksi.</p>
-                            <p className="mt-2 text-[10px] sm:text-xs font-semibold uppercase tracking-wider text-neutral-400">Terbaik Untuk: Klip media sosial pendek</p>
+                        <SubSection title="Video generation">
+                            <p>Create video from a text prompt. You can also provide a starting image. The AI will animate it according to your prompt. For best results, use descriptive prompts that spell out the scene and action.</p>
+                            <p className="mt-2 text-[10px] sm:text-xs font-semibold uppercase tracking-wider text-neutral-400">Best for: Short social clips</p>
                         </SubSection>
-                        <SubSection title="Papan Cerita Video">
-                            <p>Ini adalah aliran kerja 2 langkah yang berkuasa untuk mencipta video ulasan produk. Dalam Langkah 1, anda menyediakan butiran produk dan arahan kreatif untuk menjana skrip papan cerita 4 babak. Dalam Langkah 2, AI menjana imej unik untuk setiap babak berdasarkan skrip.</p>
-                            <p className="mt-2 text-[10px] sm:text-xs font-semibold uppercase tracking-wider text-neutral-400">Terbaik Untuk: Iklan produk lengkap</p>
+                        <SubSection title="Video storyboard">
+                            <p>A powerful two-step workflow for product review videos. In Step 1 you provide product details and creative direction to generate a four-scene storyboard script. In Step 2, AI generates a unique image for each scene from that script.</p>
+                            <p className="mt-2 text-[10px] sm:text-xs font-semibold uppercase tracking-wider text-neutral-400">Best for: Full product ads</p>
                         </SubSection>
-                        <SubSection title="Penggabung Video">
-                            <p>Jahit beberapa klip video dari Galeri anda menjadi satu video. Pilih video yang ingin anda gabungkan mengikut urutan yang anda mahu ia muncul.</p>
-                            <p>Pemprosesan dilakukan sepenuhnya dalam penyemak imbas anda, jadi ia peribadi dan pantas untuk klip pendek. (Pengguna Admin/Seumur Hidup sahaja)</p>
+                        <SubSection title="Video merger">
+                            <p>Stitch multiple clips from your Gallery into one video. Pick clips in the order you want them to play.</p>
+                            <p>Processing runs in your browser—it stays private and is fast for short clips. (Admin / Lifetime users only.)</p>
                         </SubSection>
-                        <SubSection title="Studio Suara">
-                            <p>Tukar sebarang teks menjadi suara latar profesional. Tulis skrip anda, pilih dari pelbagai pelakon suara (termasuk Bahasa Malaysia), dan laraskan kelajuan, pic, dan kelantangan.</p>
-                            <p>Outputnya adalah fail WAV yang boleh anda gunakan dalam mana-mana editor video.</p>
+                        <SubSection title="Voice studio">
+                            <p>Turn any text into a professional voice-over. Write your script, choose from many voice actors (including Malay), and adjust speed, pitch, and volume.</p>
+                            <p>Output is a WAV file you can use in any video editor.</p>
                         </SubSection>
                     </div>
                 </Section>
                 
-                <Section title="Bab 6: Memahami Model AI" icon={RobotIcon}>
-                    <p>Platform ini menggunakan beberapa model AI Google yang berbeza, setiap satu dikhususkan untuk tugas tertentu.</p>
+                <Section title="Chapter 6: Understanding AI models" icon={RobotIcon}>
+                    <p>The platform uses several Google AI models, each tuned for different tasks.</p>
                     <div className="space-y-4 mt-6">
                         <div className="border-l-4 border-brand-start pl-4">
-                            <h5 className="font-bold text-neutral-800 dark:text-neutral-100 text-sm sm:text-base">Gemini 2.5 Flash (Teks & Multimodal)</h5>
-                            <p className="text-xs sm:text-sm mt-1">Model kerja utama untuk penjanaan teks dan pemahaman imej. Dioptimumkan untuk kelajuan tanpa bajet 'berfikir'.</p>
+                            <h5 className="font-bold text-neutral-800 dark:text-neutral-100 text-sm sm:text-base">Gemini 2.5 Flash (text &amp; multimodal)</h5>
+                            <p className="text-xs sm:text-sm mt-1">Main workhorse for text generation and image understanding. Optimised for speed without a large &quot;thinking&quot; budget.</p>
                         </div>
                         <div className="border-l-4 border-purple-500 pl-4">
-                            <h5 className="font-bold text-neutral-800 dark:text-neutral-100 text-sm sm:text-base">Veo Models (Video)</h5>
-                            <p className="text-xs sm:text-sm mt-1">Model utama Google untuk video. Kami menggunakan versi standard (kualiti tertinggi) dan versi pantas (hasil cepat).</p>
+                            <h5 className="font-bold text-neutral-800 dark:text-neutral-100 text-sm sm:text-base">Veo models (video)</h5>
+                            <p className="text-xs sm:text-sm mt-1">Google&apos;s primary video models. We use standard (highest quality) and fast (quicker turnaround) variants.</p>
                         </div>
                         <div className="border-l-4 border-pink-500 pl-4">
-                            <h5 className="font-bold text-neutral-800 dark:text-neutral-100 text-sm sm:text-base">NanoBanana GEM_PIX (Imej)</h5>
-                            <p className="text-xs sm:text-sm mt-1">NanoBanana GEM_PIX digunakan untuk penyuntingan/komposisi dan penjanaan Teks-ke-Imej berkualiti tinggi.</p>
+                            <h5 className="font-bold text-neutral-800 dark:text-neutral-100 text-sm sm:text-base">NanoBanana GEM_PIX (images)</h5>
+                            <p className="text-xs sm:text-sm mt-1">NanoBanana GEM_PIX powers editing, composition, and high-quality text-to-image generation.</p>
                         </div>
                     </div>
-                    <SubSection title="Bolehkah Saya Mencipta Video Dengan Suara Saya Sendiri?">
-                        <p>Tidak secara langsung semasa penjanaan video. Ciri suara latar AI terbina dalam alat Papan Cerita Video pada masa ini menyokong set bahasa yang terhad.</p>
-                        <p>Untuk suara latar tersuai, kami amat mengesyorkan menggunakan alat 'Studio Suara' untuk menjana fail audio, dan kemudian menggabungkannya dengan video yang anda jana dalam aplikasi penyuntingan video yang berasingan.</p>
+                    <SubSection title="Can I use my own voice in generated video?">
+                        <p>Not directly during video generation. The built-in AI voice-over in the Video Storyboard tool currently supports a limited set of languages.</p>
+                        <p>For a custom voice, we recommend using Voice Studio to create an audio file, then combining it with your generated video in a separate editor.</p>
                     </SubSection>
                 </Section>
 
-                <Section title="Bab 7: Prompt & Perpustakaan" icon={LibraryIcon}>
-                    <p>Suite Perpustakaan Prompt adalah hab anda untuk inspirasi dan formula prompt yang terbukti.</p>
-                    <SubSection title="Cara Menggunakan Perpustakaan">
-                        <p>Suite ini kini hanya menampilkan satu perpustakaan utama:</p>
+                <Section title="Chapter 7: Prompts &amp; library" icon={LibraryIcon}>
+                    <p>The Prompt Library is your hub for inspiration and proven prompt patterns.</p>
+                    <SubSection title="How to use the library">
+                        <p>It currently features one main library:</p>
                         <ul className="list-disc pl-5 space-y-2 text-xs sm:text-sm mt-2 mb-4">
-                            <li dangerouslySetInnerHTML={{ __html: "<strong>Prompt Nano Banana:</strong> Koleksi prompt kreatif serba guna untuk penjanaan dan penyuntingan imej, yang bersumber dari projek komuniti sumber terbuka. Ini bagus untuk meneroka kemungkinan kreatif AI."}}></li>
+                            <li dangerouslySetInnerHTML={{ __html: "<strong>Nano Banana prompts:</strong> A versatile collection for image generation and editing, sourced from an open community project. Great for exploring creative possibilities."}}></li>
                         </ul>
-                        <p>Dalam perpustakaan, anda boleh melayari contoh-contoh. Apabila anda menjumpai yang anda suka, hanya klik butang 'Guna Prompt Ini'. Ini akan secara automatik menyalin prompt dan membawa anda ke alat Penjanaan Imej AI dengan prompt yang telah diisi, jadi anda boleh menjananya dengan segera atau menyesuaikannya lebih lanjut.</p>
+                        <p>Browse examples inside the library. When you find one you like, click &apos;Use this prompt&apos;. It copies the prompt and opens AI Image Generation with the field filled in so you can generate immediately or tweak further.</p>
                     </SubSection>
                 </Section>
                         
-                <Section title="Bab 8: Galeri, Sejarah, dan Log" icon={GalleryIcon}>
+                <Section title="Chapter 8: Gallery, history &amp; logs" icon={GalleryIcon}>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                         <div className="col-span-2">
-                            <SubSection title="Galeri & Sejarah">
-                                <p>Setiap kandungan yang anda jana—imej, video, audio, dan teks—disimpan secara automatik ke storan penyemak imbas peranti anda (IndexedDB). Anda boleh mengakses semuanya di bahagian 'Galeri & Sejarah'. Dari sini, anda boleh melihat, memuat turun, atau menggunakan semula aset anda.</p>
+                            <SubSection title="Gallery &amp; history">
+                                <p>Everything you generate—images, video, audio, and text—is saved automatically to browser storage on your device (IndexedDB). Open the Gallery &amp; History section to view, download, or reuse assets.</p>
                             </SubSection>
                         </div>
                         <div className="col-span-1">
-                            <SubSection title="Storan Tempatan">
-                                <p className="text-[10px] sm:text-xs">Data disimpan dalam penyemak imbas anda. Membersihkan cache akan memadamkan galeri anda. Kami tidak menyimpan kandungan anda di pelayan.</p>
+                            <SubSection title="Local storage">
+                                <p className="text-[10px] sm:text-xs">Data stays in your browser. Clearing site cache can remove your gallery. We do not store your content on our servers.</p>
                             </SubSection>
                         </div>
                     </div>
-                    <SubSection title="Log API AI (Untuk Debugging)">
-                        <p>Log API ialah rekod teknikal setiap permintaan. Ia berguna jika penjanaan gagal, kerana ia menunjukkan mesej ralat sebenar dari Google (contohnya, sekatan keselamatan).</p>
+                    <SubSection title="AI API logs (for debugging)">
+                        <p>API logs are technical records of each request. They help when generation fails, because they show the real error message from Google (for example safety blocks).</p>
                     </SubSection>
                 </Section>
 
-                <Section title="Bab 9: Penyelesaian Masalah Ralat Biasa" icon={AlertTriangleIcon}>
-                    <p>Jika anda menghadapi ralat, ia biasanya disebabkan oleh salah satu daripada beberapa isu biasa. Berikut ialah panduan ringkas tentang maksudnya dan cara menyelesaikannya.</p>
+                <Section title="Chapter 9: Common errors &amp; troubleshooting" icon={AlertTriangleIcon}>
+                    <p>If you hit an error, it usually comes from a small set of common causes. Below is a quick guide to what they mean and what to try.</p>
                     <div className="mt-8 overflow-hidden rounded-2xl border border-neutral-200 dark:border-neutral-800 shadow-sm">
                         <table className="w-full text-xs sm:text-sm text-left border-collapse">
                             <thead className="text-[10px] sm:text-xs text-neutral-500 uppercase bg-neutral-50 dark:bg-neutral-800 dark:text-neutral-400">
                                 <tr>
-                                    <th scope="col" className="px-4 py-3 sm:px-6 sm:py-4 font-bold tracking-wider">Masalah / Kod Ralat</th>
-                                    <th scope="col" className="px-4 py-3 sm:px-6 sm:py-4 font-bold tracking-wider">Punca Kemungkinan</th>
-                                    <th scope="col" className="px-4 py-3 sm:px-6 sm:py-4 font-bold tracking-wider">Penyelesaian</th>
+                                    <th scope="col" className="px-4 py-3 sm:px-6 sm:py-4 font-bold tracking-wider">Issue / error</th>
+                                    <th scope="col" className="px-4 py-3 sm:px-6 sm:py-4 font-bold tracking-wider">Likely cause</th>
+                                    <th scope="col" className="px-4 py-3 sm:px-6 sm:py-4 font-bold tracking-wider">What to do</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-neutral-200 dark:divide-neutral-800 bg-white dark:bg-neutral-900">
-                                <tr className="hover:bg-neutral-50 dark:hover:bg-neutral-800/50 transition-colors"><td className="px-4 py-3 sm:px-6 sm:py-4 align-top font-semibold text-red-600">E-mel tidak berdaftar</td><td className="px-4 py-3 sm:px-6 sm:py-4 align-top">Pengguna memasukkan e-mel yang tidak wujud dalam pangkalan data.</td><td className="px-4 py-3 sm:px-6 sm:py-4 align-top" dangerouslySetInnerHTML={{ __html: `1. Semak semula ejaan e-mel.<br/>2. Pastikan pengguna telah mendaftar di laman web utama (${BRAND_CONFIG.domain}).<br/>3. Jika masih gagal, hubungi admin untuk menyemak status akaun.` }}></td></tr>
-                                <tr className="hover:bg-neutral-50 dark:hover:bg-neutral-800/50 transition-colors"><td className="px-4 py-3 sm:px-6 sm:py-4 align-top font-semibold text-red-600">Akaun tidak aktif (inactive)</td><td className="px-4 py-3 sm:px-6 sm:py-4 align-top">Status pengguna telah ditukar kepada tidak aktif oleh admin.</td><td className="px-4 py-3 sm:px-6 sm:py-4 align-top">Hubungi admin untuk pengaktifan semula akaun.</td></tr>
-                                <tr className="hover:bg-neutral-50 dark:hover:bg-neutral-800/50 transition-colors"><td className="px-4 py-3 sm:px-6 sm:py-4 align-top font-semibold text-yellow-600">401 Unauthorized / 403 Permission Denied</td><td className="px-4 py-3 sm:px-6 sm:py-4 align-top" dangerouslySetInnerHTML={{ __html: "Token mungkin tidak sah, tamat tempoh, atau disekat oleh Google." }}></td><td className="px-4 py-3 sm:px-6 sm:py-4 align-top" dangerouslySetInnerHTML={{ __html: "Ini adalah isu di pihak platform. Sila laporkan kepada admin dengan segera melalui butang 'Lapor kepada Admin' pada tetingkap ralat atau melalui WhatsApp." }}></td></tr>
-                                <tr className="hover:bg-neutral-50 dark:hover:bg-neutral-800/50 transition-colors"><td className="px-4 py-3 sm:px-6 sm:py-4 align-top font-semibold text-yellow-600">429 Resource Exhausted</td><td className="px-4 py-3 sm:px-6 sm:py-4 align-top">Platform telah mencapai had penggunaan (rate limit) API yang dikongsi.</td><td className="px-4 py-3 sm:px-6 sm:py-4 align-top" dangerouslySetInnerHTML={{ __html: "Ini biasanya isu sementara. Sila tunggu beberapa minit dan cuba lagi. Admin akan dimaklumkan untuk meningkatkan had jika perlu." }}></td></tr>
-                                <tr className="hover:bg-neutral-50 dark:hover:bg-neutral-800/50 transition-colors"><td className="px-4 py-3 sm:px-6 sm:py-4 align-top font-semibold text-yellow-600">500 Internal Server Error / 503 Service Unavailable</td><td className="px-4 py-3 sm:px-6 sm:py-4 align-top">Terdapat ralat dalaman atau penyelenggaraan pada pelayan Google. Ini adalah isu sementara dan bukan berpunca daripada akaun atau prompt anda.</td><td className="px-4 py-3 sm:px-6 sm:py-4 align-top" dangerouslySetInnerHTML={{ __html: "1. Ini biasanya isu sementara. Sila tunggu beberapa minit dan cuba semula permintaan anda.<br/>2. Jika masalah berterusan, semak status Token atau hubungi admin." }}></td></tr>
-                                <tr className="hover:bg-neutral-50 dark:hover:bg-neutral-800/50 transition-colors"><td className="px-4 py-3 sm:px-6 sm:py-4 align-top font-semibold">Ralat Rangkaian (Network Error)</td><td className="px-4 py-3 sm:px-6 sm:py-4 align-top">Sambungan internet anda terputus, atau terdapat sesuatu (seperti perisian firewall atau ad-blocker) yang menghalang aplikasi daripada menghubungi pelayan Google.</td><td className="px-4 py-3 sm:px-6 sm:py-4 align-top" dangerouslySetInnerHTML={{ __html: "1. Semak sambungan internet anda.<br/>2. Cuba muat semula (refresh) halaman.<br/>3. Lumpuhkan sementara sebarang perisian ad-blocker atau VPN dan cuba lagi." }}></td></tr>
-                                <tr className="hover:bg-neutral-50 dark:hover:bg-neutral-800/50 transition-colors"><td className="px-4 py-3 sm:px-6 sm:py-4 align-top font-semibold">Penjanaan Video (Veo) gagal tetapi servis lain berfungsi.</td><td className="px-4 py-3 sm:px-6 sm:py-4 align-top">Model Veo memerlukan token pengesahan khas (__SESSION) yang berbeza daripada Kunci API Gemini biasa. Token ini mungkin telah tamat tempoh.</td><td className="px-4 py-3 sm:px-6 sm:py-4 align-top" dangerouslySetInnerHTML={{ __html: "Ini adalah isu platform. Sila laporkan kepada admin supaya token baharu boleh dikemas kini." }}></td></tr>
-                                <tr className="hover:bg-neutral-50 dark:hover:bg-neutral-800/50 transition-colors"><td className="px-4 py-3 sm:px-6 sm:py-4 align-top font-semibold text-blue-600">400 Bad Request / Mesej ralat 'Safety Filter'</td><td className="px-4 py-3 sm:px-6 sm:py-4 align-top">Prompt (arahan teks) atau imej yang dimuat naik telah disekat oleh penapis keselamatan Google kerana kandungan yang mungkin sensitif.</td><td className="px-4 py-3 sm:px-6 sm:py-4 align-top" dangerouslySetInnerHTML={{ __html: "1. Permudahkan prompt anda. Elakkan perkataan yang terlalu deskriptif atau yang boleh disalah tafsir.<br/>2. Jika menggunakan imej, cuba gunakan imej yang berbeza dan lebih neutral.<br/>3. Rujuk Panduan Mula &gt; Bab 3 untuk memahami jenis kandungan yang disekat." }}></td></tr>
-                                <tr className="hover:bg-neutral-50 dark:hover:bg-neutral-800/50 transition-colors"><td className="px-4 py-3 sm:px-6 sm:py-4 align-top font-semibold">Penjanaan video mengambil masa lama atau gagal tanpa ralat jelas.</td><td className="px-4 py-3 sm:px-6 sm:py-4 align-top">Model Veo sememangnya mengambil masa beberapa minit untuk menjana video. Kegagalan senyap selalunya disebabkan oleh sekatan polisi keselamatan pada prompt atau imej.</td><td className="px-4 py-3 sm:px-6 sm:py-4 align-top" dangerouslySetInnerHTML={{ __html: "1. Sila bersabar dan tunggu sehingga 5-10 minit.<br/>2. Jika masih gagal, cuba permudahkan prompt atau gunakan imej rujukan yang berbeza.<br/>3. Semak Log API AI (dalam Galeri) untuk melihat jika ada mesej ralat teknikal." }}></td></tr>
-                                <tr className="hover:bg-neutral-50 dark:hover:bg-neutral-800/50 transition-colors"><td className="px-4 py-3 sm:px-6 sm:py-4 align-top font-semibold">Imej yang dihasilkan tidak seperti yang dijangka</td><td className="px-4 py-3 sm:px-6 sm:py-4 align-top">Prompt yang diberikan kepada model AI mungkin kurang jelas atau boleh ditafsir dalam pelbagai cara.</td><td className="px-4 py-3 sm:px-6 sm:py-4 align-top">Jadikan prompt anda lebih spesifik. Contoh: Daripada 'tambah topi', cuba 'letakkan topi berwarna merah pada kepala orang di dalam imej ini'.</td></tr>
-                                <tr className="hover:bg-neutral-50 dark:hover:bg-neutral-800/50 transition-colors"><td className="px-4 py-3 sm:px-6 sm:py-4 align-top font-semibold">Galeri tidak menyimpan hasil janaan terbaru.</td><td className="px-4 py-3 sm:px-6 sm:py-4 align-top">Pangkalan data tempatan (IndexedDB) dalam pelayar mungkin mengalami `deadlock` atau rosak.</td><td className="px-4 py-3 sm:px-6 sm:py-4 align-top" dangerouslySetInnerHTML={{ __html: "1. Lakukan `hard refresh` pada pelayar (Ctrl + Shift + R).<br/>2. Jika masalah berterusan, pergi ke Tetapan &gt; Profil &gt; Pengurus Cache Video dan klik 'Kosongkan Semua Cache'." }}></td></tr>
-                                <tr className="hover:bg-neutral-50 dark:hover:bg-neutral-800/50 transition-colors"><td className="px-4 py-3 sm:px-6 sm:py-4 align-top font-semibold">Penggabung Video gagal berfungsi.</td><td className="px-4 py-3 sm:px-6 sm:py-4 align-top" dangerouslySetInnerHTML={{ __html: "1. Pustaka FFmpeg gagal dimuatkan dari CDN.<br/>2. Klip video yang dipilih terlalu besar." }}></td><td className="px-4 py-3 sm:px-6 sm:py-4 align-top" dangerouslySetInnerHTML={{ __html: "1. Pastikan sambungan internet stabil.<br/>2. Cuba lumpuhkan ad-blocker buat sementara waktu.<br/>3. Cuba gabungkan klip yang lebih pendek (kurang dari 1 minit setiap satu)." }}></td></tr>
+                                <tr className="hover:bg-neutral-50 dark:hover:bg-neutral-800/50 transition-colors"><td className="px-4 py-3 sm:px-6 sm:py-4 align-top font-semibold text-red-600">Email not registered</td><td className="px-4 py-3 sm:px-6 sm:py-4 align-top">The address is not in the database.</td><td className="px-4 py-3 sm:px-6 sm:py-4 align-top" dangerouslySetInnerHTML={{ __html: `1. Check spelling.<br/>2. Make sure the user registered on the main site (${BRAND_CONFIG.domain}).<br/>3. If it still fails, contact an admin to verify the account.` }}></td></tr>
+                                <tr className="hover:bg-neutral-50 dark:hover:bg-neutral-800/50 transition-colors"><td className="px-4 py-3 sm:px-6 sm:py-4 align-top font-semibold text-red-600">Account inactive</td><td className="px-4 py-3 sm:px-6 sm:py-4 align-top">An admin set the user to inactive.</td><td className="px-4 py-3 sm:px-6 sm:py-4 align-top">Contact an admin to reactivate the account.</td></tr>
+                                <tr className="hover:bg-neutral-50 dark:hover:bg-neutral-800/50 transition-colors"><td className="px-4 py-3 sm:px-6 sm:py-4 align-top font-semibold text-yellow-600">401 Unauthorized / 403 Permission Denied</td><td className="px-4 py-3 sm:px-6 sm:py-4 align-top" dangerouslySetInnerHTML={{ __html: "The token may be invalid, expired, or blocked by Google." }}></td><td className="px-4 py-3 sm:px-6 sm:py-4 align-top" dangerouslySetInnerHTML={{ __html: "This is a platform-side issue. Report it to an admin right away using &apos;Report to Admin&apos; on the error dialog or via WhatsApp." }}></td></tr>
+                                <tr className="hover:bg-neutral-50 dark:hover:bg-neutral-800/50 transition-colors"><td className="px-4 py-3 sm:px-6 sm:py-4 align-top font-semibold text-yellow-600">429 Resource Exhausted</td><td className="px-4 py-3 sm:px-6 sm:py-4 align-top">The shared API hit a rate limit.</td><td className="px-4 py-3 sm:px-6 sm:py-4 align-top" dangerouslySetInnerHTML={{ __html: "Usually temporary. Wait a few minutes and try again. Admins are notified if limits need raising." }}></td></tr>
+                                <tr className="hover:bg-neutral-50 dark:hover:bg-neutral-800/50 transition-colors"><td className="px-4 py-3 sm:px-6 sm:py-4 align-top font-semibold text-yellow-600">500 Internal Server Error / 503 Service Unavailable</td><td className="px-4 py-3 sm:px-6 sm:py-4 align-top">Google server error or maintenance—temporary and not caused by your account or prompt.</td><td className="px-4 py-3 sm:px-6 sm:py-4 align-top" dangerouslySetInnerHTML={{ __html: "1. Wait a few minutes and retry.<br/>2. If it persists, check token status or contact an admin." }}></td></tr>
+                                <tr className="hover:bg-neutral-50 dark:hover:bg-neutral-800/50 transition-colors"><td className="px-4 py-3 sm:px-6 sm:py-4 align-top font-semibold">Network error</td><td className="px-4 py-3 sm:px-6 sm:py-4 align-top">Connection dropped, or something (firewall, ad blocker) is blocking the app from Google.</td><td className="px-4 py-3 sm:px-6 sm:py-4 align-top" dangerouslySetInnerHTML={{ __html: "1. Check your connection.<br/>2. Refresh the page.<br/>3. Temporarily disable ad blockers or VPN and try again." }}></td></tr>
+                                <tr className="hover:bg-neutral-50 dark:hover:bg-neutral-800/50 transition-colors"><td className="px-4 py-3 sm:px-6 sm:py-4 align-top font-semibold">Video (Veo) fails while other services work</td><td className="px-4 py-3 sm:px-6 sm:py-4 align-top">Veo needs a special auth token (__SESSION), different from a normal Gemini API key. It may have expired.</td><td className="px-4 py-3 sm:px-6 sm:py-4 align-top" dangerouslySetInnerHTML={{ __html: "Platform issue—ask an admin to refresh the session token." }}></td></tr>
+                                <tr className="hover:bg-neutral-50 dark:hover:bg-neutral-800/50 transition-colors"><td className="px-4 py-3 sm:px-6 sm:py-4 align-top font-semibold text-blue-600">400 Bad Request / &apos;Safety filter&apos; message</td><td className="px-4 py-3 sm:px-6 sm:py-4 align-top">Your text prompt or uploaded image triggered Google&apos;s safety filters.</td><td className="px-4 py-3 sm:px-6 sm:py-4 align-top" dangerouslySetInnerHTML={{ __html: "1. Simplify the prompt. Avoid ambiguous or overly graphic wording.<br/>2. Try a more neutral reference image.<br/>3. See Getting Started &gt; Chapter 4 for blocked content types." }}></td></tr>
+                                <tr className="hover:bg-neutral-50 dark:hover:bg-neutral-800/50 transition-colors"><td className="px-4 py-3 sm:px-6 sm:py-4 align-top font-semibold">Video takes very long or fails with no clear error</td><td className="px-4 py-3 sm:px-6 sm:py-4 align-top">Veo can take several minutes. Silent failures are often safety policy on the prompt or image.</td><td className="px-4 py-3 sm:px-6 sm:py-4 align-top" dangerouslySetInnerHTML={{ __html: "1. Wait up to 5–10 minutes.<br/>2. If it still fails, simplify the prompt or change the reference image.<br/>3. Check AI API logs (in Gallery) for technical errors." }}></td></tr>
+                                <tr className="hover:bg-neutral-50 dark:hover:bg-neutral-800/50 transition-colors"><td className="px-4 py-3 sm:px-6 sm:py-4 align-top font-semibold">Output does not match expectations</td><td className="px-4 py-3 sm:px-6 sm:py-4 align-top">The prompt may be vague or open to interpretation.</td><td className="px-4 py-3 sm:px-6 sm:py-4 align-top">Make the prompt more specific. Example: instead of &apos;add a hat&apos;, try &apos;put a red hat on the person in this image&apos;.</td></tr>
+                                <tr className="hover:bg-neutral-50 dark:hover:bg-neutral-800/50 transition-colors"><td className="px-4 py-3 sm:px-6 sm:py-4 align-top font-semibold">Gallery missing latest items</td><td className="px-4 py-3 sm:px-6 sm:py-4 align-top">Local IndexedDB may be stuck or corrupted.</td><td className="px-4 py-3 sm:px-6 sm:py-4 align-top" dangerouslySetInnerHTML={{ __html: "1. Hard refresh the browser (Ctrl + Shift + R).<br/>2. If needed, go to Settings &gt; Profile &gt; Video cache manager and clear all cache." }}></td></tr>
+                                <tr className="hover:bg-neutral-50 dark:hover:bg-neutral-800/50 transition-colors"><td className="px-4 py-3 sm:px-6 sm:py-4 align-top font-semibold">Video merger fails</td><td className="px-4 py-3 sm:px-6 sm:py-4 align-top" dangerouslySetInnerHTML={{ __html: "1. FFmpeg failed to load from the CDN.<br/>2. Selected clips are too large." }}></td><td className="px-4 py-3 sm:px-6 sm:py-4 align-top" dangerouslySetInnerHTML={{ __html: "1. Use a stable connection.<br/>2. Temporarily disable ad blockers.<br/>3. Try shorter clips (under ~1 minute each)." }}></td></tr>
                             </tbody>
                         </table>
                     </div>

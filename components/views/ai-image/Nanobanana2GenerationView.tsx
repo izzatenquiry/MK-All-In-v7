@@ -3,16 +3,44 @@ import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { addHistoryItem } from '../../../services/historyService';
 import Spinner from '../../common/Spinner';
-import { UploadIcon, TrashIcon, DownloadIcon, VideoIcon, StarIcon, WandIcon, AlertTriangleIcon, RefreshCwIcon, EyeIcon, EyeOffIcon, CheckCircleIcon, InformationCircleIcon, XIcon, KeyIcon } from '../../Icons';
+import { UploadIcon, TrashIcon, DownloadIcon, VideoIcon, StarIcon, WandIcon, AlertTriangleIcon, RefreshCwIcon, XIcon, KeyIcon } from '../../Icons';
 import TwoColumnLayout from '../../common/TwoColumnLayout';
 import { handleApiError } from '../../../services/errorHandler';
+import { v4 as uuidv4 } from 'uuid';
+import { prepareVeolyNanobanana2UnifiedSession } from '../../../services/apiClient';
 import { generateImageWithNanobanana2, mapAspectRatio } from '../../../services/nanobanana2Service';
-import { incrementImageUsage, saveUserRecaptchaToken, hasActiveTokenUltraWithRegistration, getMasterRecaptchaToken } from '../../../services/userService';
+import {
+  incrementImageUsage,
+  consumePackageCredits,
+  getUserProfile,
+} from '../../../services/userService';
+import eventBus from '../../../services/eventBus';
 import { type User, type Language } from '../../../types';
 import CreativeDirectionPanel from '../../common/CreativeDirectionPanel';
 import { getInitialCreativeDirectionState, type CreativeDirectionState } from '../../../services/creativeDirectionService';
 import { UI_SERVER_LIST } from '../../../services/serverConfig';
 import { BRAND_CONFIG } from '../../../services/brandConfig';
+
+/** Package credits (Token Ultra) deducted per successful NanoBanana Pro image (same RPC as video). */
+const NANOBANANA2_IMAGE_CREDIT_COST = 5;
+
+async function deductPackageCreditsAfterNanobanana2Image(userId: string | undefined): Promise<void> {
+  if (!userId) return;
+  const ok = await consumePackageCredits(userId, NANOBANANA2_IMAGE_CREDIT_COST);
+  if (!ok) {
+    throw new Error(
+      'Your package credit balance is insufficient. Please purchase a new Token Ultra Credit package.'
+    );
+  }
+  try {
+    const refreshed = await getUserProfile(userId);
+    if (refreshed) {
+      eventBus.dispatch('userProfileUpdated', refreshed);
+    }
+  } catch (e) {
+    console.warn('[NanoBanana Pro] Could not refresh profile after credit deduction:', e);
+  }
+}
 
 // Note: NANOBANANA 2 returns signed URLs, not base64
 interface ImageData {
@@ -87,6 +115,19 @@ interface Nanobanana2GenerationViewProps {
 
 const SESSION_KEY = 'nanobanana2GenerationState';
 
+/** NanoBanana Pro: Image Count selector is 1 or 2 only (no 3/4). */
+const NANO2_MAX_PARALLEL_IMAGES = 2;
+const NANO2_IMAGE_COUNT_OPTIONS: number[] = Array.from(
+  { length: NANO2_MAX_PARALLEL_IMAGES },
+  (_, i) => i + 1
+);
+
+function clampNano2ParallelImageCount(n: unknown): number {
+  const raw = Math.round(Number(n));
+  if (!Number.isFinite(raw)) return 1;
+  return Math.min(NANO2_MAX_PARALLEL_IMAGES, Math.max(1, raw));
+}
+
 const Nanobanana2GenerationView: React.FC<Nanobanana2GenerationViewProps> = ({ 
   onCreateVideo, 
   onReEdit, 
@@ -105,6 +146,9 @@ const Nanobanana2GenerationView: React.FC<Nanobanana2GenerationViewProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [referenceImages, setReferenceImages] = useState<ImageData[]>([]);
   const [numberOfImages, setNumberOfImages] = useState(1);
+  const setNumberOfImagesSafe = useCallback((value: number) => {
+    setNumberOfImages(clampNano2ParallelImageCount(value));
+  }, []);
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [progress, setProgress] = useState(0);
@@ -120,13 +164,6 @@ const Nanobanana2GenerationView: React.FC<Nanobanana2GenerationViewProps> = ({
     creativeState: CreativeDirectionState;
   } | null>(null);
 
-  // Personal Anti-Captcha Key state
-  const [showPersonalKeyForm, setShowPersonalKeyForm] = useState(false);
-  const [personalKeyInput, setPersonalKeyInput] = useState('');
-  const [showPersonalKey, setShowPersonalKey] = useState(false);
-  const [isSavingPersonalKey, setIsSavingPersonalKey] = useState(false);
-  const [saveKeyStatus, setSaveKeyStatus] = useState<'idle' | 'saving' | 'success' | 'error'>('idle');
-
   // IP and Block Status
   const [userIP, setUserIP] = useState<string | null>(null);
   const [isBlocked, setIsBlocked] = useState(false);
@@ -139,7 +176,9 @@ const Nanobanana2GenerationView: React.FC<Nanobanana2GenerationViewProps> = ({
       if (savedState) {
         const state = JSON.parse(savedState);
         if (state.prompt) setPrompt(state.prompt);
-        if (state.numberOfImages) setNumberOfImages(state.numberOfImages);
+        if (state.numberOfImages != null) {
+          setNumberOfImages(clampNano2ParallelImageCount(state.numberOfImages));
+        }
         if (state.selectedImageIndex) setSelectedImageIndex(state.selectedImageIndex);
         if (state.aspectRatio) setAspectRatio(state.aspectRatio);
         if (state.creativeState) setCreativeState(state.creativeState);
@@ -158,10 +197,10 @@ const Nanobanana2GenerationView: React.FC<Nanobanana2GenerationViewProps> = ({
     }
   }, [prompt, numberOfImages, selectedImageIndex, aspectRatio, creativeState]);
 
-  // Check IP and block status for MONOKLIX users
+  // Check IP and block status for VEOLY-AI users
   useEffect(() => {
     const checkIPAndBlock = async () => {
-      if (BRAND_CONFIG.name === 'MONOKLIX') {
+      if (BRAND_CONFIG.name === 'VEOLY-AI') {
         // Check feature flag - admin can enable/disable blocking modal via brandConfig.ts
         const showBlockingModal = BRAND_CONFIG.featureFlags?.showNanobananaBlockingModal ?? false;
         
@@ -177,11 +216,11 @@ const Nanobanana2GenerationView: React.FC<Nanobanana2GenerationViewProps> = ({
           const ipData = await ipResponse.json();
           setUserIP(ipData.ip);
           
-          // Block all MONOKLIX users if feature flag is enabled
+          // Block all VEOLY-AI users if feature flag is enabled
           setIsBlocked(true);
         } catch (error) {
           console.error('Failed to check IP:', error);
-          // Default to blocked for MONOKLIX if IP check fails (only if flag enabled)
+          // Default to blocked for VEOLY-AI if IP check fails (only if flag enabled)
           setIsBlocked(true);
         }
       }
@@ -212,23 +251,6 @@ const Nanobanana2GenerationView: React.FC<Nanobanana2GenerationViewProps> = ({
       clearPresetPrompt();
     }
   }, [presetPrompt, clearPresetPrompt]);
-
-  // Check if user has personal key on mount and when currentUser changes
-  // For ESAIE, skip personal key requirement (uses master token)
-  useEffect(() => {
-    // ESAIE users don't need personal key - always hide form
-    if (BRAND_CONFIG.name === 'ESAIE') {
-      setShowPersonalKeyForm(false);
-      return;
-    }
-    
-    // MONOKLIX: Show form if no personal key
-    if (!(currentUser.recaptchaToken && currentUser.recaptchaToken.trim())) {
-      setShowPersonalKeyForm(true);
-    } else {
-      setShowPersonalKeyForm(false);
-    }
-  }, [currentUser.recaptchaToken]);
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
@@ -281,9 +303,18 @@ const Nanobanana2GenerationView: React.FC<Nanobanana2GenerationViewProps> = ({
       
       const fullPrompt = [prompt, creativeDetails].filter(Boolean).join(', ');
 
-      // For image-to-image, need to upload reference images first to get mediaId
+      // For image-to-image: prefer OAuth from same Puppeteer unified session as generate (not only Settings token).
       let referenceImageMediaIds: string[] = [];
-      let sharedToken: string | undefined = currentUser.personalAuthToken || undefined;
+      let flowProjectId: string | undefined;
+      let unifiedPack: { oauthToken: string; recaptchaToken: string } | null = null;
+
+      if (isEditing && referenceImages.length > 0) {
+        flowProjectId = uuidv4();
+        unifiedPack = await prepareVeolyNanobanana2UnifiedSession(flowProjectId, (s) => setStatusMessage(s));
+      }
+
+      let sharedToken: string | undefined =
+        unifiedPack?.oauthToken ?? (currentUser.personalAuthToken || undefined);
       let sharedServerUrl: string | undefined = serverUrl;
 
       if (isEditing && referenceImages.length > 0) {
@@ -334,7 +365,10 @@ const Nanobanana2GenerationView: React.FC<Nanobanana2GenerationViewProps> = ({
           sampleCount: 1,
           referenceImageMediaIds: referenceImageMediaIds.length > 0 ? referenceImageMediaIds : undefined,
           authToken: sharedToken,
-          serverUrl: sharedServerUrl
+          serverUrl: sharedServerUrl,
+          ...(unifiedPack && flowProjectId
+            ? { projectId: flowProjectId, unifiedSession: unifiedPack }
+            : {}),
         }
       }, (status) => {
         setStatusMessage(status);
@@ -363,9 +397,11 @@ const Nanobanana2GenerationView: React.FC<Nanobanana2GenerationViewProps> = ({
           return newImages;
         });
         setProgress(prev => prev + 1);
-        return; // Exit early if conversion fails
+        return; // Exit early if conversion fails — no package credit (image not fully delivered in-app)
       }
-      
+
+      await deductPackageCreditsAfterNanobanana2Image(currentUser.id);
+
       await addHistoryItem({
         type: 'Image',
         prompt: `NANOBANANA 2: ${prompt}`,
@@ -398,85 +434,8 @@ const Nanobanana2GenerationView: React.FC<Nanobanana2GenerationViewProps> = ({
     }
   }, [prompt, aspectRatio, creativeState, currentUser, onUserUpdate, referenceImages, isEditing]);
 
-  const handleSavePersonalKey = async () => {
-    // ESAIE users don't need personal key - this function should not be called for ESAIE
-    // But add check for safety
-    if (BRAND_CONFIG.name === 'ESAIE') {
-      console.warn('[Nanobanana2] ESAIE users should not need to save personal key');
-      return;
-    }
-
-    // Frontend validation: Check if input key matches master key - for MONOKLIX users only
-    if (personalKeyInput.trim()) {
-      try {
-        // Get master token from cache or fetch - check for MONOKLIX users (not just Token Ultra active)
-        let masterKey: string | null = null;
-        
-        // Check cache first
-        const cachedMasterToken = sessionStorage.getItem('master_recaptcha_token');
-        if (cachedMasterToken && cachedMasterToken.trim()) {
-          masterKey = cachedMasterToken;
-        } else {
-          // Fetch if not cached
-          const masterTokenResult = await getMasterRecaptchaToken();
-          if (masterTokenResult.success && masterTokenResult.apiKey) {
-            masterKey = masterTokenResult.apiKey;
-          }
-        }
-
-        // Compare if master key exists - Block master key for MONOKLIX users
-        if (masterKey && masterKey.trim() === personalKeyInput.trim()) {
-          setSaveKeyStatus('error');
-          setError('You cannot use the master Anti-Captcha API key. Please use your own personal Anti-Captcha API key.');
-          return;
-        }
-      } catch (validationError) {
-        console.error('Error validating key:', validationError);
-        // Continue with save if validation fails
-      }
-    }
-
-    setIsSavingPersonalKey(true);
-    setSaveKeyStatus('saving');
-    try {
-      const result = await saveUserRecaptchaToken(currentUser.id, personalKeyInput.trim() || null);
-      if (result.success) {
-        onUserUpdate(result.user);
-        setSaveKeyStatus('success');
-        setShowPersonalKeyForm(false);
-        setPersonalKeyInput('');
-        setError(null); // Clear any previous errors
-        setTimeout(() => {
-          setSaveKeyStatus('idle');
-        }, 2000);
-      } else {
-        setSaveKeyStatus('error');
-        // Check for master key error message
-        if (result.message.includes('MASTER_KEY_NOT_ALLOWED')) {
-          setError('You cannot use the master Anti-Captcha API key. Please use your own personal Anti-Captcha API key.');
-        } else {
-          setError(result.message || 'Failed to save key. Please try again.');
-        }
-      }
-    } catch (err) {
-      console.error('Failed to save personal key:', err);
-      setSaveKeyStatus('error');
-      setError('Failed to save key. Please try again.');
-    } finally {
-      setIsSavingPersonalKey(false);
-    }
-  };
-
   const handleGenerate = useCallback(async () => {
-    // For ESAIE, skip personal key check (uses master token automatically)
-    // For MONOKLIX, NANOBANANA PRO requires personal anti-captcha key
-    if (BRAND_CONFIG.name !== 'ESAIE') {
-      if (!(currentUser.recaptchaToken && currentUser.recaptchaToken.trim())) {
-        setError('Personal Anti-Captcha API key is required for NANOBANANA PRO. Please enter your key above.');
-        setShowPersonalKeyForm(true);
-        return;
-      }
-    }
+    // reCAPTCHA: same resolution as video — configure in Settings / header (ApiKeyStatus), not inline here.
 
     if (!prompt.trim() && !isEditing) {
       setError("Please enter a prompt to describe the image you want to create.");
@@ -541,7 +500,7 @@ const Nanobanana2GenerationView: React.FC<Nanobanana2GenerationViewProps> = ({
 
     setIsLoading(false);
     setStatusMessage('');
-  }, [numberOfImages, prompt, generateOneImage, aspectRatio, currentUser.recaptchaToken]);
+  }, [numberOfImages, prompt, generateOneImage, aspectRatio]);
   
   const handleRetry = useCallback(async (index: number) => {
     setImages(prev => {
@@ -632,112 +591,12 @@ const Nanobanana2GenerationView: React.FC<Nanobanana2GenerationViewProps> = ({
         setState={setCreativeState}
         language={language}
         showPose={false}
+        imageCountOptions={NANO2_IMAGE_COUNT_OPTIONS}
         numberOfImages={numberOfImages}
-        setNumberOfImages={setNumberOfImages}
+        setNumberOfImages={setNumberOfImagesSafe}
         aspectRatio={aspectRatio}
         setAspectRatio={setAspectRatio}
       />
-
-      {/* Personal Anti-Captcha Key Form - Required for NANOBANANA PRO (MONOKLIX only) */}
-      {showPersonalKeyForm && BRAND_CONFIG.name !== 'ESAIE' && (
-        <div className="p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
-          <div className="flex items-start gap-3">
-            <InformationCircleIcon className="w-5 h-5 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
-            <div className="flex-1">
-              <h3 className="text-sm font-bold text-blue-800 dark:text-blue-200 mb-2">
-                Personal Anti-Captcha API Key Required
-              </h3>
-              <p className="text-xs text-blue-700 dark:text-blue-300 mb-3">
-                NANOBANANA PRO requires your <strong>personal</strong> Anti-Captcha API key. 
-                This key must be different from the master key. You can get your personal key from{' '}
-                <a href="https://anti-captcha.com" target="_blank" rel="noopener noreferrer" className="underline font-semibold">
-                  anti-captcha.com
-                </a>
-                {currentUser.recaptchaToken && currentUser.recaptchaToken.trim() && (
-                  <span className="block mt-1 font-semibold">Current key: ...{currentUser.recaptchaToken.slice(-6)}</span>
-                )}
-              </p>
-              
-              {/* Show error message if exists */}
-              {error && error.includes('master') && (
-                <div className="mb-3 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
-                  <div className="flex items-start gap-2">
-                    <AlertTriangleIcon className="w-4 h-4 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" />
-                    <p className="text-xs text-red-700 dark:text-red-300 font-semibold">
-                      {error}
-                    </p>
-                  </div>
-                </div>
-              )}
-
-              <div className="space-y-3">
-                <div className="relative">
-                  <input
-                    type={showPersonalKey ? 'text' : 'password'}
-                    value={personalKeyInput}
-                    onChange={(e) => {
-                      setPersonalKeyInput(e.target.value);
-                      setError(null); // Clear error when user types
-                    }}
-                    placeholder={currentUser.recaptchaToken ? "Update your Anti-Captcha API key" : "Enter your Anti-Captcha API key"}
-                    className={`w-full px-4 py-2 pr-10 bg-white dark:bg-neutral-800 border ${
-                      error && error.includes('master') 
-                        ? 'border-red-300 dark:border-red-700' 
-                        : 'border-blue-300 dark:border-blue-700'
-                    } rounded-lg focus:ring-2 focus:ring-blue-500 font-mono text-sm`}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPersonalKey(!showPersonalKey)}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 text-neutral-500 hover:text-neutral-700 dark:hover:text-neutral-300"
-                  >
-                    {showPersonalKey ? <EyeOffIcon className="w-4 h-4" /> : <EyeIcon className="w-4 h-4" />}
-                  </button>
-                </div>
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={handleSavePersonalKey}
-                    disabled={isSavingPersonalKey || !personalKeyInput.trim()}
-                    className="px-4 py-2 bg-blue-600 dark:bg-blue-700 text-white text-sm font-semibold rounded-lg hover:bg-blue-700 dark:hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-                  >
-                    {isSavingPersonalKey ? (
-                      <>
-                        <Spinner />
-                        Saving...
-                      </>
-                    ) : saveKeyStatus === 'success' ? (
-                      <>
-                        <CheckCircleIcon className="w-4 h-4" />
-                        Saved!
-                      </>
-                    ) : (
-                      'Save Key'
-                    )}
-                  </button>
-                  {currentUser.recaptchaToken && currentUser.recaptchaToken.trim() && (
-                    <button
-                      onClick={() => {
-                        setShowPersonalKeyForm(false);
-                        setPersonalKeyInput('');
-                        setSaveKeyStatus('idle');
-                        setError(null);
-                      }}
-                      className="px-4 py-2 bg-neutral-200 dark:bg-neutral-700 text-neutral-700 dark:text-neutral-300 text-sm font-semibold rounded-lg hover:bg-neutral-300 dark:hover:bg-neutral-600 transition-colors"
-                    >
-                      Cancel
-                    </button>
-                  )}
-                </div>
-                {saveKeyStatus === 'error' && error && !error.includes('master') && (
-                  <p className="text-xs text-red-600 dark:text-red-400">
-                    {error}
-                  </p>
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
 
       <div className="pt-4 mt-auto">
         <div className="flex gap-4">
@@ -752,7 +611,7 @@ const Nanobanana2GenerationView: React.FC<Nanobanana2GenerationViewProps> = ({
             Reset
           </button>
         </div>
-        {error && !isLoading && !error.includes('master') && <p className="text-red-500 dark:text-red-400 mt-2 text-center">{error}</p>}
+        {error && !isLoading && <p className="text-red-500 dark:text-red-400 mt-2 text-center">{error}</p>}
       </div>
     </>
   );
@@ -839,7 +698,9 @@ const Nanobanana2GenerationView: React.FC<Nanobanana2GenerationViewProps> = ({
         
         // Convert to base64 for download
         const newImageBase64 = await convertUrlToBase64(newImageUrl);
-        
+
+        await deductPackageCreditsAfterNanobanana2Image(currentUser.id);
+
         // Download the new image
         downloadImage(newImageBase64, `${BRAND_CONFIG.shortName.toLowerCase()}-nanobanana2-${size}-${Date.now()}.png`);
         
@@ -1022,8 +883,8 @@ const Nanobanana2GenerationView: React.FC<Nanobanana2GenerationViewProps> = ({
 
   return (
     <>
-      {/* Google Update Notification Modal - MONOKLIX Only (Controlled by feature flag) */}
-      {BRAND_CONFIG.name === 'MONOKLIX' && (BRAND_CONFIG.featureFlags?.showNanobananaBlockingModal ?? false) && isBlocked && createPortal(
+      {/* Google Update Notification Modal - VEOLY-AI Only (Controlled by feature flag) */}
+      {BRAND_CONFIG.name === 'VEOLY-AI' && (BRAND_CONFIG.featureFlags?.showNanobananaBlockingModal ?? false) && isBlocked && createPortal(
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4 animate-zoomIn" aria-modal="true" role="dialog">
           <div className="bg-white dark:bg-neutral-900 rounded-2xl shadow-2xl w-full max-w-lg p-6 border-[0.5px] border-neutral-200/80 dark:border-neutral-800/80" onClick={e => e.stopPropagation()}>
             <div className="flex flex-col items-center text-center mb-4">
@@ -1031,22 +892,22 @@ const Nanobanana2GenerationView: React.FC<Nanobanana2GenerationViewProps> = ({
                 <AlertTriangleIcon className="h-6 w-6 text-red-600 dark:text-red-400" aria-hidden="true" />
               </div>
               <h3 className="text-xl font-bold text-red-800 dark:text-red-300 mb-3">
-                ⚠️ GOOGLE UPDATE TERKINI - NANOBANANA PRO TIDAK DAPAT DIGUNAKAN BUAT MASA SEKARANG.
+                ⚠️ Google update — NanoBanana Pro is temporarily unavailable
               </h3>
               <div className="text-sm text-neutral-700 dark:text-neutral-300 space-y-3 w-full text-left">
                 <p>
-                  Google telah melakukan update terkini. Sistem telah menyemak IP address anda dan mendapati bahawa pengguna MONOKLIX telah di-block buat masa sekarang.
+                  Google has rolled out a change. We checked your IP address and VEOLY-AI users are currently blocked from this service.
                 </p>
                 <p className="font-semibold text-red-700 dark:text-red-400">
-                  💡 <strong>Penyelesaian:</strong> Jika anda ingin menggunakan NANOBANANA PRO, sila login menggunakan akaun flow anda.
+                  💡 <strong>Workaround:</strong> To use NanoBanana Pro, sign in with your Flow account.
                 </p>
                 {userIP && (
                   <p className="text-xs mt-2 opacity-75 bg-neutral-100 dark:bg-neutral-800 p-2 rounded">
-                    IP Address anda: <code className="bg-white dark:bg-neutral-900 px-1 rounded">{userIP}</code>
+                    Your IP address: <code className="bg-white dark:bg-neutral-900 px-1 rounded">{userIP}</code>
                   </p>
                 )}
                 <p className="mt-4 pt-3 border-t border-neutral-200 dark:border-neutral-700 text-center font-medium text-neutral-600 dark:text-neutral-400">
-                  Sila tunggu update terkini dari pihak kami. Terima kasih.
+                  Thanks for your patience—we will post updates when access is restored.
                 </p>
               </div>
             </div>
@@ -1062,7 +923,7 @@ const Nanobanana2GenerationView: React.FC<Nanobanana2GenerationViewProps> = ({
                 onClick={() => setIsBlocked(false)}
                 className="px-6 py-2 bg-primary-600 text-white font-semibold rounded-lg hover:bg-primary-700 transition-colors"
               >
-                Faham
+                OK
               </button>
             </div>
           </div>

@@ -13,7 +13,7 @@ interface FAQItem {
   id: string;
   title: string;
   description: string;
-  imageUrls?: string[];  // Array untuk support multiple images dengan carousel
+  imageUrls?: string[]; // Optional screenshots (carousel)
   solutions: string[];
 }
 
@@ -30,21 +30,21 @@ const FAQView: React.FC = () => {
           description: 'Token is invalid, exhausted, expired, or authentication credentials are invalid. Resource has been exhausted (e.g. check quota) - Veo or Imagen Service.',
           imageUrls: [],  // Will be populated with images later (carousel)
           solutions: [
-            'Tekan icon REFRESH di header apps. (Logout Jika Perlu)',
-            'Buka setting',
-            'Generate semula NEW token anda',
-            'Health test'
+            'Tap the REFRESH icon in the app header (log out if needed).',
+            'Open Settings.',
+            'Generate a NEW token again.',
+            'Run Health test.'
           ]
         },
         {
           id: 'invalid-argument-renew-token',
-          title: 'Invalid Argument Ketika Renew Token',
+          title: 'Invalid Argument When Renewing Token',
           description: 'Request contains an invalid argument when renewing token',
           solutions: [
-            'Tekan icon REFRESH di header apps. (Logout Jika Perlu)',
-            'Tukar server kat icon kunci',
-            'Generate semula NEW token anda',
-            'Health test'
+            'Tap the REFRESH icon in the app header (log out if needed).',
+            'Switch server using the key icon.',
+            'Generate a NEW token again.',
+            'Run Health test.'
           ]
         }
       ]
@@ -57,12 +57,12 @@ const FAQView: React.FC = () => {
         {
           id: 'media-generation-failed',
           title: 'Media Generation Status Failed',
-          description: 'Video generation failed on the server (MEDIA_GENERATION_STATUS_FAILED). Ini berkaitan dengan Google Server, bukan MONOKLIX. Kami hanya paparkan sahaja.',
+          description: 'Video generation failed on the server (MEDIA_GENERATION_STATUS_FAILED). This comes from Google’s servers, not VEOLY-AI—we only surface the error.',
           solutions: [
-            'Semak Prompt dan Image yang attach tu. Pastikan tidak melanggar policy Google',
-            'Tekan try again untuk generate semula',
-            'Jika masih sama, clear cache Browser anda',
-            'Health test'
+            'Review your prompt and attached images—ensure they comply with Google’s policies.',
+            'Tap try again to regenerate.',
+            'If it persists, clear your browser cache.',
+            'Run Health test.'
           ]
         },
         {
@@ -70,10 +70,10 @@ const FAQView: React.FC = () => {
           title: 'Generation Failed / Load Failed',
           description: 'NANOBANANA 2 generation failed or load failed/generation media error when generating content',
           solutions: [
-            'Semak Prompt dan Image yang attach tu. Pastikan tidak melanggar policy Google',
-            'Tekan try again untuk generate semula',
-            'Jika masih sama, clear cache Browser anda',
-            'Health test'
+            'Review your prompt and attached images—ensure they comply with Google’s policies.',
+            'Tap try again to regenerate.',
+            'If it persists, clear your browser cache.',
+            'Run Health test.'
           ]
         }
       ]
@@ -88,10 +88,10 @@ const FAQView: React.FC = () => {
           title: 'Network Error Retry Failed',
           description: 'Network error occurred and retry attempts failed',
           solutions: [
-            'Tekan icon REFRESH di header apps. (Logout Jika Perlu)',
-            'Tukar server kat icon kunci',
-            'Jika masih sama, clear cache Browser anda',
-            'Health test'
+            'Tap the REFRESH icon in the app header (log out if needed).',
+            'Switch server using the key icon.',
+            'If it persists, clear your browser cache.',
+            'Run Health test.'
           ]
         },
         {
@@ -99,10 +99,10 @@ const FAQView: React.FC = () => {
           title: 'Failed On Server / Failed to Fetch',
           description: 'Request failed on the server or failed to fetch from server (Cybertron N401 error)',
           solutions: [
-            'Tekan icon REFRESH di header apps. (Logout Jika Perlu)',
-            'Tukar server kat icon kunci',
-            'Jika masih sama, clear cache Browser anda',
-            'Health test'
+            'Tap the REFRESH icon in the app header (log out if needed).',
+            'Switch server using the key icon.',
+            'If it persists, clear your browser cache.',
+            'Run Health test.'
           ]
         },
         {
@@ -110,8 +110,8 @@ const FAQView: React.FC = () => {
           title: 'Proxy Returned Non-JSON (404)',
           description: 'Proxy returned non-JSON response with 404 error',
           solutions: [
-            'Slide ke atas sikit check G berapa',
-            'Hantar screenshot pada admin'
+            'Scroll up slightly and confirm which G folder (flow account) is in use.',
+            'Send a screenshot to an admin.'
           ]
         }
       ]
@@ -126,8 +126,8 @@ const FAQView: React.FC = () => {
           title: 'Cookie File Not Found',
           description: 'Cookie file not found error with invalid authentication credentials',
           solutions: [
-            'Slide ke atas sikit check G berapa',
-            'Hantar screenshot pada admin'
+            'Scroll up slightly and confirm which G folder (flow account) is in use.',
+            'Send a screenshot to an admin.'
           ]
         }
       ]
@@ -142,10 +142,10 @@ const FAQView: React.FC = () => {
           title: 'Invalid Argument - Safety Block',
           description: 'Request contains an invalid argument (Safety filter)',
           solutions: [
-            'Semak Prompt dan Image yang attach tu. Pastikan tidak melanggar policy Google',
-            'Tekan try again untuk generate semula',
-            'Jika masih sama, clear cache Browser anda',
-            'Health test'
+            'Review your prompt and attached images—ensure they comply with Google’s policies.',
+            'Tap try again to regenerate.',
+            'If it persists, clear your browser cache.',
+            'Run Health test.'
           ]
         }
       ]
@@ -160,11 +160,11 @@ const FAQView: React.FC = () => {
           title: 'ReCAPTCHA Token Evaluation Failed',
           description: 'ReCAPTCHA token evaluation failed or failed to get reCAPTCHA token from Anti-Captcha service',
           solutions: [
-            'reCAPTCHA kadang memang akan failed. Anda hanya perlu tekan try again untuk generate semula',
-            'Jika masih sama berulang isu reCAPTCHA ni, Buka Setting - Semak API Key Anti-Captcha Anda. Pastikan Valid',
-            'Tekan icon REFRESH di header apps. (Logout Jika Perlu)',
-            'Generate semula NEW token anda',
-            'Health test'
+            'reCAPTCHA can fail occasionally—tap try again to regenerate.',
+            'If reCAPTCHA keeps failing, open Settings and verify your Anti-Captcha API key is valid.',
+            'Tap the REFRESH icon in the app header (log out if needed).',
+            'Generate a NEW token again.',
+            'Run Health test.'
           ]
         }
       ]
@@ -176,12 +176,12 @@ const FAQView: React.FC = () => {
       items: [
         {
           id: 'image-video-not-showing',
-          title: 'Image/Video Tak Keluar',
+          title: 'Image/Video Not Showing',
           description: 'Generated images or videos are not displaying',
           solutions: [
-            'Download Anydesk (Untuk pengguna PC sahaja)',
-            'Copy ID anydesk',
-            'Mesej Admin, bagi ID anydesk'
+            'Download AnyDesk (desktop users only).',
+            'Copy your AnyDesk ID.',
+            'Message an admin and share your AnyDesk ID.'
           ]
         }
       ]
@@ -214,64 +214,63 @@ const FAQView: React.FC = () => {
         <div className="space-y-4">
           <h2 className="text-xl sm:text-2xl font-bold text-neutral-800 dark:text-neutral-200 flex items-center gap-3">
             <InformationCircleIcon className="w-6 h-6 text-primary-600 dark:text-primary-400" />
-            Memahami Platform {BRAND_CONFIG.name}
+            Understanding the {BRAND_CONFIG.name} platform
           </h2>
           
           <div className="space-y-4 text-sm sm:text-base text-neutral-700 dark:text-neutral-300">
             <div className="space-y-3">
               <div>
-                <h4 className="font-bold text-neutral-800 dark:text-neutral-200 mb-2">Apa itu {BRAND_CONFIG.name}?</h4>
+                <h4 className="font-bold text-neutral-800 dark:text-neutral-200 mb-2">What is {BRAND_CONFIG.name}?</h4>
                 <p>
-                  {BRAND_CONFIG.name} adalah platform AI semua-dalam-satu yang membolehkan anda menjana kandungan kreatif menggunakan teknologi AI Google. 
-                  Platform ini menyediakan akses kepada pelbagai model AI termasuk NanoBANANA v1 untuk penjanaan imej, Veo 3 untuk penjanaan video, 
-                  dan Gemini untuk penjanaan teks dan idea kandungan.
+                  {BRAND_CONFIG.name} is an all-in-one AI platform for creating content with Google’s AI technology.
+                  It gives you access to multiple models including NanoBANANA v1 for images, Veo 3 for video,
+                  and Gemini for text and content ideas.
                 </p>
               </div>
               
               <div>
-                <h4 className="font-bold text-neutral-800 dark:text-neutral-200 mb-2">Apakah Tujuan {BRAND_CONFIG.name}?</h4>
+                <h4 className="font-bold text-neutral-800 dark:text-neutral-200 mb-2">What is {BRAND_CONFIG.name} for?</h4>
                 <p>
-                  Tujuan {BRAND_CONFIG.name} adalah untuk memudahkan proses penciptaan kandungan AI dengan menyediakan akses kepada pelbagai alat AI 
-                  dalam satu platform yang mudah digunakan. Platform ini direka untuk membantu pengguna menjana imej, video, dan teks berkualiti tinggi 
-                  tanpa perlu pengetahuan teknikal yang mendalam tentang AI.
+                  {BRAND_CONFIG.name} is built to simplify AI content creation by putting many AI tools in one easy-to-use place.
+                  It helps you produce high-quality images, video, and text without deep technical AI knowledge.
                 </p>
               </div>
             </div>
             
             <div className="pt-2 border-t border-neutral-200 dark:border-neutral-700">
-              <h4 className="font-bold text-neutral-800 dark:text-neutral-200 mb-2">Sistem Token {BRAND_CONFIG.name}</h4>
+              <h4 className="font-bold text-neutral-800 dark:text-neutral-200 mb-2">{BRAND_CONFIG.name} token system</h4>
               <p>
-                Platform {BRAND_CONFIG.name} menggunakan sistem token peribadi untuk setiap pengguna. 
-                Setiap pengguna perlu menjana token sendiri melalui butang "Generate NEW Token" di bahagian Settings → Flow Login. 
-                Token ini adalah unik untuk setiap pengguna dan diperlukan untuk mengakses semua ciri AI. 
-                Anda boleh mengesahkan token aktif dengan mencari ikon <KeyIcon className="w-4 h-4 inline-block text-green-500" /> di penjuru kanan atas skrin.
+                {BRAND_CONFIG.name} uses a personal token for each user.
+                Everyone generates their own token with the “Generate NEW Token” button under Settings → Flow Login.
+                Tokens are unique per user and required for AI features.
+                When your token is active, you’ll see the <KeyIcon className="w-4 h-4 inline-block text-green-500" /> icon in the top-right of the screen.
               </p>
             </div>
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
               <div className="bg-white/60 dark:bg-neutral-800/60 p-4 rounded-xl border border-blue-200 dark:border-blue-800">
-                <h3 className="font-bold text-brand-start mb-2 text-sm sm:text-base">🚗 Platform {BRAND_CONFIG.name}</h3>
+                <h3 className="font-bold text-brand-start mb-2 text-sm sm:text-base">🚗 The {BRAND_CONFIG.name} platform</h3>
                 <p className="text-xs sm:text-sm">
-                  Akaun anda memberi akses kepada papan pemuka, alatan AI (Suite Imej, Video, dan Idea Kandungan), dan Galeri anda.
+                  Your account unlocks the dashboard, AI tools (Image, Video, and Content Ideas suites), and your Gallery.
                 </p>
               </div>
               <div className="bg-white/60 dark:bg-neutral-800/60 p-4 rounded-xl border border-purple-200 dark:border-purple-800">
-                <h3 className="font-bold text-brand-end mb-2 text-sm sm:text-base">⛽ Token {BRAND_CONFIG.name}</h3>
+                <h3 className="font-bold text-brand-end mb-2 text-sm sm:text-base">⛽ {BRAND_CONFIG.name} tokens</h3>
                 <p className="text-xs sm:text-sm">
-                  Token adalah "bahan api" yang diperlukan untuk menjana kandungan. Setiap pengguna perlu menjana token sendiri melalui sistem. Token ini unik untuk setiap pengguna dan tidak dikongsi dengan pengguna lain.
+                  Tokens are the “fuel” for generation. Each user generates their own through the app. Tokens are not shared between users.
                 </p>
               </div>
             </div>
 
             <div className="mt-4 p-4 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
               <p className="text-xs sm:text-sm font-semibold text-yellow-800 dark:text-yellow-200 mb-2">
-                💡 Petua Penting:
+                💡 Quick tips
               </p>
               <ul className="text-xs sm:text-sm text-yellow-700 dark:text-yellow-300 space-y-1 list-disc list-inside">
-                <li>Setiap pengguna perlu menjana token sendiri - token tidak dikongsi antara pengguna</li>
-                <li>Jika anda menghadapi masalah, ikuti langkah penyelesaian di bawah mengikut urutan yang disyorkan</li>
-                <li>Kebanyakan masalah boleh diselesaikan dengan log out log in atau renew token</li>
-                <li>Gunakan butang "Generate NEW Token" untuk menjana token baharu jika token lama tidak berfungsi</li>
+                <li>Every user must use their own token—tokens are not shared.</li>
+                <li>If something breaks, follow the steps below in order.</li>
+                <li>Many issues are fixed by logging out and back in, or renewing your token.</li>
+                <li>Use “Generate NEW Token” if your old token stops working.</li>
               </ul>
             </div>
           </div>
@@ -299,7 +298,7 @@ const FAQView: React.FC = () => {
             <div className="space-y-6">
               {category.items.map((item) => {
                 globalItemIndex++;
-                // Carousel component untuk setiap item
+                // Image carousel per FAQ item
                 const ImageCarousel: React.FC<{ imageUrls?: string[]; itemTitle: string }> = ({ imageUrls, itemTitle }) => {
                   const [currentIndex, setCurrentIndex] = useState(0);
                   const hasImages = imageUrls && imageUrls.length > 0;
@@ -418,7 +417,7 @@ const FAQView: React.FC = () => {
                         <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4 border border-blue-200 dark:border-blue-800">
                           <h4 className="text-sm font-semibold text-blue-900 dark:text-blue-100 mb-3 flex items-center gap-2">
                             <InformationCircleIcon className="w-4 h-4" />
-                            Cara Penyelesaian:
+                            How to fix it
                           </h4>
                           <ol className="space-y-2">
                             {item.solutions.map((solution, solIndex) => (
@@ -444,38 +443,42 @@ const FAQView: React.FC = () => {
         ))}
       </div>
 
-      {/* Footer - PM Admin Section */}
-      <div className="mt-12 pt-8 border-t border-neutral-200 dark:border-neutral-800">
-        <div className="bg-gradient-to-br from-yellow-50 to-orange-50 dark:from-yellow-900/20 dark:to-orange-900/20 rounded-2xl p-6 sm:p-8 border border-yellow-200 dark:border-yellow-800">
-          <div className="space-y-4">
+      {/* Footer - PM Admin Section (typography aligned with intro + category headers) */}
+      <div className="mt-12 border-t border-neutral-200 pt-8 dark:border-neutral-800">
+        <div className="rounded-2xl border border-yellow-200 bg-gradient-to-br from-yellow-50 to-orange-50 p-6 sm:p-8 dark:border-yellow-800 dark:from-yellow-900/20 dark:to-orange-900/20">
+          <div className="space-y-6">
             <div className="flex items-start gap-3">
-              <div className="p-2 bg-yellow-100 dark:bg-yellow-900/30 rounded-lg flex-shrink-0">
-                <InformationCircleIcon className="w-6 h-6 text-yellow-600 dark:text-yellow-400" />
+              <div className="flex shrink-0 rounded-lg bg-yellow-100 p-2 dark:bg-yellow-900/30">
+                <InformationCircleIcon className="h-5 w-5 text-yellow-700 dark:text-yellow-300" aria-hidden />
               </div>
-              <div className="flex-1">
-                <h3 className="text-lg sm:text-xl font-bold text-neutral-800 dark:text-neutral-200 mb-3">
-                  Masih Menghadapi Masalah?
-                </h3>
-                <div className="space-y-3 text-sm sm:text-base text-neutral-700 dark:text-neutral-300">
+              <div className="min-w-0 flex-1 space-y-3">
+                <h2 className="text-xl font-bold text-neutral-800 sm:text-2xl dark:text-neutral-200">
+                  Still stuck?
+                </h2>
+                <div className="space-y-3 text-sm leading-relaxed text-neutral-700 sm:text-base dark:text-neutral-300">
                   <p>
-                    Sebelum PM Admin, penting untuk anda <strong>CLEAR CACHE BROWSER</strong> dan Pastikan <strong>TOKEN Hijau</strong> dan <strong>Anti-CAPTCHA key Valid</strong>. Try again untuk generate semula.
+                    Before messaging an admin, please{' '}
+                    <span className="font-semibold text-neutral-900 dark:text-neutral-100">clear your browser cache</span>
+                    {' '}and confirm your{' '}
+                    <span className="font-semibold text-neutral-900 dark:text-neutral-100">green token</span>
+                    {' '}and{' '}
+                    <span className="font-semibold text-neutral-900 dark:text-neutral-100">Anti-Captcha key</span>
+                    {' '}are valid. Then try again.
                   </p>
-                  <p>
-                    Jika isu anda tidak berjaya diselesaikan sendiri. PM Admin.
-                  </p>
+                  <p>If you still can’t fix it yourself, contact an admin.</p>
                 </div>
               </div>
             </div>
-            
-            <div className="flex justify-center pt-4">
+
+            <div className="flex justify-center border-t border-yellow-200/80 pt-6 dark:border-yellow-800/80">
               <a
                 href="https://t.me/+rrbqeAkFJqFlY2E1"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 px-6 py-3 bg-blue-500 hover:bg-blue-600 dark:bg-blue-600 dark:hover:bg-blue-500 text-white font-semibold rounded-lg transition-colors shadow-md hover:shadow-lg"
+                className="inline-flex w-full max-w-md items-center justify-center gap-2 rounded-xl border border-white/15 bg-gradient-to-r from-brand-start to-brand-end px-5 py-2.5 text-sm font-semibold text-white shadow-[0_8px_24px_rgba(74,108,247,0.25)] transition-all hover:opacity-95 active:scale-[0.99] dark:shadow-[0_8px_28px_rgba(74,108,247,0.35)] sm:w-auto"
               >
-                <TelegramIcon className="w-5 h-5" />
-                PM Admin
+                <TelegramIcon className="h-5 w-5 shrink-0" aria-hidden />
+                Join Telegram Support Group
               </a>
             </div>
           </div>

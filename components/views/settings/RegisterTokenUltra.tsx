@@ -17,15 +17,15 @@ const TOKEN_ULTRA_PACKAGES = [
   {
     id: 'P29',
     label: 'Package 1',
-    price: 39.0,
+    price: 1.5,
     credits: 3000,
     description: 'Best for regular / individual use.',
   },
   {
     id: 'P79',
     label: 'Package 2',
-    price: 79.0,
-    credits: 25000,
+    price: 88.5,
+    credits: 15000,
     description: 'Best for heavy use / agencies.',
   },
 ] as const;
@@ -41,15 +41,20 @@ const RegisterTokenUltra: React.FC<RegisterTokenUltraProps> = ({ currentUser, on
   const TOYYIBPAY_FEE = 1.5;
   
   // Order form state - Get phone from currentUser
-  const [orderFormData, setOrderFormData] = useState<OrderData>({
-    name: currentUser.fullName || currentUser.username || '',
-    email: currentUser.email || '',
-    phone: currentUser.phone || '',
-    amount: 39.0 + TOYYIBPAY_FEE,
-    productName: 'Token Ultra Package 1 - RM39 (3000 credits) + RM1.50 fee',
+  const [orderFormData, setOrderFormData] = useState<OrderData>(() => {
+    const pkg1 = TOKEN_ULTRA_PACKAGES[0];
+    return {
+      name: currentUser.fullName || currentUser.username || '',
+      email: currentUser.email || '',
+      phone: currentUser.phone || '',
+      amount: pkg1.price + TOYYIBPAY_FEE,
+      productName: 'Token Ultra Package 1',
+      productDescription: `Token Ultra Package 1 — RM${pkg1.price.toFixed(2)} + RM${TOYYIBPAY_FEE.toFixed(2)} fee (${pkg1.credits.toLocaleString()} credits)`,
+    };
   });
   const [isCreatingOrder, setIsCreatingOrder] = useState(false);
   const [orderError, setOrderError] = useState<string | null>(null);
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
 
   const handleSubmit = async (e?: React.FormEvent) => {
     if (e) {
@@ -154,75 +159,82 @@ const RegisterTokenUltra: React.FC<RegisterTokenUltraProps> = ({ currentUser, on
     setOrderFormData(prev => ({
       ...prev,
       amount: totalWithFee,
-      productName: `Token Ultra ${pkg.label} - RM${pkg.price.toFixed(2)} (${pkg.credits.toLocaleString()} credits) + RM${TOYYIBPAY_FEE.toFixed(2)} fee`,
+      productName: `Token Ultra ${pkg.label}`,
+      productDescription: `Token Ultra ${pkg.label} — RM${pkg.price.toFixed(2)} + RM${TOYYIBPAY_FEE.toFixed(2)} fee (${pkg.credits.toLocaleString()} credits)`,
     }));
   };
 
-  return (
-    <div className="w-full">
-      {/* Notice: FLOW accounts (limited availability) */}
-      <div
-        role="alert"
-        className="mb-6 flex gap-3 sm:gap-4 rounded-xl border border-amber-300/90 dark:border-amber-600/50 bg-gradient-to-r from-amber-50 to-amber-100/80 dark:from-amber-950/50 dark:to-amber-900/30 px-4 py-3.5 sm:px-5 sm:py-4 shadow-sm"
-      >
-        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-amber-200/80 dark:bg-amber-900/60 text-amber-900 dark:text-amber-200">
-          <AlertTriangleIcon className="h-5 w-5" aria-hidden />
-        </div>
-        <div className="min-w-0 flex-1">
-          <p className="text-sm font-bold text-amber-950 dark:text-amber-100">
-            NOTICE — FLOW ACCOUNT — TOKEN ULTRA CREDIT
-          </p>
-          <ul className="mt-2 list-disc space-y-1.5 pl-4 sm:pl-5 text-[11px] sm:text-xs leading-relaxed text-amber-950/90 dark:text-amber-100/90 marker:text-amber-700 dark:marker:text-amber-300">
-            <li>Due to high demand, we provide FLOW accounts to make access easier for you.</li>
-            <li>
-              FLOW accounts are <span className="font-semibold">limited in availability</span>.
-            </li>
-            <li>
-              <span className="font-semibold">ZERO PROFIT</span> — offered only to help users who need access.
-            </li>
-          </ul>
-        </div>
-      </div>
+  useEffect(() => {
+    if (!showPaymentModal) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setShowPaymentModal(false);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [showPaymentModal]);
 
-      <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
-        {/* Left Panel: Registration / Package Selection */}
-        <div className="bg-white dark:bg-neutral-900 rounded-lg shadow-sm p-6 h-full overflow-y-auto border border-neutral-200 dark:border-neutral-800">
-          <div className="flex items-center gap-3 mb-6">
-            <div className="p-2 bg-primary-100 dark:bg-primary-900/30 rounded-lg">
-              <KeyIcon className="w-6 h-6 text-primary-600 dark:text-primary-400" />
+  return (
+    <div className="flex h-full min-h-0 w-full flex-col">
+      <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border border-neutral-200 bg-white shadow-sm dark:border-neutral-800 dark:bg-neutral-900">
+        <div className="min-h-0 flex-1 overflow-y-auto p-6">
+          <div className="mb-6 flex items-center gap-3">
+            <div className="rounded-lg bg-primary-100 p-2 dark:bg-primary-900/30">
+              <KeyIcon className="h-6 w-6 text-primary-600 dark:text-primary-400" />
             </div>
             <div>
               <h2 className="text-xl font-bold text-neutral-800 dark:text-neutral-200">Token Ultra Credit</h2>
               <p className="text-sm text-neutral-500 dark:text-neutral-400">
-                Choose a package, review the payment amount, then use the form to continue to ToyyibPay.
+                Choose a package, review the payment amount, then open the payment form to continue to ToyyibPay.
               </p>
             </div>
           </div>
 
-          {/* Package Selection */}
-          <div className="bg-neutral-50 dark:bg-neutral-900/40 p-4 rounded-lg border border-dashed border-neutral-300 dark:border-neutral-700 mb-6">
-            <h3 className="text-sm font-semibold text-neutral-800 dark:text-neutral-200 mb-2">
+          {/* Notice: FLOW accounts (limited availability) — inside card, above package selection */}
+          <div
+            role="alert"
+            className="mb-6 flex gap-3 sm:gap-4 rounded-xl border border-amber-300/90 dark:border-amber-600/50 bg-gradient-to-r from-amber-50 to-amber-100/80 dark:from-amber-950/50 dark:to-amber-900/30 px-4 py-3.5 sm:px-5 sm:py-4 shadow-sm"
+          >
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-amber-200/80 dark:bg-amber-900/60 text-amber-900 dark:text-amber-200">
+              <AlertTriangleIcon className="h-5 w-5" aria-hidden />
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-bold text-amber-950 dark:text-amber-100">
+                NOTICE — TOKEN ULTRA CREDIT
+              </p>
+              <ul className="mt-2 list-disc space-y-1.5 pl-4 sm:pl-5 text-[11px] sm:text-xs leading-relaxed text-amber-950/90 dark:text-amber-100/90 marker:text-amber-700 dark:marker:text-amber-300">
+                <li>Due to high demand, we provide FLOW accounts to make access easier for you.</li>
+                <li>
+                  FLOW accounts are <span className="font-semibold">limited in availability</span>.
+                </li>
+                <li>
+                  <span className="font-semibold">ZERO PROFIT</span> — offered only to help users who need access.
+                </li>
+              </ul>
+            </div>
+          </div>
+
+          <div className="mb-6 rounded-lg border border-dashed border-neutral-300 bg-neutral-50 p-4 dark:border-neutral-700 dark:bg-neutral-900/40">
+            <h3 className="mb-2 text-sm font-semibold text-neutral-800 dark:text-neutral-200">
               Choose a credit package
             </h3>
-            <p className="text-[11px] sm:text-xs text-neutral-600 dark:text-neutral-400 mb-3">
+            <p className="mb-3 text-[11px] text-neutral-600 sm:text-xs dark:text-neutral-400">
               Each video generation uses <span className="font-semibold text-primary-600 dark:text-primary-300">20 credits</span>.
               Packages are valid for <span className="font-semibold">26 days</span> from the purchase date.
             </p>
-            {/* Package cards stacked */}
             <div className="grid grid-cols-1 gap-4">
               {TOKEN_ULTRA_PACKAGES.map(pkg => (
                 <button
                   key={pkg.id}
                   type="button"
                   onClick={() => handleSelectPackage(pkg.id)}
-                  className={`w-full text-left rounded-lg border px-4 py-3 transition-all ${
+                  className={`w-full rounded-lg border px-4 py-3 text-left transition-all ${
                     selectedPackage === pkg.id
-                      ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/30 shadow-sm'
-                      : 'border-neutral-200 dark:border-neutral-700 hover:border-primary-400 hover:bg-neutral-50 dark:hover:bg-neutral-900/40'
+                      ? 'border-primary-500 bg-primary-50 shadow-sm dark:bg-primary-900/30'
+                      : 'border-neutral-200 hover:border-primary-400 hover:bg-neutral-50 dark:border-neutral-700 dark:hover:bg-neutral-900/40'
                   }`}
                 >
                   <div className="mb-2">
-                    <span className="block text-[11px] font-semibold uppercase tracking-wide text-neutral-700 dark:text-neutral-200 mb-0.5">
+                    <span className="mb-0.5 block text-[11px] font-semibold uppercase tracking-wide text-neutral-700 dark:text-neutral-200">
                       {pkg.label}
                     </span>
                     <span className="block text-lg font-bold text-primary-600 dark:text-primary-300">
@@ -236,7 +248,7 @@ const RegisterTokenUltra: React.FC<RegisterTokenUltraProps> = ({ currentUser, on
                     <p className="text-[11px] font-semibold text-neutral-700 dark:text-neutral-200">
                       Valid 26 days
                     </p>
-                    <p className="text-[11px] text-neutral-600 dark:text-neutral-400 leading-snug">
+                    <p className="text-[11px] leading-snug text-neutral-600 dark:text-neutral-400">
                       {pkg.description}
                     </p>
                   </div>
@@ -245,138 +257,159 @@ const RegisterTokenUltra: React.FC<RegisterTokenUltraProps> = ({ currentUser, on
             </div>
           </div>
 
-          {/* Payment Information — below package selection */}
-          <div className="bg-neutral-50 dark:bg-neutral-900/40 p-4 rounded-lg border border-neutral-200 dark:border-neutral-700">
-            <h3 className="text-base sm:text-lg font-bold mb-4 text-neutral-800 dark:text-neutral-200 flex items-center gap-2">
-              <SparklesIcon className="w-5 h-5 text-primary-500" />
+          <div className="rounded-lg border border-neutral-200 bg-neutral-50 p-4 dark:border-neutral-700 dark:bg-neutral-900/40">
+            <h3 className="mb-4 flex items-center gap-2 text-base font-bold text-neutral-800 sm:text-lg dark:text-neutral-200">
+              <SparklesIcon className="h-5 w-5 text-primary-500" />
               Payment Information
             </h3>
 
-            <div className="p-3 sm:p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border-[0.5px] border-blue-200 dark:border-blue-800">
+            <div className="rounded-lg border-[0.5px] border-blue-200 bg-blue-50 p-3 sm:p-4 dark:border-blue-800 dark:bg-blue-900/20">
               <div className="flex items-start gap-2 sm:gap-3">
-                <InformationCircleIcon className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
-                <div className="text-[11px] sm:text-xs text-blue-800 dark:text-blue-200">
-                  <p className="text-[11px] sm:text-xs font-semibold mb-1">
+                <InformationCircleIcon className="mt-0.5 h-4 w-4 shrink-0 text-blue-600 sm:h-5 sm:w-5 dark:text-blue-400" />
+                <div className="text-[11px] text-blue-800 sm:text-xs dark:text-blue-200">
+                  <p className="mb-1 text-[11px] font-semibold sm:text-xs">
                     Payment Amount: RM{orderFormData.amount.toFixed(2)}
                   </p>
                   <p className="text-[11px] sm:text-xs">
-                    Use the payment form (right column on wide screens) to continue to ToyyibPay.
+                    Click the button below to open the payment form and continue to ToyyibPay.
                   </p>
                 </div>
               </div>
             </div>
-          </div>
-        </div>
 
-        {/* Right Panel: Order Form */}
-        <div className="flex flex-col gap-6">
-          {/* Order Form */}
-          <div className="bg-white dark:bg-neutral-900 p-6 rounded-lg shadow-sm border border-neutral-200 dark:border-neutral-800">
-            <form onSubmit={handleOrderSubmit} className="space-y-4">
-              {/* Name Field - Read-only */}
-              <div>
-                <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-2">
-                  Full Name
-                </label>
-                <input
-                  type="text"
-                  name="name"
-                  value={orderFormData.name}
-                  disabled
-                  readOnly
-                  className="w-full px-4 py-3 bg-neutral-50 dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-700 rounded-lg text-neutral-500 dark:text-neutral-400 cursor-not-allowed"
-                />
-              </div>
-              
-              {/* Email Field - Read-only */}
-              <div>
-                <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-2">
-                  Email Address
-                </label>
-                <input
-                  type="email"
-                  name="email"
-                  value={orderFormData.email}
-                  disabled
-                  readOnly
-                  className="w-full px-4 py-3 bg-neutral-50 dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-700 rounded-lg text-neutral-500 dark:text-neutral-400 cursor-not-allowed"
-                />
-              </div>
-              
-              {/* Phone Field - Read-only */}
-              <div>
-                <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-2">
-                  Phone Number
-                </label>
-                <input
-                  type="tel"
-                  name="phone"
-                  value={orderFormData.phone}
-                  disabled
-                  readOnly
-                  className="w-full px-4 py-3 bg-neutral-50 dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-700 rounded-lg text-neutral-500 dark:text-neutral-400 cursor-not-allowed"
-                />
-              </div>
-              
-              {/* Amount Field - Package-derived (read-only) */}
-              <div>
-                <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-2">
-                  Amount (RM)
-                </label>
-                <input
-                  type="number"
-                  name="amount"
-                  value={orderFormData.amount}
-                  disabled
-                  readOnly
-                  className="w-full px-4 py-3 bg-neutral-50 dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-700 rounded-lg text-neutral-500 dark:text-neutral-400 cursor-not-allowed"
-                />
-                <p className="mt-1.5 text-xs text-neutral-500 dark:text-neutral-400 italic">
-                  Auto-set by selected package. Includes RM1.50 ToyyibPay processing fee.
-                </p>
-              </div>
-              
-              {/* Error Message */}
-              {orderError && (
-                <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-3 flex items-start gap-2">
-                  <AlertTriangleIcon className="w-5 h-5 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" />
-                  <p className="text-sm text-red-800 dark:text-red-200">{orderError}</p>
-                </div>
-              )}
-              
-              {/* Submit Button */}
-              <button
-                type="submit"
-                disabled={isCreatingOrder}
-                className="w-full flex items-center justify-center gap-2 bg-purple-600 dark:bg-purple-700 text-white text-sm font-semibold py-2.5 px-4 rounded-lg hover:bg-purple-700 dark:hover:bg-purple-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {isCreatingOrder ? (
-                  <>
-                    <Spinner />
-                    <span>Creating Order...</span>
-                  </>
-                ) : (
-                  <span>Proceed to Payment</span>
-                )}
-              </button>
-
-              {/* Payment Instructions */}
-              <div className="mt-4 p-3 sm:p-4 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg border-[0.5px] border-yellow-200 dark:border-yellow-800">
-                <div className="flex items-start gap-2 sm:gap-3">
-                  <InformationCircleIcon className="w-4 h-4 sm:w-5 sm:h-5 text-yellow-600 dark:text-yellow-400 flex-shrink-0 mt-0.5" />
-                  <div className="text-[11px] sm:text-xs text-yellow-800 dark:text-yellow-200">
-                    <p className="text-[11px] sm:text-xs font-semibold mb-1">Secure Payment via ToyyibPay</p>
-                    <p className="text-[11px] sm:text-xs">
-                      After clicking &quot;Proceed to Payment&quot;, you will be redirected to ToyyibPay to complete your payment.
-                      Once payment is successful, your Token Ultra registration will be activated automatically.
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </form>
+            <button
+              type="button"
+              onClick={() => {
+                setOrderError(null);
+                setShowPaymentModal(true);
+              }}
+              className="mt-4 flex w-full items-center justify-center gap-2 rounded-lg bg-purple-600 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-purple-700 dark:bg-purple-700 dark:hover:bg-purple-600"
+            >
+              Proceed to Payment
+            </button>
           </div>
         </div>
       </div>
+
+      {showPaymentModal &&
+        createPortal(
+          <div
+            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[60] flex items-center justify-center p-4 animate-zoomIn"
+            aria-modal="true"
+            role="dialog"
+            aria-labelledby="token-ultra-payment-title"
+            onClick={() => setShowPaymentModal(false)}
+          >
+            <div
+              className="bg-white dark:bg-neutral-900 p-6 rounded-lg shadow-xl border border-neutral-200 dark:border-neutral-800 w-full max-w-md max-h-[min(90vh,720px)] overflow-y-auto"
+              onClick={e => e.stopPropagation()}
+            >
+              <div className="flex justify-between items-start gap-3 mb-4">
+                <h3 id="token-ultra-payment-title" className="text-lg font-bold text-neutral-800 dark:text-neutral-200">
+                  Payment details
+                </h3>
+                <button
+                  type="button"
+                  onClick={() => setShowPaymentModal(false)}
+                  className="p-1 rounded-full hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors shrink-0"
+                  aria-label="Close"
+                >
+                  <XIcon className="w-5 h-5" />
+                </button>
+              </div>
+              <form onSubmit={handleOrderSubmit} className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-2">
+                    Full Name
+                  </label>
+                  <input
+                    type="text"
+                    name="name"
+                    value={orderFormData.name}
+                    disabled
+                    readOnly
+                    className="w-full px-4 py-3 bg-neutral-50 dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-700 rounded-lg text-neutral-500 dark:text-neutral-400 cursor-not-allowed"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-2">
+                    Email Address
+                  </label>
+                  <input
+                    type="email"
+                    name="email"
+                    value={orderFormData.email}
+                    disabled
+                    readOnly
+                    className="w-full px-4 py-3 bg-neutral-50 dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-700 rounded-lg text-neutral-500 dark:text-neutral-400 cursor-not-allowed"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-2">
+                    Phone Number
+                  </label>
+                  <input
+                    type="tel"
+                    name="phone"
+                    value={orderFormData.phone}
+                    disabled
+                    readOnly
+                    className="w-full px-4 py-3 bg-neutral-50 dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-700 rounded-lg text-neutral-500 dark:text-neutral-400 cursor-not-allowed"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-2">
+                    Amount (RM)
+                  </label>
+                  <input
+                    type="number"
+                    name="amount"
+                    value={orderFormData.amount}
+                    disabled
+                    readOnly
+                    className="w-full px-4 py-3 bg-neutral-50 dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-700 rounded-lg text-neutral-500 dark:text-neutral-400 cursor-not-allowed"
+                  />
+                  <p className="mt-1.5 text-xs text-neutral-500 dark:text-neutral-400 italic">
+                    Auto-set by selected package. Includes RM1.50 ToyyibPay processing fee.
+                  </p>
+                </div>
+                {orderError && (
+                  <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-3 flex items-start gap-2">
+                    <AlertTriangleIcon className="w-5 h-5 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" />
+                    <p className="text-sm text-red-800 dark:text-red-200">{orderError}</p>
+                  </div>
+                )}
+                <button
+                  type="submit"
+                  disabled={isCreatingOrder}
+                  className="w-full flex items-center justify-center gap-2 bg-purple-600 dark:bg-purple-700 text-white text-sm font-semibold py-2.5 px-4 rounded-lg hover:bg-purple-700 dark:hover:bg-purple-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isCreatingOrder ? (
+                    <>
+                      <Spinner />
+                      <span>Creating Order...</span>
+                    </>
+                  ) : (
+                    <span>Proceed to Payment</span>
+                  )}
+                </button>
+                <div className="p-3 sm:p-4 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg border-[0.5px] border-yellow-200 dark:border-yellow-800">
+                  <div className="flex items-start gap-2 sm:gap-3">
+                    <InformationCircleIcon className="w-4 h-4 sm:w-5 sm:h-5 text-yellow-600 dark:text-yellow-400 flex-shrink-0 mt-0.5" />
+                    <div className="text-[11px] sm:text-xs text-yellow-800 dark:text-yellow-200">
+                      <p className="text-[11px] sm:text-xs font-semibold mb-1">Secure Payment via ToyyibPay</p>
+                      <p className="text-[11px] sm:text-xs">
+                        After clicking &quot;Proceed to Payment&quot;, you will be redirected to ToyyibPay to complete your payment.
+                        Once payment is successful, your Token Ultra registration will be activated automatically.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </form>
+            </div>
+          </div>,
+          document.body
+        )}
 
       {/* Telegram Share Modal */}
       {showTelegramModal && (
@@ -417,7 +450,7 @@ Email: ${userEmail}
 
 Please find payment proof attached.`;
 
-  const telegramUrl = `https://t.me/monoklix_support?text=${encodeURIComponent(message)}`;
+  const telegramUrl = `https://t.me/veoly_support?text=${encodeURIComponent(message)}`;
 
   const handleClose = () => {
     // Set message in sessionStorage before reload
@@ -477,7 +510,7 @@ Please find payment proof attached.`;
 
         <div className="space-y-4">
           <p className="text-sm text-neutral-600 dark:text-neutral-400">
-            Share your registration details to <strong>@monoklix_support</strong> via Telegram. The message is pre-filled with your information.
+            Share your registration details to <strong>@veoly_support</strong> via Telegram. The message is pre-filled with your information.
           </p>
 
           <div className="bg-neutral-50 dark:bg-neutral-800/50 rounded-lg p-4 border-[0.5px] border-neutral-200/80 dark:border-neutral-700/80">

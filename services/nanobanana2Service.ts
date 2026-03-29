@@ -11,6 +11,10 @@ export interface Nanobanana2Config {
   imageSize?: '1K' | '2K' | '4K'; // Image size for generation (if API supports it)
   authToken?: string;
   serverUrl?: string;
+  /** Must match bridge unified session + reference uploads (defaults to new uuid). */
+  projectId?: string;
+  /** Same OAuth + reCAPTCHA from `prepareVeolyNanobanana2UnifiedSession(projectId)` after uploading refs — avoids a second Puppeteer run. */
+  unifiedSession?: { oauthToken: string; recaptchaToken: string };
 }
 
 export interface Nanobanana2Request {
@@ -113,7 +117,7 @@ export const generateImageWithNanobanana2 = async (
   console.log(`[NANOBANANA 2 Service] 🍌 Preparing ${isImageToImage ? 'image-to-image' : 'text-to-image'} generation request...`);
 
   const sessionId = `;${Date.now()}`;
-  const projectId = uuidv4();
+  const projectId = config.projectId?.trim() || uuidv4();
   const aspectRatioEnum = getAspectRatioEnum(config.aspectRatio);
   const sampleCount = config.sampleCount || 1; // Default to 1 image
 
@@ -191,7 +195,8 @@ export const generateImageWithNanobanana2 = async (
       logContext,
       config.authToken,
       onStatusUpdate,
-      config.serverUrl
+      config.serverUrl,
+      config.unifiedSession
     );
 
     const response = data as Nanobanana2Response;

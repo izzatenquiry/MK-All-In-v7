@@ -70,7 +70,7 @@ const ConsoleLogSidebar: React.FC<ConsoleLogSidebarProps> = ({ isOpen, onClose }
     const filename = `console-logs-${now.toISOString().replace(/[:.]/g, '-')}.txt`;
 
     const header = [
-      'MONOklix - System Activity Log',
+      'VEOLY-AI — System Activity Log',
       `ExportedAt: ${now.toISOString()}`,
       `VisibleLogs: ${filteredLogs.length} (showDebugLogs=${showDebugLogs ? 'true' : 'false'})`,
       '',

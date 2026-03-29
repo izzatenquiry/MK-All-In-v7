@@ -5,7 +5,6 @@ import { TrashIcon, PlusIcon, EyeIcon, EyeOffIcon, CheckCircleIcon, XIcon, Penci
 import Spinner from '../common/Spinner';
 import ConfirmationModal from '../common/ConfirmationModal';
 import { type Language } from '../../types';
-import { BRAND_CONFIG } from '../../services/brandConfig';
 
 interface FlowAccountViewProps {
   language: Language;
@@ -38,10 +37,8 @@ const FlowAccountView: React.FC<FlowAccountViewProps> = ({ language }) => {
     setLoading(false);
   };
 
-  // Generate next available code (E1, E2, E3 for ESAIE or G1, G2, G3 for MONOKLIX)
   const generateNextCode = (existingAccounts: FlowAccount[]): string => {
-    const isEsaie = BRAND_CONFIG.name === 'ESAIE';
-    const prefix = isEsaie ? 'E' : 'G';
+    const prefix = 'G';
     const regex = new RegExp(`^${prefix}\\d+$`);
     
     // Get all existing codes (both active and inactive to avoid duplicates)
@@ -75,7 +72,6 @@ const FlowAccountView: React.FC<FlowAccountViewProps> = ({ language }) => {
       }
     }
 
-    const prefix = BRAND_CONFIG.name === 'ESAIE' ? 'E' : 'G';
     return `${prefix}${nextNumber}`;
   };
 
@@ -192,7 +188,7 @@ const FlowAccountView: React.FC<FlowAccountViewProps> = ({ language }) => {
       <div className="mb-6">
         <h2 className="text-xl font-semibold mb-2">Flow Account Management</h2>
         <p className="text-sm text-neutral-500 dark:text-neutral-400 mb-4">
-          Manage Google Flow accounts. Each account can be assigned to up to 10 users ({BRAND_CONFIG.name === 'ESAIE' ? 'E1, E2, E3' : 'G1, G2, G3'}, etc.).
+          Manage Google Flow accounts. Each account can be assigned to up to 10 users (G1, G2, G3, etc.).
         </p>
       </div>
 
@@ -358,7 +354,7 @@ const FlowAccountView: React.FC<FlowAccountViewProps> = ({ language }) => {
                   </div>
                 </div>
                 <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">
-                  Code will be automatically generated ({BRAND_CONFIG.name === 'ESAIE' ? 'E1, E2, E3' : 'G1, G2, G3'}, etc.) based on existing codes
+                  Code will be automatically generated (G1, G2, G3, etc.) based on existing codes
                 </p>
               </div>
               

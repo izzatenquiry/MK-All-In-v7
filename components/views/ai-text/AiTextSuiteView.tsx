@@ -2,12 +2,12 @@
 import React, { useState, useEffect } from 'react';
 import ContentIdeasView from './ContentIdeasView';
 import MarketingCopyView from './MarketingCopyView';
-import StaffMonoklixView from './StaffMonoklixView';
+import StaffVeolyView from './StaffVeolyView';
 import Tabs, { type Tab } from '../../common/Tabs';
 import { type User, type Language } from '../../../types';
 import { BRAND_CONFIG } from '../../../services/brandConfig';
 
-type TabId = 'staff-monoklix' | 'content-ideas' | 'marketing-copy';
+type TabId = 'staff-veoly' | 'content-ideas' | 'marketing-copy';
 
 interface AiTextSuiteViewProps {
     currentUser: User;
@@ -15,24 +15,24 @@ interface AiTextSuiteViewProps {
 }
 
 const AiTextSuiteView: React.FC<AiTextSuiteViewProps> = ({ currentUser, language }) => {
-    const [activeTab, setActiveTab] = useState<TabId>('staff-monoklix');
+    const [activeTab, setActiveTab] = useState<TabId>('staff-veoly');
 
     const tabs: Tab<TabId>[] = [
-        { id: 'staff-monoklix', label: `Staff ${BRAND_CONFIG.name}` },
+        { id: 'staff-veoly', label: `Staff ${BRAND_CONFIG.name}` },
         { id: 'content-ideas', label: "Content Ideas" },
         { id: 'marketing-copy', label: "Marketing Copy" },
     ];
 
     const renderActiveTabContent = () => {
         switch (activeTab) {
-            case 'staff-monoklix':
-                return <StaffMonoklixView language={language} />;
+            case 'staff-veoly':
+                return <StaffVeolyView language={language} />;
             case 'content-ideas':
                 return <ContentIdeasView language={language} />;
             case 'marketing-copy':
                 return <MarketingCopyView language={language} />;
             default:
-                return <StaffMonoklixView language={language} />;
+                return <StaffVeolyView language={language} />;
         }
     };
 

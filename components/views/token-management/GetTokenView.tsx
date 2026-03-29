@@ -4,7 +4,6 @@ import { type Language } from '../../../types';
 import Spinner from '../../common/Spinner';
 import { KeyIcon, CheckCircleIcon, AlertTriangleIcon, XIcon, ClipboardIcon, RefreshCwIcon, SearchIcon, SparklesIcon } from '../../Icons';
 import { runComprehensiveTokenTest, type TokenTestResult } from '../../../services/imagenV3Service';
-import { BRAND_CONFIG } from '../../../services/brandConfig';
 
 interface GetTokenViewProps {
   language: Language;
@@ -46,18 +45,11 @@ const GetTokenView: React.FC<GetTokenViewProps> = ({ language }) => {
     }
   };
 
-  // Filter folders based on brand: ESAIE shows E folders, MONOKLIX shows G folders
   const filteredCookiesByFolder = useMemo(() => {
-    const isEsaie = BRAND_CONFIG.name === 'ESAIE';
     const filtered: Record<string, BackendCookie[]> = {};
     
     Object.entries(cookiesByFolder).forEach(([folderName, cookies]) => {
-      // For ESAIE: only show folders starting with 'E' (E1, E2, E10, etc.)
-      // For MONOKLIX: only show folders starting with 'G' (G1, G2, G10, etc.)
-      // Also keep 'Root' folder for both brands
-      const shouldInclude = folderName === 'Root' || 
-        (isEsaie && /^E\d+$/i.test(folderName)) || 
-        (!isEsaie && /^G\d+$/i.test(folderName));
+      const shouldInclude = folderName === 'Root' || /^G\d+$/i.test(folderName);
       
       if (shouldInclude) {
         filtered[folderName] = cookies;

@@ -386,7 +386,7 @@ const GalleryView: React.FC<GalleryViewProps> = ({ onCreateVideo, onReEdit, lang
                                 onClick={(e) => handleActionClick(e, () => onCreateVideo({ prompt: item.prompt, image: { base64: item.result as string, mimeType: 'image/png' } }))}
                                 className="p-2 text-white rounded-full transition-colors transform hover:scale-110 hover:opacity-100"
                                 style={{
-                                    backgroundColor: (BRAND_CONFIG.name === 'ESAIE' || BRAND_CONFIG.name === 'MONOKLIX') ? '#16a34a' : 'var(--primary-600, #4A6CF7)',
+                                    backgroundColor: BRAND_CONFIG.name === 'VEOLY-AI' ? '#16a34a' : 'var(--primary-600, #4A6CF7)',
                                     opacity: 0.9,
                                 }}
                                 title={T.createVideo}

@@ -2,11 +2,11 @@
  * Bridge Server Service - Fetch reCAPTCHA tokens from Auto Generator Service
  * 
  * - Localhost: http://localhost:6003
- * - Production: https://captcha.monoklix.com
+ * - Production: set VITE_BRIDGE_PRODUCTION_URL or default below
  * No Chrome Extension required - fully automated.
  */
 
-import { isLocalhost } from './environment';
+import { isElectron, isLocalhost } from './environment';
 
 const DEFAULT_BRIDGE_PORT = 6003;
 
@@ -17,13 +17,15 @@ export interface BridgeUnifiedVideoSession {
   cookieFileName?: string;
   credits?: number | null;
 }
-const PRODUCTION_BRIDGE_URL = 'https://captcha.monoklix.com';
+const PRODUCTION_BRIDGE_URL =
+  ((import.meta as any).env?.VITE_BRIDGE_PRODUCTION_URL as string | undefined) || 'https://captcha.veoly-ai.com';
 
 export function getBridgeServerUrl(): string {
   if (typeof window === 'undefined') {
     return process.env.VITE_BRIDGE_URL || PRODUCTION_BRIDGE_URL;
   }
-  if (isLocalhost()) {
+  // Electron loads file:// (or custom protocol) — hostname is not localhost; still use local bridge like getVeoProxyUrl / token gen.
+  if (isLocalhost() || isElectron()) {
     const customPort = localStorage.getItem('bridgeServerPort');
     return customPort ? `http://localhost:${customPort}` : `http://localhost:${DEFAULT_BRIDGE_PORT}`;
   }
@@ -150,8 +152,9 @@ export async function getTokenFromBridge(
 }
 
 /**
- * Unified video session: login (optional) → save flow_unified_*.json → Bearer via Flask :1247 → reCAPTCHA on same page.
- * Veo (MONOKLIX): unified mode is on by default in apiClient. Opt out: localStorage.setItem('bridgeUnifiedVideoSession', '0').
+ * Unified Flow session: login (optional) → save flow_unified_*.json → Bearer via Flask :1247 → reCAPTCHA on same page.
+ * VEOLY-AI — Veo + NanoBanana Pro: unified mode is on by default in apiClient (same fresh session; avoids stale flow_*.json).
+ * Opt out: localStorage.setItem('bridgeUnifiedVideoSession', '0').
  * Cookie-only (no Puppeteer password login): localStorage.setItem('bridgeUnifiedVideoSessionFullLogin', '0').
  */
 export async function getBridgeUnifiedVideoSession(
@@ -253,7 +256,7 @@ export async function checkBridgeServer(config?: BridgeServerConfig): Promise<bo
       console.error('[Bridge Server] ❌ Timeout: Bridge server did not respond within 5 seconds');
     } else if (error.message?.includes('Failed to fetch')) {
       console.error('[Bridge Server] ❌ Network error: Bridge server may not be running on', bridgeUrl);
-      console.error('[Bridge Server] 💡 Localhost: start bridge (port 6003) and auto-generator. Production: ensure https://captcha.monoklix.com is reachable.');
+      console.error('[Bridge Server] 💡 Localhost: start bridge (port 6003) and auto-generator. Production: ensure your bridge URL (VITE_BRIDGE_PRODUCTION_URL / captcha.veoly-ai.com) is reachable.');
     }
     return false;
   }

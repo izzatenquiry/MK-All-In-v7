@@ -3,14 +3,13 @@ import React, { useState, useEffect } from 'react';
 import ImageEnhancerView from './ImageEnhancerView';
 import ImageGenerationView from './ImageGenerationView';
 import Nanobanana2GenerationView from './Nanobanana2GenerationView';
-import BackgroundRemoverView from './BackgroundRemoverView';
 import ProductPhotoView from './ProductPhotoView';
 import TiktokAffiliateView from './TiktokAffiliateView';
 import AnglePhotosView from './AnglePhotosView';
 import Tabs, { type Tab } from '../../common/Tabs';
 import { type Language, type User } from '../../../types';
 
-type TabId = 'generation' | 'nanobanana' | 'enhancer' | 'remover' | 'product' | 'model' | 'angle';
+type TabId = 'generation' | 'nanobanana' | 'enhancer' | 'product' | 'model' | 'angle';
 
 interface VideoGenPreset {
   prompt: string;
@@ -39,12 +38,11 @@ const AiImageSuiteView: React.FC<AiImageSuiteViewProps> = ({ onCreateVideo, onRe
 
     const tabs: Tab<TabId>[] = [
         { id: 'generation', label: "NanoBanana" },
+        { id: 'nanobanana', label: "NanoBanana PRO" },
         { id: 'angle', label: "Angle Photos" },
         { id: 'product', label: "Product Photos" },
         { id: 'model', label: "Model Photos" },
         { id: 'enhancer', label: "Enhancer" },
-        { id: 'remover', label: "Bg Remover" },
-        { id: 'nanobanana', label: "NanoBanana PRO" },
     ];
 
     useEffect(() => {
@@ -80,8 +78,6 @@ const AiImageSuiteView: React.FC<AiImageSuiteViewProps> = ({ onCreateVideo, onRe
                         />;
             case 'enhancer':
                 return <ImageEnhancerView {...commonProps} />;
-            case 'remover':
-                return <BackgroundRemoverView {...commonProps} />;
             case 'product':
                 return <ProductPhotoView {...commonProps} />;
             case 'model':

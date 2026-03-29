@@ -22,13 +22,13 @@ export const isLocalhost = (): boolean => {
 export const isProduction = (): boolean => {
   if (typeof window === 'undefined') return false;
   const hostname = window.location.hostname;
-  const isEsaie = BRAND_CONFIG.name === 'ESAIE';
-  
-  if (isEsaie) {
-    return hostname === 'app.esaie.tech' || hostname === 'dev.esaie.tech' || hostname.includes('.esaie.tech');
-  } else {
-    return hostname === 'app.monoklix.com' || hostname === 'dev.monoklix.com' || hostname.includes('.monoklix.com');
-  }
+  const d = BRAND_CONFIG.domain;
+  return (
+    hostname === `app.${d}` ||
+    hostname === `dev.${d}` ||
+    hostname.endsWith(`.${d}`) ||
+    hostname === d
+  );
 };
 
 export const getEnvironment = (): 'electron' | 'web-localhost' | 'web-production' => {

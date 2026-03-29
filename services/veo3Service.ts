@@ -3,11 +3,15 @@ import { v4 as uuidv4 } from 'uuid';
 import { executeProxiedRequest } from './apiClient';
 
 interface Veo3Config {
-  authToken: string;
+  authToken?: string;
   aspectRatio: 'landscape' | 'portrait';
   seed?: number;
   useStandardModel?: boolean;
   serverUrl?: string;
+  /** Same `projectId` as `prepareVeolyVeoUnifiedSession` + upload `clientContext` (I2V unified). */
+  projectId?: string;
+  /** From `prepareVeolyVeoUnifiedSession` — first generate only; omitted on ultra→standard retry (fresh bridge + new projectId). */
+  unifiedSession?: { oauthToken: string; recaptchaToken: string };
 }
 
 interface VideoGenerationRequest {
@@ -119,7 +123,8 @@ export const generateVideoWithVeo3 = async (
       logContext,
       config.authToken, 
       onStatusUpdate,
-      config.serverUrl // Pass specific server URL if provided
+      config.serverUrl,
+      config.unifiedSession
     );
     
     console.log('[VEO Service] ✅ ULTRA model succeeded. Operations:', data.operations?.length || 0);
@@ -166,7 +171,8 @@ export const generateVideoWithVeo3 = async (
         logContext,
         config.authToken, 
         onStatusUpdate,
-        config.serverUrl
+        config.serverUrl,
+        undefined
       );
       
       console.log('[VEO Service] ✅ Non-ULTRA model succeeded. Operations:', data.operations?.length || 0);
@@ -215,8 +221,10 @@ export const uploadImageForVeo3 = async (
   mimeType: string,
   aspectRatio: 'landscape' | 'portrait',
   onStatusUpdate?: (status: string) => void,
-  authToken?: string, // New optional parameter to force a specific token
-  serverUrl?: string  // New optional parameter to force a specific server
+  authToken?: string,
+  serverUrl?: string,
+  /** Align with `prepareVeolyVeoUnifiedSession` / generate `clientContext.projectId` when using bridge OAuth. */
+  clientProjectId?: string
 ): Promise<{ mediaId: string; successfulToken: string; successfulServerUrl: string }> => {
   console.log(`📤 [VEO Service] Preparing to upload image for VEO. MimeType: ${mimeType}`);
   // Note: Upload endpoint usually expects the ENUM string, unlike generation endpoint.
@@ -226,6 +234,7 @@ export const uploadImageForVeo3 = async (
 
   const persistedProjectId =
     typeof window !== 'undefined' ? localStorage.getItem('antiCaptchaProjectId') : null;
+  const effectiveProjectId = clientProjectId?.trim() || persistedProjectId || undefined;
 
   const requestBody = {
     imageInput: {
@@ -237,7 +246,7 @@ export const uploadImageForVeo3 = async (
     clientContext: {
       sessionId: `;${Date.now()}`, // Required: session ID with timestamp
       tool: 'ASSET_MANAGER',
-      ...(persistedProjectId ? { projectId: persistedProjectId } : {})
+      ...(effectiveProjectId ? { projectId: effectiveProjectId } : {})
     }
   };
 

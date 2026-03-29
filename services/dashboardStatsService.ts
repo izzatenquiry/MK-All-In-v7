@@ -3,7 +3,6 @@ import { getAllUsers } from './userService';
 import { getAllFlowAccounts } from './flowAccountService';
 import { getApiRequests } from './apiRequestService';
 import { getCookieUsageStatistics } from './cookieUsageService';
-import { BRAND_CONFIG } from './brandConfig';
 
 export interface DashboardStats {
   total_users: number;
@@ -68,10 +67,9 @@ export const getDashboardStats = async (cookiesByFolder?: Record<string, any[]>)
     const total_requests = apiRequestsData.total_requests || 0;
 
     // Calculate flow account slots
-    const isEsaie = BRAND_CONFIG.name === 'ESAIE';
     const brandFlowAccounts = flowAccountsData.filter((acc: any) => {
       const code = acc.code?.toUpperCase() || '';
-      return isEsaie ? /^E\d+$/.test(code) : /^G\d+$/.test(code);
+      return /^G\d+$/.test(code);
     });
 
     let assigned_flow_slots = 0;

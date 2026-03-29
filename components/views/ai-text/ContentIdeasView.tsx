@@ -24,7 +24,7 @@ const downloadText = (text: string, fileName: string) => {
     URL.revokeObjectURL(url);
 };
 
-const languages = ["English", "Bahasa Malaysia"];
+const languages = ["English", "Malay"];
 const SESSION_KEY = 'contentIdeasState';
 
 interface ContentIdeasViewProps {
@@ -37,7 +37,7 @@ const ContentIdeasView: React.FC<ContentIdeasViewProps> = ({ language }) => {
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [copied, setCopied] = useState(false);
-    const [selectedLanguage, setSelectedLanguage] = useState("Bahasa Malaysia");
+    const [selectedLanguage, setSelectedLanguage] = useState("Malay");
     
     useEffect(() => {
         try {
@@ -46,7 +46,9 @@ const ContentIdeasView: React.FC<ContentIdeasViewProps> = ({ language }) => {
                 const { topic, response, selectedLanguage } = JSON.parse(savedState);
                 if (topic) setTopic(topic);
                 if (response) setResponse(response);
-                if (selectedLanguage) setSelectedLanguage(selectedLanguage);
+                if (selectedLanguage) {
+                    setSelectedLanguage(selectedLanguage === 'Bahasa Malaysia' ? 'Malay' : selectedLanguage);
+                }
             }
         } catch (e) { console.error("Failed to load state from session storage", e); }
     }, []);
@@ -102,7 +104,7 @@ const ContentIdeasView: React.FC<ContentIdeasViewProps> = ({ language }) => {
         setTopic('');
         setResponse(null);
         setError(null);
-        setSelectedLanguage("Bahasa Malaysia");
+        setSelectedLanguage("Malay");
         sessionStorage.removeItem(SESSION_KEY);
     }, []);
 
@@ -113,7 +115,7 @@ const ContentIdeasView: React.FC<ContentIdeasViewProps> = ({ language }) => {
                 <p className="text-sm sm:text-base text-neutral-500 dark:text-neutral-400 mt-1">Discover trending and engaging content ideas for any topic.</p>
             </div>
             
-            <div className="flex-1 flex flex-col justify-center gap-4">
+            <div className="flex flex-col gap-4">
                 <div>
                     <label htmlFor="topic-input" className="block text-sm font-medium text-gray-600 dark:text-gray-400 mb-2">Your Topic or Niche</label>
                     <textarea
@@ -122,7 +124,7 @@ const ContentIdeasView: React.FC<ContentIdeasViewProps> = ({ language }) => {
                         onChange={(e) => setTopic(e.target.value)}
                         placeholder={'e.g., "digital marketing for small business" or "healthy breakfast recipes"'}
                         rows={4}
-                        className="w-full bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg p-3 focus:ring-2 focus:ring-primary-500 focus:outline-none transition"
+                        className="w-full bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg p-3 text-sm focus:ring-2 focus:ring-primary-500 focus:outline-none transition"
                     />
                 </div>
                 <div>
@@ -131,7 +133,7 @@ const ContentIdeasView: React.FC<ContentIdeasViewProps> = ({ language }) => {
                         id="language-select"
                         value={selectedLanguage}
                         onChange={(e) => setSelectedLanguage(e.target.value)}
-                        className="w-full bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg p-3 focus:ring-2 focus:ring-primary-500 focus:outline-none transition"
+                        className="w-full bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg p-3 text-sm focus:ring-2 focus:ring-primary-500 focus:outline-none transition"
                     >
                         {languages.map(lang => <option key={lang} value={lang}>{lang}</option>)}
                     </select>
@@ -150,7 +152,7 @@ const ContentIdeasView: React.FC<ContentIdeasViewProps> = ({ language }) => {
                     <button
                         onClick={handleReset}
                         disabled={isLoading}
-                        className="flex-shrink-0 bg-neutral-200 dark:bg-neutral-700 text-neutral-700 dark:text-neutral-200 font-semibold py-3 px-4 rounded-lg hover:bg-neutral-300 dark:hover:bg-neutral-600 transition-colors disabled:opacity-50"
+                        className="flex-shrink-0 bg-neutral-200 dark:bg-neutral-700 text-neutral-700 dark:text-neutral-200 font-semibold py-3 px-4 rounded-lg hover:bg-neutral-300 dark:hover:bg-neutral-600 transition-colors disabled:opacity-50 text-sm"
                     >
                         Reset
                     </button>
@@ -174,7 +176,7 @@ const ContentIdeasView: React.FC<ContentIdeasViewProps> = ({ language }) => {
                       {copied ? "Copied!" : "Copy"}
                     </button>
                     <button
-                        onClick={() => downloadText(response.text ?? '', `monoklix-content-ideas-${Date.now()}.txt`)}
+                        onClick={() => downloadText(response.text ?? '', `veoly-content-ideas-${Date.now()}.txt`)}
                         className="flex items-center gap-1.5 bg-neutral-200 dark:bg-neutral-700 text-neutral-700 dark:text-neutral-300 font-semibold py-1.5 px-3 rounded-full hover:bg-neutral-300 dark:hover:bg-neutral-600 transition-colors"
                     >
                         <DownloadIcon className="w-4 h-4" /> Download

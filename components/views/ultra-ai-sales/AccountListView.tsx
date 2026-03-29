@@ -540,8 +540,7 @@ const AccountListView: React.FC<AccountListViewProps> = ({
   // Generate next available code for Flow Account
   const generateNextCode = async (): Promise<string> => {
     const existingAccounts = await getAllFlowAccounts();
-    const isEsaie = BRAND_CONFIG.name === 'ESAIE';
-    const prefix = isEsaie ? 'E' : 'G';
+    const prefix = 'G';
     const regex = new RegExp(`^${prefix}\\d+$`);
     
     const existingCodes = existingAccounts
@@ -581,7 +580,7 @@ const AccountListView: React.FC<AccountListViewProps> = ({
     setTransferMode('new');
     setSelectedFlowAccountCode('');
     
-    // Fetch available flow accounts untuk dropdown
+    // Fetch available flow accounts for the dropdown
     const flowAccounts = await getAllFlowAccounts();
     setAvailableFlowAccounts(flowAccounts);
     
@@ -1582,7 +1581,7 @@ const AccountListView: React.FC<AccountListViewProps> = ({
                     <option value="">Select payment method</option>
                     <option value="bank_transfer">Bank Transfer</option>
                     <option value="ewallet">E-Wallet</option>
-                    <option value="monoklix">Monoklix.com</option>
+                    <option value="veoly">VEOLY-AI (veoly-ai.com)</option>
                     <option value="other">Other</option>
                   </select>
                 </div>
@@ -1908,7 +1907,7 @@ const AccountListView: React.FC<AccountListViewProps> = ({
               {transferMode === 'new' && (
                 <div className="mb-4">
                   <p className="text-sm text-neutral-600 dark:text-neutral-400">
-                    A new code will be auto-generated ({BRAND_CONFIG.name === 'ESAIE' ? 'E1, E2, etc.' : 'G1, G2, etc.'})
+                    A new code will be auto-generated (G1, G2, etc.)
                   </p>
                 </div>
               )}

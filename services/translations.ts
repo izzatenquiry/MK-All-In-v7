@@ -17,6 +17,10 @@ const translations = {
             generating: 'Generating...',
             errors: {
                 emailRequired: 'Email is required to log in.',
+                accessCodeRequired: 'Access code is required. Enter the code issued by admin.',
+                accessCodeNotConfigured: 'No access code is set for this account yet. Contact admin.',
+                invalidAccessCode: 'Invalid access code. Check the code from your admin and try again.',
+                accountInactive: 'This account is inactive. Please contact support.',
                 emailNotRegistered: 'This email is not registered. Please check your email or sign up for an account.',
                 tokenInvalid: 'Your connection token is invalid or has expired. A new one will be assigned automatically.',
                 safetyBlock: 'The request was blocked by the safety filter. Please modify your prompt.',
@@ -125,6 +129,9 @@ const translations = {
             title: 'Welcome Back!',
             subtitle: 'Log in to access the AI platform.',
             emailPlaceholder: 'Enter your registered email address',
+            accessCodeLabel: 'Access code',
+            accessCodePlaceholder: 'Enter your admin-issued access code',
+            accessCodeHint: 'Required. Enter the code exactly as provided by admin.',
             loginButton: 'Log In',
             noAccount: "Don't have an account?",
             registerButton: 'Register Now'
@@ -237,7 +244,7 @@ const translations = {
             ch5s3P1: 'Stitch together multiple video clips from your gallery into a single video. Select the videos you want to merge in the order you want them to appear.',
             ch5s3P2: 'Processing is done entirely in your browser, so it’s private and fast for short clips. (Admin/Lifetime users only)',
             ch5s4Title: 'Voice Studio',
-            ch5s4P1: 'Turn any text into a professional voice-over. Write your script, choose from a variety of voice actors (including Bahasa Malaysia), and adjust the speed, pitch, and volume.',
+            ch5s4P1: 'Turn any text into a professional voice-over. Write your script, choose from a variety of voice actors (including Malay), and adjust the speed, pitch, and volume.',
             ch5s4P2: 'The output is a WAV file you can use in any video editor.',
             ch6Title: 'Chapter 6: Understanding the AI Models',
             ch6P1: 'The platform uses several different Google AI models, each specialized for a specific task.',
@@ -353,8 +360,8 @@ const translations = {
                 marketingCopy: 'Marketing Copy'
             }
         },
-        staffMonoklixView: {
-            title: 'Staff MONOklix',
+        staffVeolyView: {
+            title: 'Staff VEOLY-AI',
             subtitle: 'A team of specialized AI agents to assist you with your tasks.',
             inputFor: 'Input for',
             outputLanguage: 'Output Language',
@@ -858,8 +865,10 @@ export const getTranslations = () => {
         if (typeof obj === 'string') {
             // Replace all variations: MONOklix, MONOKLIX, monoklix, etc.
             let result = obj.replace(/MONOklix|MONOKLIX|monoklix/gi, brandName);
-            // Replace domain: monoklix.com
+            result = result.replace(/\bESAIE\b/g, brandName);
+            result = result.replace(/esaie\.tech/gi, brandDomain);
             result = result.replace(/monoklix\.com/gi, brandDomain);
+            result = result.replace(/veoly\.ai/gi, brandDomain);
             return result;
         }
         if (Array.isArray(obj)) {

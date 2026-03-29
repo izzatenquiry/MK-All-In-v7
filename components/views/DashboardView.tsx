@@ -1,7 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
 import { getContent } from '../../services/contentService';
-import { getTotalPlatformUsage } from '../../services/userService';
 import { type TutorialContent, type User, type Language, type View, type Announcement } from '../../types';
 import { ImageIcon, VideoIcon, TrendingUpIcon, WandIcon, FileTextIcon, ChevronRightIcon, PlayIcon } from '../Icons';
 import { BRAND_CONFIG } from '../../services/brandConfig';
@@ -15,14 +14,14 @@ interface DashboardViewProps {
 
 const DashboardView: React.FC<DashboardViewProps> = ({ currentUser, navigateTo, announcements }) => {
   const [content, setContent] = useState<TutorialContent | null>(null);
-  const [platformStats, setPlatformStats] = useState<{ totalImages: number; totalVideos: number } | null>(null);
+  /** Same source as Settings → Profile → Video Cache Manager (Images/Videos generated) */
+  const userImages = currentUser.totalImage ?? 0;
+  const userVideos = currentUser.totalVideo ?? 0;
 
   useEffect(() => {
     const fetchPageData = async () => {
         const contentData = await getContent();
         setContent(contentData);
-        const stats = await getTotalPlatformUsage();
-        setPlatformStats(stats);
     };
     fetchPageData();
   }, []);
@@ -50,7 +49,6 @@ const DashboardView: React.FC<DashboardViewProps> = ({ currentUser, navigateTo, 
     if (!videoId) return null;
     
     // Each brand uses thumbnail from their own video
-    // ESAIE: tG-RETdrzyE, MONOKLIX: G6G8JJrV9VM
     return `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`;
   };
 
@@ -137,12 +135,12 @@ const DashboardView: React.FC<DashboardViewProps> = ({ currentUser, navigateTo, 
                  <div className="absolute top-0 right-0 p-4 opacity-10 pointer-events-none">
                      <TrendingUpIcon className="w-24 h-24 text-neutral-900 dark:text-white" />
                  </div>
-                 <h3 className="text-[10px] font-bold text-neutral-600 dark:text-neutral-400 uppercase tracking-widest mb-4">Global Neural Activity</h3>
+                 <h3 className="text-[10px] font-bold text-neutral-600 dark:text-neutral-400 uppercase tracking-widest mb-4">Your generation</h3>
                  
                  <div className="grid grid-cols-2 gap-4 relative z-10">
                      <div>
                          <div className="flex items-baseline gap-1 mb-1">
-                             <p className="text-2xl font-black text-neutral-900 dark:text-white">{platformStats?.totalImages.toLocaleString() || '0'}</p>
+                             <p className="text-2xl font-black text-neutral-900 dark:text-white">{userImages.toLocaleString()}</p>
                          </div>
                          <span className="text-[10px] font-bold text-green-600 dark:text-green-400 flex items-center gap-1 uppercase tracking-wide">
                              <ImageIcon className="w-3 h-3" /> Images
@@ -154,7 +152,7 @@ const DashboardView: React.FC<DashboardViewProps> = ({ currentUser, navigateTo, 
                      
                      <div>
                          <div className="flex items-baseline gap-1 mb-1">
-                             <p className="text-2xl font-black text-neutral-900 dark:text-white">{platformStats?.totalVideos.toLocaleString() || '0'}</p>
+                             <p className="text-2xl font-black text-neutral-900 dark:text-white">{userVideos.toLocaleString()}</p>
                          </div>
                          <span className="text-[10px] font-bold text-purple-600 dark:text-purple-400 flex items-center gap-1 uppercase tracking-wide">
                              <VideoIcon className="w-3 h-3" /> Videos
@@ -175,27 +173,6 @@ const DashboardView: React.FC<DashboardViewProps> = ({ currentUser, navigateTo, 
         {content?.mainVideoUrl && (
             <div className="w-full animate-zoomIn h-full" style={{ animationDelay: '50ms' }}>
                 <div className="nav-capsule p-1 rounded-3xl overflow-hidden shadow-2xl border border-white/10 relative group h-full">
-                    {BRAND_CONFIG.name === 'ESAIE' ? (
-                        // ESAIE: Button with thumbnail from ESAIE video (tG-RETdrzyE)
-                        <button
-                            onClick={handleVideoClick}
-                            className="relative aspect-video w-full bg-black rounded-[1.2rem] overflow-hidden cursor-pointer group/btn hover:scale-[1.02] transition-transform duration-300"
-                        >
-                            {/* Use thumbnail from ESAIE video (tG-RETdrzyE) */}
-                            <img 
-                                src="https://img.youtube.com/vi/tG-RETdrzyE/maxresdefault.jpg" 
-                                alt="Get Started Video"
-                                className="w-full h-full object-cover"
-                            />
-                            {/* Play Button Overlay */}
-                            <div className="absolute inset-0 flex items-center justify-center bg-black/20 group-hover/btn:bg-black/30 transition-colors">
-                                <div className="w-16 h-16 md:w-20 md:h-20 rounded-full bg-white/90 dark:bg-white/80 flex items-center justify-center shadow-2xl group-hover/btn:scale-110 transition-transform">
-                                    <PlayIcon className="w-8 h-8 md:w-10 md:h-10 text-neutral-900 ml-1" />
-                                </div>
-                            </div>
-                        </button>
-                    ) : (
-                        // MONOKLIX: Button with thumbnail (original behavior)
                         <button
                             onClick={handleVideoClick}
                             className="relative aspect-video w-full bg-black rounded-[1.2rem] overflow-hidden cursor-pointer group/btn hover:scale-[1.02] transition-transform duration-300"
@@ -207,7 +184,6 @@ const DashboardView: React.FC<DashboardViewProps> = ({ currentUser, navigateTo, 
                                         alt="Get Started Video"
                                         className="w-full h-full object-cover"
                                     />
-                                    {/* Play Button Overlay */}
                                     <div className="absolute inset-0 flex items-center justify-center bg-black/20 group-hover/btn:bg-black/30 transition-colors">
                                         <div className="w-16 h-16 md:w-20 md:h-20 rounded-full bg-white/90 dark:bg-white/80 flex items-center justify-center shadow-2xl group-hover/btn:scale-110 transition-transform">
                                             <PlayIcon className="w-8 h-8 md:w-10 md:h-10 text-neutral-900 ml-1" />
@@ -223,7 +199,6 @@ const DashboardView: React.FC<DashboardViewProps> = ({ currentUser, navigateTo, 
                                 </div>
                             )}
                         </button>
-                    )}
                 </div>
             </div>
         )}

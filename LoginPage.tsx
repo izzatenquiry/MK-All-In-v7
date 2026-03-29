@@ -17,12 +17,13 @@ interface LoginPageProps {
 const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
     const [isLoading, setIsLoading] = useState(false);
     const [email, setEmail] = useState('');
+    const [accessCode, setAccessCode] = useState('');
     const [error, setError] = useState<string | null>(null);
     const [theme, setTheme] = useState('light'); // Default to light
     const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
     const T = getTranslations().loginPage;
     const commonT = getTranslations().common;
-    const isMonoklix = BRAND_CONFIG.name === 'MONOKLIX';
+    const isMonoklix = BRAND_CONFIG.name === 'VEOLY-AI';
 
     // Load theme from localStorage
     useEffect(() => {
@@ -58,13 +59,21 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
         return () => window.removeEventListener('keydown', onKeyDown);
     }, [isLoginModalOpen]);
     
-    const handleLogin = async (e: React.FormEvent) => {
+    const handleLogin = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
         setError(null);
         setIsLoading(true);
-        
-        const result = await loginUser(email);
-        
+
+        // Read from form so browser autofill / password managers still submit real values (React state can stay empty).
+        const form = e.currentTarget;
+        const fd = new FormData(form);
+        const emailRaw = String(fd.get('email') ?? '').trim();
+        const accessCodeRaw = String(fd.get('accessCode') ?? '').trim();
+        setEmail(emailRaw);
+        setAccessCode(accessCodeRaw);
+
+        const result = await loginUser(emailRaw, accessCodeRaw);
+
         if (result.success === true) {
             onLoginSuccess(result.user);
         } else {
@@ -87,7 +96,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
                 <div className="text-center mb-8">
                     {!isMonoklix && (
                         <div className="inline-flex justify-center mb-6 filter drop-shadow-[0_0_15px_rgba(74,108,247,0.3)]">
-                            <LogoIcon className="w-40 text-neutral-900 dark:text-white" />
+                            <LogoIcon className="w-48 sm:w-56 md:w-60 max-w-full mx-auto text-neutral-900 dark:text-white" />
                         </div>
                     )}
                     {isMonoklix && (
@@ -111,18 +120,39 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
                 
                 <form className="space-y-6" onSubmit={handleLogin}>
                      <div className="space-y-2">
-                        <label htmlFor="email-input" className="text-xs font-bold text-neutral-600 dark:text-neutral-500 uppercase tracking-wider ml-1">Email Address</label>
+                        <label htmlFor="email-input" className="ml-1 text-xs font-bold uppercase tracking-wider text-neutral-600 dark:text-neutral-500">Email Address</label>
                         <input
                             id="email-input"
+                            name="email"
                             type="email"
                             required
                             value={email}
                             onChange={(e) => setEmail(e.target.value)}
-                            className="w-full bg-white dark:bg-neutral-900 border border-neutral-300 dark:border-neutral-700 rounded-xl px-4 py-3.5 text-base text-neutral-900 dark:text-white placeholder-neutral-500 dark:placeholder-neutral-600 focus:outline-none focus:ring-2 focus:ring-brand-start/40 focus:border-brand-start/50 transition-all font-medium"
+                            className="w-full rounded-xl border border-neutral-300 bg-white px-4 py-3.5 text-base font-medium text-neutral-900 placeholder-neutral-500 transition-all focus:border-brand-start/50 focus:outline-none focus:ring-2 focus:ring-brand-start/40 dark:border-neutral-700 dark:bg-neutral-900 dark:text-white dark:placeholder-neutral-600"
                             placeholder={T.emailPlaceholder}
                             disabled={isLoading}
                             autoComplete="email"
                          />
+                    </div>
+
+                    <div className="space-y-2">
+                        <label htmlFor="access-code-input" className="ml-1 text-xs font-bold uppercase tracking-wider text-neutral-600 dark:text-neutral-500">
+                            {T.accessCodeLabel}
+                        </label>
+                        <input
+                            id="access-code-input"
+                            name="accessCode"
+                            type="text"
+                            required
+                            value={accessCode}
+                            onChange={(e) => setAccessCode(e.target.value)}
+                            className="w-full rounded-xl border border-neutral-300 bg-white px-4 py-3.5 text-base font-medium text-neutral-900 placeholder-neutral-500 transition-all focus:border-brand-start/50 focus:outline-none focus:ring-2 focus:ring-brand-start/40 dark:border-neutral-700 dark:bg-neutral-900 dark:text-white dark:placeholder-neutral-600"
+                            placeholder={T.accessCodePlaceholder}
+                            disabled={isLoading}
+                            autoComplete="one-time-code"
+                            spellCheck={false}
+                        />
+                        <p className="ml-1 text-[11px] leading-snug text-neutral-500 dark:text-neutral-500">{T.accessCodeHint}</p>
                     </div>
                    
                     <div className="pt-2">
@@ -141,20 +171,17 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
                     </div>
                 </form>
 
-                {/* Register section - Hidden for ESAIE */}
-                {BRAND_CONFIG.name !== 'ESAIE' && (
-                    <div className="mt-8 pt-6 border-t border-neutral-200/90 dark:border-white/10 text-center">
-                        <p className="text-xs text-neutral-600 dark:text-neutral-500 mb-4">{T.noAccount}</p>
-                        <a
-                            href="https://monoklix.com/step/checkout/"
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="w-full inline-block py-3 px-4 border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-900 hover:bg-neutral-50 dark:hover:bg-neutral-800 rounded-xl text-sm font-semibold text-neutral-700 dark:text-neutral-200 transition-all min-h-[48px] flex items-center justify-center"
-                        >
-                            {T.registerButton}
-                        </a>
-                    </div>
-                )}
+                <div className="mt-8 pt-6 border-t border-neutral-200/90 dark:border-white/10 text-center">
+                    <p className="text-xs text-neutral-600 dark:text-neutral-500 mb-4">{T.noAccount}</p>
+                    <a
+                        href="https://veoly-ai.com/step/checkout/"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="w-full inline-block py-3 px-4 border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-900 hover:bg-neutral-50 dark:hover:bg-neutral-800 rounded-xl text-sm font-semibold text-neutral-700 dark:text-neutral-200 transition-all min-h-[48px] flex items-center justify-center"
+                    >
+                        {T.registerButton}
+                    </a>
+                </div>
             </div>
             
              <p className="text-center text-[10px] text-neutral-500 dark:text-neutral-600 font-mono mt-6 uppercase tracking-widest">

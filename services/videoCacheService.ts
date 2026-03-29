@@ -5,7 +5,7 @@ import localforage from 'localforage';
 // ===============================
 
 const VIDEO_CACHE_KEY = 'monoklix_video_cache';
-// NOTA: Had ini tidak lagi dikuatkuasakan untuk storan kekal.
+// Note: This limit is no longer enforced for persistent storage.
 const MAX_CACHE_SIZE_MB = 500;
 const MAX_VIDEOS = 50;
 
@@ -50,7 +50,7 @@ export const cacheVideo = async (
   try {
     console.log(`💾 Caching video: ${videoId} (${(blob.size / 1024 / 1024).toFixed(2)} MB)`);
 
-    // DILUMPUHKAN: Tidak lagi menguatkuasakan had cache untuk storan kekal.
+    // Disabled: cache size limits no longer enforced for persistent storage.
     // await enforceCacheLimits(blob.size);
 
     const cachedVideo: CachedVideo = {
@@ -214,7 +214,7 @@ const updateCacheIndex = async (videoId: string, sizeChange: number): Promise<vo
 
 /**
  * Enforce cache size and count limits (LRU eviction)
- * NOTA: Fungsi ini kini dilumpuhkan dalam `cacheVideo` untuk menyediakan storan kekal.
+ * Note: This function is currently disabled in `cacheVideo` to allow persistent storage.
  */
 const enforceCacheLimits = async (newVideoSize: number): Promise<void> => {
   const stats = await getCacheStats();

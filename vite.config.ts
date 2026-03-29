@@ -8,10 +8,8 @@ export default defineConfig(({ mode }) => {
   // Vite automatically exposes VITE_* variables to import.meta.env.VITE_* by default
   const env = loadEnv(mode, process.cwd(), '');
 
-  // Debug: Log loaded environment variables
-  if (mode === 'esai' || mode === 'monoklix') {
-    console.log(`[Vite Config] Mode: ${mode}`);
-    console.log(`[Vite Config] VITE_BRAND from env: ${env.VITE_BRAND}`);
+  if (env.VITE_BRAND) {
+    console.log(`[Vite Config] Mode: ${mode}, VITE_BRAND: ${env.VITE_BRAND}`);
   }
 
   // Create a process.env-like object for the client-side code.

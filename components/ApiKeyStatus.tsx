@@ -519,7 +519,9 @@ const ApiKeyStatus: React.FC<ApiKeyStatusProps> = ({ activeApiKey, currentUser, 
                                             {currentServer ? (
                                                 <span className="font-mono text-xs bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-300 px-2 py-1 rounded truncate">
                                                     {(() => {
-                                                        const serverDomainPattern = BRAND_CONFIG.name === 'ESAIE' ? /\.esai\.tech/ : /\.monoklix\.com/;
+                                                        const serverDomainPattern = new RegExp(
+                                                          '\\.' + BRAND_CONFIG.domain.replace(/\./g, '\\.') + '$'
+                                                        );
                                                         return currentServer.replace('https://', '').replace('http://', '').replace(serverDomainPattern, '').toUpperCase();
                                                     })()}
                                                 </span>

@@ -175,10 +175,8 @@ const FlowAccountManagementView: React.FC<FlowAccountManagementViewProps> = ({ l
     });
   }, [supabaseAccounts]);
 
-  // Generate next available code (E1, E2, E3 for ESAIE or G1, G2, G3 for MONOKLIX)
   const generateNextCode = (existingAccounts: FlowAccount[]): string => {
-    const isEsaie = BRAND_CONFIG.name === 'ESAIE';
-    const prefix = isEsaie ? 'E' : 'G';
+    const prefix = 'G';
     const regex = new RegExp(`^${prefix}\\d+$`);
     
     const existingCodes = existingAccounts
@@ -1057,7 +1055,7 @@ const FlowAccountManagementView: React.FC<FlowAccountManagementViewProps> = ({ l
                   </div>
                 </div>
                 <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">
-                  Code will be automatically generated ({BRAND_CONFIG.name === 'ESAIE' ? 'E1, E2, E3' : 'G1, G2, G3'}, etc.) based on existing codes
+                  Code will be automatically generated (G1, G2, G3, etc.) based on existing codes
                 </p>
               </div>
               

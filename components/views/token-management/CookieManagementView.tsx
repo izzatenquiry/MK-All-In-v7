@@ -62,18 +62,11 @@ const CookieManagementView: React.FC<CookieManagementViewProps> = ({ language })
     }
   };
 
-  // Filter folders based on brand: ESAIE shows E folders, MONOKLIX shows G folders
   const filteredCookiesByFolder = useMemo(() => {
-    const isEsaie = BRAND_CONFIG.name === 'ESAIE';
     const filtered: Record<string, BackendCookie[]> = {};
     
     Object.entries(cookiesByFolder).forEach(([folderName, cookies]) => {
-      // For ESAIE: only show folders starting with 'E' (E1, E2, E10, etc.)
-      // For MONOKLIX: only show folders starting with 'G' (G1, G2, G10, etc.)
-      // Also keep 'Root' folder for both brands
-      const shouldInclude = folderName === 'Root' || 
-        (isEsaie && /^E\d+$/i.test(folderName)) || 
-        (!isEsaie && /^G\d+$/i.test(folderName));
+      const shouldInclude = folderName === 'Root' || /^G\d+$/i.test(folderName);
       
       if (shouldInclude) {
         filtered[folderName] = cookies;
@@ -118,12 +111,10 @@ const CookieManagementView: React.FC<CookieManagementViewProps> = ({ language })
       return { total_cookies: total, total_usage: totalUsage, average_usage: average, filtered_cookies: [] };
     }
     
-    // Use stats data and filter by brand
-    const isEsaie = BRAND_CONFIG.name === 'ESAIE';
     const filtered = cookieStats.all_cookies?.filter(cookie => {
       if (!cookie.flow_account || cookie.flow_account === 'Personal') return true;
       const flowAccount = String(cookie.flow_account).toUpperCase();
-      return isEsaie ? /^E\d+$/.test(flowAccount) : /^G\d+$/.test(flowAccount);
+      return /^G\d+$/.test(flowAccount);
     }) || [];
     
     const total_cookies = filtered.length;
@@ -284,7 +275,7 @@ const CookieManagementView: React.FC<CookieManagementViewProps> = ({ language })
             <h2 className="text-2xl font-bold mb-2 text-neutral-900 dark:text-white">Cookie Pool Management</h2>
             <p className="text-sm text-neutral-500 dark:text-neutral-400">
               Total: <strong>{totalCookies}</strong> cookie files in <strong>{Object.keys(filteredCookiesByFolder).length}</strong> folder(s)
-              {BRAND_CONFIG.name === 'ESAIE' ? ' (ESAIE: E folders only)' : ' (MONOKLIX: G folders only)'}
+              {' (G folders only)'}
             </p>
           </div>
           <div className="flex gap-2">
@@ -627,13 +618,13 @@ const CookieManagementView: React.FC<CookieManagementViewProps> = ({ language })
             <h3 className="text-lg font-bold text-neutral-900 dark:text-white mb-4">Grab New Cookie</h3>
             <div className="mb-4">
               <label className="block text-sm font-medium mb-2 text-neutral-700 dark:text-neutral-300">
-                Cookie Filename {BRAND_CONFIG.name === 'ESAIE' ? '(e.g., flow_e1_c1)' : '(e.g., flow_g1_c1)'}
+                Cookie Filename (e.g., flow_g1_c1)
               </label>
               <input
                 type="text"
                 value={grabCookieName}
                 onChange={(e) => setGrabCookieName(e.target.value)}
-                placeholder={BRAND_CONFIG.name === 'ESAIE' ? 'e.g., flow_e1_c1' : 'e.g., flow_g1_c1'}
+                placeholder="e.g., flow_g1_c1"
                 className="w-full p-2 border border-neutral-300 dark:border-neutral-700 rounded-lg bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white focus:ring-2 focus:ring-primary-500 outline-none"
               />
             </div>

@@ -8,16 +8,10 @@ import { BRAND_CONFIG } from './brandConfig';
 // Brand-aware localStorage keys to prevent data mixing between brands
 const TUTORIAL_CONTENT_KEY = `${BRAND_CONFIG.shortName.toLowerCase()}-ai-tutorial-content`;
 const PLATFORM_STATUS_KEY = `${BRAND_CONFIG.shortName.toLowerCase()}-ai-platform-status`;
-const ANNOUNCEMENTS_KEY = `${BRAND_CONFIG.shortName.toLowerCase()}-ai-announcements`;
+/** Bump when default marquee copy changes so IndexedDB picks up new defaults. */
+const ANNOUNCEMENTS_KEY = `${BRAND_CONFIG.shortName.toLowerCase()}-ai-announcements-v3`;
 
-// Brand-specific video URLs
-const getMainVideoUrl = (): string => {
-  const isEsaie = BRAND_CONFIG.name === 'ESAIE';
-  // ESAIE uses new YouTube embed, MONOKLIX uses original video
-  return isEsaie 
-    ? 'https://www.youtube.com/embed/tG-RETdrzyE'
-    : 'https://www.youtube.com/embed/G6G8JJrV9VM';
-};
+const getMainVideoUrl = (): string => 'https://www.youtube.com/embed/G6G8JJrV9VM';
 
 const defaultTutorialContent: TutorialContent = {
   mainVideoUrl: getMainVideoUrl(),
@@ -35,33 +29,16 @@ const defaultPlatformStatus: PlatformStatus = {
 };
 
 // Brand-aware default announcements
-const getDefaultAnnouncements = (): Announcement[] => {
-    const isEsaie = BRAND_CONFIG.name === 'ESAIE';
-    
-    if (isEsaie) {
-        // ESAIE: New Year 2026 announcement
-        return [
-            {
-                id: 'anno-1',
-                title: 'NEW',
-                content: 'Selamat Tahun Baru 2026. Terima kasih kerana menjadi sebahagian daripada ESAIE AI All-in-One. Semoga tahun 2026 membawa lebih banyak idea hebat, content berkualiti, dan pertumbuhan luar biasa untuk perjalanan bisnes & affiliate anda. Terus percaya pada proses, manfaatkan kuasa AI, dan let\'s grow together to the next level 🚀',
-                category: 'General',
-                createdAt: new Date().toISOString(),
-            },
-        ];
-    }
-    
-    // MONOKLIX: Original announcement
-    return [
+const getDefaultAnnouncements = (): Announcement[] => [
         {
             id: 'anno-1',
-            title: 'Perlukan Kredit Google Ultra AI?',
-            content: 'Atas permintaan pengguna, kami kini menjual kredit Google Ultra AI. Kredit akaun ULTRA AI yang kami sediakan adalah yang termurah di pasaran. Hanya RM39 untuk 3,000 kredit sebulan.',
+            title: 'Welcome to VEOLY-AI',
+            content:
+                'Thank you for using VEOLY-AI. We hope this platform helps your content and marketing workflow.',
             category: 'General',
             createdAt: new Date().toISOString(),
         },
     ];
-};
 
 const defaultAnnouncements: Announcement[] = getDefaultAnnouncements();
 

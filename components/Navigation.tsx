@@ -16,6 +16,7 @@ import {
   UserIcon,
   RefreshCwIcon,
   MailIcon,
+  QuestionSolutionIcon,
 } from './Icons';
 
 interface NavigationProps {
@@ -53,7 +54,7 @@ const Navigation: React.FC<NavigationProps> = ({
   const displayUsername = (() => {
     const raw = (currentUser.fullName?.trim() ? currentUser.fullName : currentUser.username) || '';
     const firstToken = raw.split(' ')[0] || raw;
-    // Clean common email-style suffixes (e.g. "MONOKLIX.COM" -> "MONOKLIX")
+    // Clean common email-style suffixes (e.g. "VEOLY.AI" domain suffix)
     return firstToken.replace(/\.(com|net|org|my|co)$/i, '');
   })();
 
@@ -64,7 +65,7 @@ const Navigation: React.FC<NavigationProps> = ({
     description,
     onClick,
   }: {
-    id: View | 'token-management-suite' | 'ultra-ai-sales';
+    id: View;
     icon: React.ComponentType<{ className?: string }>;
     label: string;
     description?: string;
@@ -136,7 +137,7 @@ const Navigation: React.FC<NavigationProps> = ({
       >
         <div className="p-4 border-b border-neutral-200/80 dark:border-white/10 flex items-center justify-between">
           <div>
-            <p className="text-xs uppercase tracking-[0.2em] text-brand-start font-semibold">MONOklix App</p>
+            <p className="text-xs uppercase tracking-[0.2em] text-brand-start font-semibold">VEOLY-AI App</p>
             <p className="text-sm text-neutral-700 dark:text-neutral-300">Navigation Hub</p>
           </div>
           <button
@@ -214,6 +215,16 @@ const Navigation: React.FC<NavigationProps> = ({
                   }}
                 />
               ))}
+              <NavButton
+                id="settings-faq"
+                icon={QuestionSolutionIcon}
+                label="Support and FAQ"
+                description="Help and common questions"
+                onClick={() => {
+                  setActiveView('settings-faq');
+                  setIsMenuOpen(false);
+                }}
+              />
               {currentUser.role === 'admin' ? (
                 <NavButton
                   id="token-management-suite"
@@ -226,7 +237,7 @@ const Navigation: React.FC<NavigationProps> = ({
                   }}
                 />
               ) : null}
-              {currentUser.role === 'admin' && BRAND_CONFIG.name !== 'ESAIE' ? (
+              {currentUser.role === 'admin' ? (
                 <NavButton
                   id="ultra-ai-sales"
                   icon={MailIcon}
@@ -270,7 +281,7 @@ const Navigation: React.FC<NavigationProps> = ({
             <span className="font-black text-white text-lg">{BRAND_CONFIG.logo.letter}</span>
           </div>
           <div className="min-w-0">
-            <p className="text-[11px] uppercase tracking-[0.16em] text-brand-start font-semibold">MONOklix User</p>
+            <p className="text-[11px] uppercase tracking-[0.16em] text-brand-start font-semibold">VEOLY User</p>
             <p className="text-sm font-semibold text-neutral-900 dark:text-white truncate">{displayUsername}</p>
           </div>
         </div>
@@ -306,6 +317,13 @@ const Navigation: React.FC<NavigationProps> = ({
                 onClick={() => setActiveView(item.id)}
               />
             ))}
+            <NavButton
+              id="settings-faq"
+              icon={QuestionSolutionIcon}
+              label="Support and FAQ"
+              description="Help and common questions"
+              onClick={() => setActiveView('settings-faq')}
+            />
             {currentUser.role === 'admin' ? (
               <NavButton
                 id="token-management-suite"
@@ -315,7 +333,7 @@ const Navigation: React.FC<NavigationProps> = ({
                 onClick={() => setActiveView('token-management-suite')}
               />
             ) : null}
-            {currentUser.role === 'admin' && BRAND_CONFIG.name !== 'ESAIE' ? (
+            {currentUser.role === 'admin' ? (
               <NavButton
                 id="ultra-ai-sales"
                 icon={MailIcon}

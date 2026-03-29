@@ -124,7 +124,7 @@ const PaymentReturnHandler: React.FC<PaymentReturnHandlerProps> = ({
               productName?.includes('Pakej 2') ||
               productName?.includes('Package 2');
             if (isPackage1 || isPackage2) {
-              const expectedCredits = isPackage1 ? 3000 : 25000;
+              const expectedCredits = isPackage1 ? 3000 : 15000;
               const creditResult = await applyCreditPackage(userId, expectedCredits);
               if (!creditResult.success) {
                 creditApplyFailed = true;

@@ -8,7 +8,7 @@ import {
     UserIcon, SmileyIcon, LightbulbIcon, FileTextIcon, ClipboardListIcon, TrendingUpIcon, StoreIcon, MegaphoneIcon, FilmIcon, UsersIcon, ImageIcon, GalleryIcon, DownloadIcon, ClipboardIcon, CheckCircleIcon, AIAgentIcon
 } from '../../Icons';
 import TwoColumnLayout from '../../common/TwoColumnLayout';
-import { getStaffMonoklixPrompt } from '../../../services/promptManager';
+import { getStaffVeolyPrompt } from '../../../services/promptManager';
 import { type Language } from '../../../types';
 import { getTranslations } from '../../../services/translations';
 import { BRAND_CONFIG } from '../../../services/brandConfig';
@@ -23,22 +23,22 @@ interface AiAgent {
 }
 
 const aiAgents: AiAgent[] = [
-    { id: 'wan', name: 'Wan', description: 'Ideal Customer Persona', icon: UserIcon, placeholder: 'Nyatakan produk/servis anda...' },
-    { id: 'tina', name: 'Tina', description: 'Fear & Desire', icon: SmileyIcon, placeholder: 'Nyatakan produk/servis anda...' },
-    { id: 'jamil', name: 'Jamil', description: 'Marketing Angle', icon: LightbulbIcon, placeholder: 'Nyatakan produk/servis anda...' },
-    { id: 'najwa', name: 'Najwa', description: 'Copywriter', icon: FileTextIcon, placeholder: 'Nyatakan produk/servis anda...' },
-    { id: 'saifuz', name: 'Saifuz', description: 'Variasi Copywriting', icon: ClipboardListIcon, placeholder: 'Masukkan teks jualan asal anda...' },
-    { id: 'mieya', name: 'Mieya', description: 'Formula Copywriting (AIDA)', icon: TrendingUpIcon, placeholder: 'Nyatakan produk/servis anda...' },
-    { id: 'afiq', name: 'Afiq', description: 'Sales Page Creator', icon: StoreIcon, placeholder: 'Nyatakan produk/servis anda...' },
-    { id: 'julia', name: 'Julia', description: 'Headline Brainstormer', icon: MegaphoneIcon, placeholder: 'Nyatakan produk/servis anda...' },
-    { id: 'mazrul', name: 'Mazrul', description: 'Script Writer', icon: FilmIcon, placeholder: 'Nyatakan produk/servis anda...' },
-    { id: 'musa', name: 'Musa', description: 'LinkedIn Personal Branding', icon: UsersIcon, placeholder: 'Nyatakan platform dan topik. Cth: LinkedIn, Topik: Pentingnya personal branding' },
-    { id: 'joe_davinci', name: 'Joe', description: 'Image Prompter', icon: ImageIcon, placeholder: 'Cth: Tema: Kucing comel, Gaya: Realistik, Elemen: Kucing sedang tidur atas sofa.' },
-    { id: 'zaki', name: 'Zaki', description: 'Poster Prompter', icon: GalleryIcon, placeholder: 'Cth: Tujuan: Iklan event, Gaya: Moden, Teks: Jualan Hebat, Warna: Merah.' }
+    { id: 'wan', name: 'Wan', description: 'Ideal Customer Persona', icon: UserIcon, placeholder: 'Describe your product or service...' },
+    { id: 'tina', name: 'Tina', description: 'Fear & Desire', icon: SmileyIcon, placeholder: 'Describe your product or service...' },
+    { id: 'jamil', name: 'Jamil', description: 'Marketing Angle', icon: LightbulbIcon, placeholder: 'Describe your product or service...' },
+    { id: 'najwa', name: 'Najwa', description: 'Copywriter', icon: FileTextIcon, placeholder: 'Describe your product or service...' },
+    { id: 'saifuz', name: 'Saifuz', description: 'Copy variations', icon: ClipboardListIcon, placeholder: 'Enter your original sales copy...' },
+    { id: 'mieya', name: 'Mieya', description: 'Formula Copywriting (AIDA)', icon: TrendingUpIcon, placeholder: 'Describe your product or service...' },
+    { id: 'afiq', name: 'Afiq', description: 'Sales Page Creator', icon: StoreIcon, placeholder: 'Describe your product or service...' },
+    { id: 'julia', name: 'Julia', description: 'Headline Brainstormer', icon: MegaphoneIcon, placeholder: 'Describe your product or service...' },
+    { id: 'mazrul', name: 'Mazrul', description: 'Script Writer', icon: FilmIcon, placeholder: 'Describe your product or service...' },
+    { id: 'musa', name: 'Musa', description: 'LinkedIn Personal Branding', icon: UsersIcon, placeholder: 'State platform and topic. E.g. LinkedIn, Topic: Why personal branding matters' },
+    { id: 'joe_davinci', name: 'Joe', description: 'Image Prompter', icon: ImageIcon, placeholder: 'E.g. Theme: Cute cat, Style: Realistic, Element: Cat sleeping on a sofa.' },
+    { id: 'zaki', name: 'Zaki', description: 'Poster Prompter', icon: GalleryIcon, placeholder: 'E.g. Purpose: Event ad, Style: Modern, Text: Big Sale, Color: Red.' }
 ];
 
-const languages = ["English", "Bahasa Malaysia"];
-const SESSION_KEY = 'staffMonoklixState';
+const languages = ["English", "Malay"];
+const SESSION_KEY = 'staffVeolyState';
 
 const downloadText = (text: string, fileName: string) => {
     const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
@@ -52,21 +52,21 @@ const downloadText = (text: string, fileName: string) => {
     URL.revokeObjectURL(url);
 };
 
-interface StaffMonoklixViewProps {
+interface StaffVeolyViewProps {
     language: Language;
 }
 
-const StaffMonoklixView: React.FC<StaffMonoklixViewProps> = ({ language }) => {
+const StaffVeolyView: React.FC<StaffVeolyViewProps> = ({ language }) => {
     const [selectedAgentId, setSelectedAgentId] = useState<string>('wan');
     const [userInput, setUserInput] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [generatedCopy, setGeneratedCopy] = useState<string>('');
     const [copied, setCopied] = useState(false);
-    const [selectedLanguage, setSelectedLanguage] = useState("Bahasa Malaysia");
+    const [selectedLanguage, setSelectedLanguage] = useState("Malay");
 
     // FIX: Remove 'language' argument from getTranslations calls.
-    const T = getTranslations().staffMonoklixView;
+    const T = getTranslations().staffVeolyView;
     const commonT = getTranslations();
 
     const selectedAgent = useMemo(() => aiAgents.find(agent => agent.id === selectedAgentId)!, [selectedAgentId]);
@@ -79,7 +79,9 @@ const StaffMonoklixView: React.FC<StaffMonoklixViewProps> = ({ language }) => {
                 if (state.selectedAgentId) setSelectedAgentId(state.selectedAgentId);
                 if (state.userInput) setUserInput(state.userInput);
                 if (state.generatedCopy) setGeneratedCopy(state.generatedCopy);
-                if (state.selectedLanguage) setSelectedLanguage(state.selectedLanguage);
+                if (state.selectedLanguage) {
+                    setSelectedLanguage(state.selectedLanguage === 'Bahasa Malaysia' ? 'Malay' : state.selectedLanguage);
+                }
             }
         } catch (e) { console.error("Failed to load state from session storage", e); }
     }, []);
@@ -105,7 +107,7 @@ const StaffMonoklixView: React.FC<StaffMonoklixViewProps> = ({ language }) => {
         setGeneratedCopy('');
         setCopied(false);
 
-        const finalPrompt = getStaffMonoklixPrompt({
+        const finalPrompt = getStaffVeolyPrompt({
             agentId: selectedAgent.id,
             userInput: userInput,
             language: selectedLanguage,
@@ -139,7 +141,7 @@ const StaffMonoklixView: React.FC<StaffMonoklixViewProps> = ({ language }) => {
         setUserInput('');
         setGeneratedCopy('');
         setError(null);
-        setSelectedLanguage(language === 'ms' ? "Bahasa Malaysia" : "English");
+        setSelectedLanguage(language === 'ms' ? "Malay" : "English");
         sessionStorage.removeItem(SESSION_KEY);
     }, [language]);
 
@@ -150,7 +152,7 @@ const StaffMonoklixView: React.FC<StaffMonoklixViewProps> = ({ language }) => {
                 <p className="text-sm sm:text-base text-neutral-500 dark:text-neutral-400 mt-1">{T.subtitle}</p>
             </div>
 
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-3">
                 {aiAgents.map(agent => {
                     const isSelected = agent.id === selectedAgentId;
                     return (
@@ -174,52 +176,54 @@ const StaffMonoklixView: React.FC<StaffMonoklixViewProps> = ({ language }) => {
                 })}
             </div>
 
-            <div>
-                <label htmlFor="agent-input" className="block text-sm font-medium text-gray-600 dark:text-gray-400 mb-2">
-                    {T.inputFor} {selectedAgent.name}
-                </label>
-                <textarea
-                    id="agent-input"
-                    value={userInput}
-                    onChange={(e) => setUserInput(e.target.value)}
-                    placeholder={selectedAgent.placeholder}
-                    rows={4}
-                    className="w-full bg-gray-50 dark:bg-gray-800 border-[0.5px] border-gray-300/80 dark:border-gray-700/80 rounded-lg p-2 sm:p-3 text-sm focus:ring-2 focus:ring-primary-500 focus:outline-none transition"
-                />
+            <div className="flex flex-col gap-4">
+                <div>
+                    <label htmlFor="agent-input" className="block text-sm font-medium text-gray-600 dark:text-gray-400 mb-2">
+                        {T.inputFor} {selectedAgent.name}
+                    </label>
+                    <textarea
+                        id="agent-input"
+                        value={userInput}
+                        onChange={(e) => setUserInput(e.target.value)}
+                        placeholder={selectedAgent.placeholder}
+                        rows={4}
+                        className="w-full bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg p-3 text-sm focus:ring-2 focus:ring-primary-500 focus:outline-none transition"
+                    />
+                </div>
+
+                <div>
+                    <label htmlFor="agent-language" className="block text-sm font-medium text-gray-600 dark:text-gray-400 mb-2">
+                        {T.outputLanguage}
+                    </label>
+                    <select
+                        id="agent-language"
+                        value={selectedLanguage}
+                        onChange={(e) => setSelectedLanguage(e.target.value)}
+                        className="w-full bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg p-3 text-sm focus:ring-2 focus:ring-primary-500 focus:outline-none transition"
+                    >
+                        {languages.map(lang => <option key={lang} value={lang}>{lang}</option>)}
+                    </select>
+                </div>
             </div>
 
-            <div>
-                <label htmlFor="agent-language" className="block text-sm font-medium text-gray-600 dark:text-gray-400 mb-2">
-                    {T.outputLanguage}
-                </label>
-                <select
-                    id="agent-language"
-                    value={selectedLanguage}
-                    onChange={(e) => setSelectedLanguage(e.target.value)}
-                    className="w-full bg-gray-50 dark:bg-gray-800 border-[0.5px] border-gray-300/80 dark:border-gray-700/80 rounded-lg p-2 sm:p-3 text-sm focus:ring-2 focus:ring-primary-500 focus:outline-none transition"
-                >
-                    {languages.map(lang => <option key={lang} value={lang}>{lang}</option>)}
-                </select>
-            </div>
-            
-            <div className="pt-2 sm:pt-4 mt-auto">
-                <div className="flex gap-2 sm:gap-4">
+            <div className="pt-4 mt-auto">
+                <div className="flex gap-4">
                     <button
                         onClick={handleGenerate}
                         disabled={isLoading}
-                        className="w-full flex items-center justify-center gap-2 bg-primary-600 text-white font-semibold py-2 sm:py-3 px-3 sm:px-4 rounded-lg hover:bg-primary-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm sm:text-base"
+                        className="w-full flex items-center justify-center gap-2 bg-primary-600 text-white font-semibold py-3 px-4 rounded-lg hover:bg-primary-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm"
                     >
                         {isLoading ? <Spinner /> : T.generateButton}
                     </button>
                     <button
                         onClick={handleReset}
                         disabled={isLoading}
-                        className="flex-shrink-0 bg-neutral-200 dark:bg-neutral-700 text-neutral-700 dark:text-neutral-200 font-semibold py-2 sm:py-3 px-3 sm:px-4 rounded-lg hover:bg-neutral-300 dark:hover:bg-neutral-600 transition-colors disabled:opacity-50 text-sm sm:text-base"
+                        className="flex-shrink-0 bg-neutral-200 dark:bg-neutral-700 text-neutral-700 dark:text-neutral-200 font-semibold py-3 px-4 rounded-lg hover:bg-neutral-300 dark:hover:bg-neutral-600 transition-colors disabled:opacity-50 text-sm"
                     >
                         {T.resetButton}
                     </button>
                 </div>
-                {error && error !== 'Failed' && <p className="text-red-500 dark:text-red-400 mt-1 sm:mt-2 text-center text-xs sm:text-sm">{error}</p>}
+                {error && error !== 'Failed' && <p className="text-red-500 dark:text-red-400 mt-2 text-center text-sm">{error}</p>}
             </div>
         </>
     );
@@ -269,4 +273,4 @@ const StaffMonoklixView: React.FC<StaffMonoklixViewProps> = ({ language }) => {
     return <TwoColumnLayout leftPanel={leftPanel} rightPanel={rightPanel} language={language} />;
 };
 
-export default StaffMonoklixView;
+export default StaffVeolyView;

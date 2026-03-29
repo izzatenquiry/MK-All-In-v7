@@ -4,7 +4,6 @@ import { getCookieUsageStatistics, mergeCookieStatsWithBackendData, type CookieS
 import { type Language } from '../../../types';
 import Spinner from '../../common/Spinner';
 import { ActivityIcon, CheckCircleIcon, AlertTriangleIcon } from '../../Icons';
-import { BRAND_CONFIG } from '../../../services/brandConfig';
 
 interface CookieStatisticsViewProps {
   language: Language;
@@ -45,24 +44,18 @@ const CookieStatisticsView: React.FC<CookieStatisticsViewProps> = ({ language })
   }, [fetchStatistics]);
 
   // IMPORTANT: All hooks must be called before any early returns (Rules of Hooks)
-  // Filter cookies based on brand: ESAIE shows E folders, MONOKLIX shows G folders
   const filteredCookies = useMemo(() => {
     try {
       if (!stats || !stats.all_cookies || !Array.isArray(stats.all_cookies)) {
         return [];
       }
-      const isEsaie = BRAND_CONFIG.name === 'ESAIE';
       const filtered = stats.all_cookies.filter(cookie => {
         if (!cookie) return false;
-        // Keep cookies without flow_account (Root/Personal cookies) for both brands
         if (!cookie.flow_account || cookie.flow_account === 'Personal') {
           return true;
         }
-        // Filter by flow_account prefix: E for ESAIE, G for MONOKLIX
         const flowAccount = String(cookie.flow_account).toUpperCase();
-        return isEsaie 
-          ? /^E\d+$/.test(flowAccount)
-          : /^G\d+$/.test(flowAccount);
+        return /^G\d+$/.test(flowAccount);
       });
       return filtered;
     } catch (err) {
@@ -204,7 +197,7 @@ const CookieStatisticsView: React.FC<CookieStatisticsViewProps> = ({ language })
         <h3 className="text-lg font-semibold mb-3 text-neutral-800 dark:text-neutral-200">All Cookies</h3>
         {sortedCookies.length === 0 ? (
           <div className="text-center py-8 text-neutral-500 dark:text-neutral-400">
-            <p>No cookies found for {BRAND_CONFIG.name === 'ESAIE' ? 'ESAIE (E folders)' : 'MONOKLIX (G folders)'}</p>
+            <p>No cookies found for G folders</p>
           </div>
         ) : (
           <div className="overflow-x-auto">

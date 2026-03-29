@@ -17,6 +17,7 @@ export type View =
   | 'gallery'
   // Settings & Admin
   | 'settings'
+  | 'settings-faq' // Same Settings area, FAQ panel (opened from sidebar under Settings)
   | 'token-management-suite' // Token Management Suite
   | 'ultra-ai-sales' // Google ULTRA AI Sales Management
   | 'payment-return' // Payment return handler
@@ -109,15 +110,16 @@ export interface User {
   lastDevice?: string | null;
   telegramId?: string | null;
   email_code?: string | null;
+  /** Optional login code set by admin (`users.access_code`); required at login when set */
+  accessCode?: string | null;
   /** Labs flow pool folder (e.g. G2) — may mirror email_code; used by bridge/Puppeteer */
   flow_account_code?: string | null;
   // NEW: Token Ultra expiry and registration date (standardized for both brands)
-  expires_at?: string | null; // Token Ultra expiry (MONOKLIX) or subscription expiry
+  expires_at?: string | null; // Token Ultra / subscription expiry
   registered_at?: string | null; // Registration date
   lastCookiesFile?: string | null; // Last cookie file used for auth token generation
-  // NEW: Package credit balance and expiry (Token Ultra Credit)
+  // Package credit balance (validity follows `expires_at` / Token Ultra)
   creditBalance?: number | null;
-  creditExpiresAt?: string | null;
 }
 
 export interface TokenUltraRegistration {

@@ -1,16 +1,11 @@
 
 import React, { useState, useCallback, useEffect, useRef } from 'react';
-import { saveUserPersonalAuthToken, saveUserRecaptchaToken, hasActiveTokenUltra, hasActiveTokenUltraWithRegistration, getMasterRecaptchaToken, getTokenUltraRegistration, getEmailFromPoolByCode, getUserProfile } from '../../../services/userService';
+import { saveUserPersonalAuthToken, getTokenUltraRegistration, getEmailFromPoolByCode } from '../../../services/userService';
 import { type User, type TokenUltraRegistration } from '../../../types';
-import { KeyIcon, CheckCircleIcon, XIcon, AlertTriangleIcon, InformationCircleIcon, EyeIcon, EyeOffIcon, SparklesIcon, ClipboardIcon, ServerIcon, UserIcon, ClockIcon, VideoIcon, PlayIcon } from '../../Icons';
+import { KeyIcon, CheckCircleIcon, XIcon, AlertTriangleIcon, InformationCircleIcon, EyeIcon, EyeOffIcon, SparklesIcon, ClipboardIcon, UserIcon, ClockIcon, VideoIcon, PlayIcon } from '../../Icons';
 import Spinner from '../../common/Spinner';
 import { getTranslations } from '../../../services/translations';
 import { runComprehensiveTokenTest, type TokenTestResult, generateImageWithNanoBanana } from '../../../services/imagenV3Service';
-import { testAntiCaptchaKey } from '../../../services/antiCaptchaService';
-import { testEzCaptchaKey } from '../../../services/ezCaptchaService';
-import { testCapSolverKey } from '../../../services/capsolverService';
-import { checkBridgeServer, getBridgeServerUrl } from '../../../services/bridgeServerService';
-import eventBus from '../../../services/eventBus';
 import { BOT_ADMIN_API_URL, getBotAdminApiUrlWithFallback } from '../../../services/appConfig';
 import { BRAND_CONFIG } from '../../../services/brandConfig';
 import { autoGenerateCookie } from '../../../services/tokenBackendService';
@@ -19,10 +14,15 @@ import { isLocalhost, isElectron } from '../../../services/environment';
 interface FlowLoginProps {
     currentUser?: User | null;
     onUserUpdate?: (user: User) => void;
-    onOpenChangeServerModal?: () => void;
+    /** When Token Ultra sits beside Flow Login in Settings, stack Flow content in one column (2-panel layout). */
+    pairWithTokenUltraPanel?: boolean;
 }
 
-const FlowLogin: React.FC<FlowLoginProps> = ({ currentUser, onUserUpdate, onOpenChangeServerModal }) => {
+const FlowLogin: React.FC<FlowLoginProps> = ({
+    currentUser,
+    onUserUpdate,
+    pairWithTokenUltraPanel = false,
+}) => {
     const [flowToken, setFlowToken] = useState('');
     const [showToken, setShowToken] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
@@ -34,41 +34,12 @@ const FlowLogin: React.FC<FlowLoginProps> = ({ currentUser, onUserUpdate, onOpen
     const [tokenSaved, setTokenSaved] = useState(false);
     
     const saveTimeoutRef = useRef<any>(null);
-    const recaptchaSaveTimeoutRef = useRef<any>(null);
     const isInitialMount = useRef(true);
-    const masterTokenResolvedRef = useRef(false);
     const T = getTranslations().settingsView;
     const T_Api = T.api;
 
     // Shared API Key State
     const [activeApiKey, setActiveApiKey] = useState<string | null>(null);
-    const [isLoadingMasterToken, setIsLoadingMasterToken] = useState(false);
-
-    // Anti-Captcha State
-    const [antiCaptchaApiKey, setAntiCaptchaApiKey] = useState('');
-    const [antiCaptchaProjectId, setAntiCaptchaProjectId] = useState(() => {
-        return localStorage.getItem('antiCaptchaProjectId') || '';
-    });
-    const [showAntiCaptchaKey, setShowAntiCaptchaKey] = useState(false);
-    const [antiCaptchaTestStatus, setAntiCaptchaTestStatus] = useState<'idle' | 'testing' | 'success' | 'error'>('idle');
-    const [antiCaptchaTestMessage, setAntiCaptchaTestMessage] = useState<string>('');
-    const [recaptchaTokenSaved, setRecaptchaTokenSaved] = useState(false);
-    const [isSavingRecaptcha, setIsSavingRecaptcha] = useState(false);
-    
-    // Captcha Provider Selection
-    const [captchaProvider, setCaptchaProvider] = useState<'anti-captcha' | 'ez-captcha' | 'capsolver' | 'bridge-server'>(() => {
-        // Check if user is admin
-        const isAdmin = currentUser?.role === 'admin';
-        
-        if (!isAdmin) {
-            // Non-admin: Force anti-captcha and save to localStorage
-            localStorage.setItem('captchaProvider', 'anti-captcha');
-            return 'anti-captcha';
-        }
-        
-        // Admin: Use saved preference or default to anti-captcha
-        return (localStorage.getItem('captchaProvider') as 'anti-captcha' | 'ez-captcha' | 'capsolver' | 'bridge-server') || 'anti-captcha';
-    });
     
     // Token Ultra Credentials State
     const [tokenUltraRegistration, setTokenUltraRegistration] = useState<TokenUltraRegistration | null>(null);
@@ -100,16 +71,10 @@ const FlowLogin: React.FC<FlowLoginProps> = ({ currentUser, onUserUpdate, onOpen
         return { hours, minutes };
     }, []);
     
-    // Server State
-    const [currentServer, setCurrentServer] = useState<string | null>(null);
-    
     // Video Tutorial Modal State
     const [isVideoModalOpen, setIsVideoModalOpen] = useState(false);
     const videoRef = useRef<HTMLVideoElement>(null);
     
-    // Anti-Captcha Video Tutorial Modal State
-    const [isAntiCaptchaVideoModalOpen, setIsAntiCaptchaVideoModalOpen] = useState(false);
-    const antiCaptchaVideoRef = useRef<HTMLVideoElement>(null);
     
     // Generated Token from API State
     const [generatedToken, setGeneratedToken] = useState('');
@@ -122,151 +87,20 @@ const FlowLogin: React.FC<FlowLoginProps> = ({ currentUser, onUserUpdate, onOpen
     const [generatedTokenSaved, setGeneratedTokenSaved] = useState(false);
     const [countdown, setCountdown] = useState<number | null>(null);
     const countdownIntervalRef = useRef<number | null>(null);
-    
-    const fetchCurrentServer = useCallback(() => {
-        const server = sessionStorage.getItem('selectedProxyServer');
-        setCurrentServer(server);
-    }, []);
 
     useEffect(() => {
-        fetchCurrentServer();
         setActiveApiKey(sessionStorage.getItem(BRAND_CONFIG.sessionKey));
-        
-        const handleServerChanged = () => fetchCurrentServer();
-        eventBus.on('serverChanged', handleServerChanged);
-        
-        return () => {
-            eventBus.remove('serverChanged', handleServerChanged);
-        };
-    }, [fetchCurrentServer]);
+    }, []);
     
     // Synchronize states with currentUser
     useEffect(() => {
         if (!currentUser) return;
         
-        // Reset master token resolved flag when user changes
-        masterTokenResolvedRef.current = false;
-        
         if (currentUser.personalAuthToken) {
             setFlowToken(currentUser.personalAuthToken);
         }
         
-        const resolveAntiCaptchaKey = async () => {
-            // For ESAIE: Always use master token (read-only)
-            if (BRAND_CONFIG.name === 'ESAIE') {
-                // Prevent multiple simultaneous resolutions for same user
-                if (masterTokenResolvedRef.current) {
-                    return; // Already resolved for this user, skip
-                }
-                
-                const cachedMasterToken = sessionStorage.getItem('master_recaptcha_token');
-                if (cachedMasterToken && cachedMasterToken.trim()) {
-                    setAntiCaptchaApiKey(cachedMasterToken);
-                    masterTokenResolvedRef.current = true;
-                } else {
-                    // Only fetch if not already loading to prevent multiple simultaneous fetches
-                    if (!isLoadingMasterToken) {
-                        setIsLoadingMasterToken(true);
-                        try {
-                            const masterTokenResult = await getMasterRecaptchaToken(true); // Force refresh
-                            if (masterTokenResult.success && masterTokenResult.apiKey && masterTokenResult.apiKey.trim()) {
-                                setAntiCaptchaApiKey(masterTokenResult.apiKey);
-                                masterTokenResolvedRef.current = true;
-                                // Cache it (already done in getMasterRecaptchaToken, but ensure)
-                                sessionStorage.setItem('master_recaptcha_token', masterTokenResult.apiKey);
-                                sessionStorage.setItem('master_recaptcha_token_timestamp', Date.now().toString());
-                            } else {
-                                setAntiCaptchaApiKey('');
-                                masterTokenResolvedRef.current = true; // Mark as resolved even if failed
-                            }
-                        } catch (error) {
-                            console.error('[FlowLogin] Error resolving master token:', error);
-                            setAntiCaptchaApiKey('');
-                            masterTokenResolvedRef.current = true; // Mark as resolved even if failed
-                        } finally {
-                            setIsLoadingMasterToken(false);
-                        }
-                    }
-                }
-                return; // Exit early for ESAIE
-            }
-
-            // For MONOKLIX: Use logic based on Token Ultra status
-            // Default: Use personal token
-            let apiKey = currentUser.recaptchaToken || '';
-
-            // Check Token Ultra registration status
-            // Try to get from cache first
-            const cachedReg = sessionStorage.getItem(`token_ultra_registration_${currentUser.id}`);
-            let tokenUltraReg: any = null;
-            
-            if (cachedReg) {
-                try {
-                    tokenUltraReg = JSON.parse(cachedReg);
-                } catch (e) {
-                    console.warn('[FlowLogin] Failed to parse cached registration', e);
-                }
-            }
-
-            // If not in cache, fetch from database
-            if (!tokenUltraReg) {
-                const ultraResult = await hasActiveTokenUltraWithRegistration(currentUser.id);
-                if (ultraResult.isActive && ultraResult.registration) {
-                    tokenUltraReg = ultraResult.registration;
-                }
-            }
-
-            // If Token Ultra is active, check allow_master_token from registration
-            if (tokenUltraReg) {
-                const expiresAt = new Date(tokenUltraReg.expires_at);
-                const now = new Date();
-                const isActive = (tokenUltraReg.status === 'active' || tokenUltraReg.status === 'expiring_soon') && expiresAt > now;
-
-                if (isActive) {
-                    // Token Ultra is active - check allow_master_token from users table
-                    // null/undefined = true (default), false = block master token
-                    const isBlockedFromMaster = tokenUltraReg.allow_master_token === false;
-
-                    if (!isBlockedFromMaster) {
-                        // Token Ultra active + NOT blocked → Use master token
-                        const cachedMasterToken = sessionStorage.getItem('master_recaptcha_token');
-                        if (cachedMasterToken && cachedMasterToken.trim()) {
-                            apiKey = cachedMasterToken;
-                        } else {
-                            // Fallback: try to fetch if not cached
-                            const masterTokenResult = await getMasterRecaptchaToken();
-                            if (masterTokenResult.success && masterTokenResult.apiKey) {
-                                apiKey = masterTokenResult.apiKey;
-                            } else {
-                                // Fallback to personal token
-                                apiKey = currentUser.recaptchaToken || '';
-                            }
-                        }
-                    } else {
-                        // Token Ultra active but BLOCKED from master token → Use personal token
-                        apiKey = currentUser.recaptchaToken || '';
-                    }
-                } else {
-                    // Token Ultra expired/inactive → Use personal token
-                    apiKey = currentUser.recaptchaToken || '';
-                }
-            } else {
-                // Normal User (no Token Ultra) → Use personal token
-                apiKey = currentUser.recaptchaToken || '';
-            }
-
-            setAntiCaptchaApiKey(apiKey);
-        };
-        
-        resolveAntiCaptchaKey();
-        
-        // Load Token Ultra details and status (ONLY for MONOKLIX, skip for ESAIE)
         const loadTokenUltraDetails = async () => {
-            // Skip for ESAIE - they don't use Token Ultra
-            if (BRAND_CONFIG.name === 'ESAIE') {
-                return;
-            }
-            
             setIsLoadingUltra(true);
             try {
                 const regResult = await getTokenUltraRegistration(currentUser.id);
@@ -298,23 +132,7 @@ const FlowLogin: React.FC<FlowLoginProps> = ({ currentUser, onUserUpdate, onOpen
         loadTokenUltraDetails();
         
         if (isInitialMount.current) isInitialMount.current = false;
-    }, [currentUser?.id, currentUser?.personalAuthToken, currentUser?.recaptchaToken]);
-
-    // Enforce anti-captcha for non-admin users
-    useEffect(() => {
-        if (!currentUser) return;
-        
-        const isAdmin = currentUser.role === 'admin';
-        
-        if (!isAdmin) {
-            // Non-admin: Force anti-captcha
-            if (captchaProvider !== 'anti-captcha') {
-                console.log('[FlowLogin] Non-admin user detected - resetting to anti-captcha');
-                setCaptchaProvider('anti-captcha');
-                localStorage.setItem('captchaProvider', 'anti-captcha');
-            }
-        }
-    }, [currentUser, captchaProvider]);
+    }, [currentUser?.id, currentUser?.personalAuthToken]);
 
     // Auto-save Flow Token
     useEffect(() => {
@@ -374,73 +192,6 @@ const FlowLogin: React.FC<FlowLoginProps> = ({ currentUser, onUserUpdate, onOpen
         };
     }, [flowToken, currentUser, onUserUpdate]);
 
-    // Auto-save Anti-Captcha Key
-    useEffect(() => {
-        if (isInitialMount.current || !currentUser || !antiCaptchaApiKey.trim()) return;
-
-        // CRITICAL: Don't auto-save for ESAIE (always using master token - read-only)
-        if (BRAND_CONFIG.name === 'ESAIE') {
-            return; // ESAIE users always use master token, cannot edit
-        }
-
-        // CRITICAL: Don't auto-save if Token Ultra active and NOT blocked (using master token)
-        // User should not be able to edit master token
-        const cachedReg = sessionStorage.getItem(`token_ultra_registration_${currentUser.id}`);
-        let tokenUltraReg: any = null;
-        
-        if (cachedReg) {
-            try {
-                tokenUltraReg = JSON.parse(cachedReg);
-            } catch (e) {
-                console.warn('[FlowLogin] Failed to parse cached registration for auto-save check', e);
-            }
-        }
-
-        if (tokenUltraReg) {
-            const expiresAt = new Date(tokenUltraReg.expires_at);
-            const now = new Date();
-            const isActive = (tokenUltraReg.status === 'active' || tokenUltraReg.status === 'expiring_soon') && expiresAt > now;
-            const isBlockedFromMaster = tokenUltraReg.allow_master_token === false;
-            
-            if (isActive && !isBlockedFromMaster) {
-                // Using master token - don't auto-save user edits
-                return;
-            }
-        }
-
-        const isUnchanged = async () => {
-            return antiCaptchaApiKey.trim() === (currentUser.recaptchaToken || '');
-        };
-
-        isUnchanged().then(unchanged => {
-            if (unchanged) return;
-
-            if (recaptchaSaveTimeoutRef.current) clearTimeout(recaptchaSaveTimeoutRef.current);
-
-            recaptchaSaveTimeoutRef.current = setTimeout(async () => {
-                try {
-                    setIsSavingRecaptcha(true);
-                    const result = await saveUserRecaptchaToken(currentUser.id, antiCaptchaApiKey.trim());
-                    if (result.success) {
-                        setRecaptchaTokenSaved(true);
-                        if (onUserUpdate) onUserUpdate(result.user);
-                        setTimeout(() => setRecaptchaTokenSaved(false), 3000);
-                    }
-                } catch (err) {
-                    console.error("Auto-save Anti-Captcha failed", err);
-                } finally {
-                    setIsSavingRecaptcha(false);
-                }
-            }, 2000);
-        });
-
-        return () => clearTimeout(recaptchaSaveTimeoutRef.current as any);
-    }, [antiCaptchaApiKey, currentUser, onUserUpdate]);
-
-    useEffect(() => {
-        localStorage.setItem('antiCaptchaProjectId', antiCaptchaProjectId);
-    }, [antiCaptchaProjectId]);
-
     // Auto-play video when modal opens
     useEffect(() => {
         if (isVideoModalOpen && videoRef.current) {
@@ -450,15 +201,6 @@ const FlowLogin: React.FC<FlowLoginProps> = ({ currentUser, onUserUpdate, onOpen
         }
     }, [isVideoModalOpen]);
 
-    // Auto-play Anti-Captcha video when modal opens
-    useEffect(() => {
-        if (isAntiCaptchaVideoModalOpen && antiCaptchaVideoRef.current) {
-            antiCaptchaVideoRef.current.play().catch(err => {
-                console.error('Error auto-playing Anti-Captcha video:', err);
-            });
-        }
-    }, [isAntiCaptchaVideoModalOpen]);
-
     // Cleanup countdown interval on unmount
     useEffect(() => {
         return () => {
@@ -467,54 +209,6 @@ const FlowLogin: React.FC<FlowLoginProps> = ({ currentUser, onUserUpdate, onOpen
             }
         };
     }, []);
-
-    const handleTestAntiCaptcha = async () => {
-        // Handle bridge-server separately (no API key needed)
-        if (captchaProvider === 'bridge-server') {
-            setAntiCaptchaTestStatus('testing');
-            setAntiCaptchaTestMessage('Testing bridge server connection...');
-            try {
-                const isAvailable = await checkBridgeServer();
-                if (isAvailable) {
-                    setAntiCaptchaTestStatus('success');
-                    setAntiCaptchaTestMessage('✅ Bridge server is running and accessible!');
-                } else {
-                    setAntiCaptchaTestStatus('error');
-                    setAntiCaptchaTestMessage(`❌ Bridge server is not accessible. Ensure ${getBridgeServerUrl()} is reachable.`);
-                }
-            } catch (error: any) {
-                setAntiCaptchaTestStatus('error');
-                setAntiCaptchaTestMessage(`❌ Bridge server error: ${error.message}`);
-            }
-            return;
-        }
-        
-        if (!antiCaptchaApiKey.trim()) return;
-        const providerName = captchaProvider === 'ez-captcha' ? 'EzCaptcha' : captchaProvider === 'capsolver' ? 'CapSolver' : 'Anti-Captcha';
-        setAntiCaptchaTestStatus('testing');
-        setAntiCaptchaTestMessage(`Testing ${providerName} API key...`);
-        try {
-            let result;
-            if (captchaProvider === 'ez-captcha') {
-                result = await testEzCaptchaKey(antiCaptchaApiKey.trim());
-            } else if (captchaProvider === 'capsolver') {
-                result = await testCapSolverKey(antiCaptchaApiKey.trim());
-            } else {
-                result = await testAntiCaptchaKey(antiCaptchaApiKey.trim());
-            }
-            if (result.valid) {
-                setAntiCaptchaTestStatus('success');
-                setAntiCaptchaTestMessage(`✅ ${providerName} API key is valid!`);
-            } else {
-                setAntiCaptchaTestStatus('error');
-                setAntiCaptchaTestMessage(`❌ ${result.error || 'Invalid API key'}`);
-            }
-        } catch (error) {
-            setAntiCaptchaTestStatus('error');
-            setAntiCaptchaTestMessage('❌ Test failed');
-        }
-        setTimeout(() => { setAntiCaptchaTestStatus('idle'); setAntiCaptchaTestMessage(''); }, 5000);
-    };
 
     const handleCopyUltraEmail = () => {
         if (emailDetails?.email) {
@@ -559,7 +253,7 @@ const FlowLogin: React.FC<FlowLoginProps> = ({ currentUser, onUserUpdate, onOpen
                 const message = error instanceof Error ? error.message : String(error);
                 errorMessage = message;
                 
-                // Check jika error 401 atau unauthorized
+                // Check for 401 or unauthorized errors
                 const isUnauthorized = message.includes('401') || 
                                      message.toLowerCase().includes('unauthorized') ||
                                      message.toLowerCase().includes('permission denied');
@@ -575,7 +269,7 @@ const FlowLogin: React.FC<FlowLoginProps> = ({ currentUser, onUserUpdate, onOpen
                 }
             }
             
-            // Jika NanoBanana success, tunjukkan success untuk kedua-dua service
+            // If NanoBanana succeeds, mark both services as operational
             if (nanoBananaSuccess) {
                 setTestResults([
                     { service: 'NanoBanana', success: true, message: 'Operational' },
@@ -678,7 +372,7 @@ const FlowLogin: React.FC<FlowLoginProps> = ({ currentUser, onUserUpdate, onOpen
                 if (data.token && currentUser) {
                     setFlowToken(data.token);
                     
-                    // Save token immediately to Supabase (both ESAIE and MONOKLIX - no delay)
+                    // Save token immediately to Supabase (no delay)
                     // Important: Token saved to respective brand's Supabase table (configured in supabaseClient.ts)
                     try {
                         setIsSaving(true);
@@ -777,11 +471,54 @@ const FlowLogin: React.FC<FlowLoginProps> = ({ currentUser, onUserUpdate, onOpen
 
     if (!currentUser) return null;
 
+    const flowMainGridClass = pairWithTokenUltraPanel
+        ? 'grid min-h-0 flex-1 grid-cols-1 gap-8'
+        : 'grid min-h-0 flex-1 grid-cols-1 gap-8 xl:grid-cols-2';
+
+    const veolyApiKeysCard = (
+        <div className="bg-white dark:bg-neutral-900 p-6 rounded-lg shadow-sm border border-neutral-200 dark:border-neutral-800">
+            <h3 className="text-base sm:text-lg font-bold mb-4 text-neutral-800 dark:text-neutral-200 flex items-center gap-2">
+                <SparklesIcon className="w-5 h-5 text-primary-500" />
+                {T_Api.title}
+            </h3>
+
+            <div className="p-3 sm:p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border-[0.5px] border-blue-200 dark:border-blue-800">
+                <div className="flex items-start gap-2 sm:gap-3">
+                    <InformationCircleIcon className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
+                    <p className="text-[11px] sm:text-xs text-blue-800 dark:text-blue-200">
+                        {T_Api.description}
+                    </p>
+                </div>
+                <div className="mt-3 flex items-center gap-2 text-sm font-medium">
+                    <span className="text-neutral-600 dark:text-neutral-400">{T_Api.sharedStatus}</span>
+                    {activeApiKey ? (
+                        <span className="flex items-center gap-1.5 text-green-600 dark:text-green-400">
+                            <CheckCircleIcon className="w-4 h-4" />
+                            {T_Api.connected}
+                        </span>
+                    ) : (
+                        <span className="flex items-center gap-1.5 text-red-500">
+                            <XIcon className="w-4 h-4" />
+                            {T_Api.notLoaded}
+                        </span>
+                    )}
+                </div>
+            </div>
+        </div>
+    );
+
+    /** API keys card only — Generation Server moved to Profile tab (SettingsView ProfilePanel). */
+    const apiKeysAndServerPanels = (
+        <div className="flex flex-col gap-6">
+            {veolyApiKeysCard}
+        </div>
+    );
+
     return (
-        <div className="w-full">
-            <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
+        <div className="flex h-full min-h-0 w-full flex-col">
+            <div className={flowMainGridClass}>
                 {/* Left Panel: Flow Login */}
-                <div className="bg-white dark:bg-neutral-900 rounded-lg shadow-sm p-6 h-full overflow-y-auto border border-neutral-200 dark:border-neutral-800">
+                <div className="flex min-h-0 flex-1 flex-col overflow-y-auto rounded-lg border border-neutral-200 bg-white p-6 shadow-sm dark:border-neutral-800 dark:bg-neutral-900">
                     <div className="flex items-center gap-3 mb-6">
                         <div className="p-2 bg-primary-100 dark:bg-primary-900/30 rounded-lg">
                             <KeyIcon className="w-6 h-6 text-primary-600 dark:text-primary-400" />
@@ -794,23 +531,6 @@ const FlowLogin: React.FC<FlowLoginProps> = ({ currentUser, onUserUpdate, onOpen
 
                     {/* How to Get Token Instructions (MOVED TO TOP) */}
                     <div className="mb-6">
-                        {/* Instructions for ESAIE: Always show Generate NEW Token instructions */}
-                        {BRAND_CONFIG.name === 'ESAIE' && (
-                            <div className="flex items-start gap-2 sm:gap-3 p-3 sm:p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border-[0.5px] border-blue-200 dark:border-blue-800">
-                                <InformationCircleIcon className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
-                                <div className="text-[11px] sm:text-xs text-blue-800 dark:text-blue-200">
-                                    <p className="text-[11px] sm:text-xs font-bold mb-2 uppercase tracking-wide">How to get your Flow Token:</p>
-                                    <ol className="text-[11px] sm:text-xs space-y-1.5 list-decimal list-inside font-medium">
-                                        <li>Click the "Generate NEW Token (Auto)" button below</li>
-                                        <li>Your token will be automatically generated and saved</li>
-                                        <li>You can use it immediately for your session</li>
-                                    </ol>
-                                </div>
-                            </div>
-                        )}
-
-                        {/* Instructions for MONOKLIX: Show based on Token Ultra status */}
-                        {BRAND_CONFIG.name !== 'ESAIE' && (
                             <>
                                 {/* Instructions for Token Ultra Active Users */}
                                 {isTokenUltraActive() && (
@@ -843,8 +563,13 @@ const FlowLogin: React.FC<FlowLoginProps> = ({ currentUser, onUserUpdate, onOpen
                                     </div>
                                 )}
                             </>
-                        )}
                     </div>
+
+                    {pairWithTokenUltraPanel && !isLoadingUltra && !ultraRegistration && (
+                        <div className="mb-6">
+                            {apiKeysAndServerPanels}
+                        </div>
+                    )}
 
                     {/* Token Ultra Status Section */}
                     {!isLoadingUltra && ultraRegistration && (
@@ -890,6 +615,20 @@ const FlowLogin: React.FC<FlowLoginProps> = ({ currentUser, onUserUpdate, onOpen
                                             : '0'}
                                     </span>
                                 </div>
+
+                                <div className="flex items-center justify-between p-3 bg-neutral-50 dark:bg-neutral-800 rounded-lg border border-neutral-200 dark:border-neutral-700">
+                                    <span className="text-xs font-bold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">GEMINI API Keys:</span>
+                                    <span
+                                        className={`text-xs font-bold uppercase ${
+                                            activeApiKey
+                                                ? 'text-green-600 dark:text-green-400'
+                                                : 'text-red-500 dark:text-red-400'
+                                        }`}
+                                    >
+                                        {activeApiKey ? T_Api.connected : T_Api.notLoaded}
+                                    </span>
+                                </div>
+
                                 
                                 {/* Flow Account Email & Password (Controlled by feature flag) */}
                                 {emailDetails && (BRAND_CONFIG.featureFlags?.showFlowAccountDetails ?? false) && (
@@ -971,7 +710,7 @@ const FlowLogin: React.FC<FlowLoginProps> = ({ currentUser, onUserUpdate, onOpen
                                         <AlertTriangleIcon className="w-5 h-5 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" />
                                         <div>
                                             <p className="text-xs font-bold text-red-800 dark:text-red-200 mb-1">YOUR TOKEN ULTRA HAS EXPIRED</p>
-                                            <p className="text-[11px] text-red-700 dark:text-red-300 leading-relaxed">Please renew your token by submitting a new payment proof in the Token Ultra tab to continue using premium features.</p>
+                                            <p className="text-[11px] text-red-700 dark:text-red-300 leading-relaxed">Please renew your token using the Token Ultra Credit panel on the right to continue using premium features.</p>
                                         </div>
                                     </div>
                                 )}
@@ -980,7 +719,7 @@ const FlowLogin: React.FC<FlowLoginProps> = ({ currentUser, onUserUpdate, onOpen
                                         <InformationCircleIcon className="w-5 h-5 text-yellow-600 dark:text-yellow-400 flex-shrink-0 mt-0.5" />
                                         <div>
                                             <p className="text-xs font-bold text-yellow-800 dark:text-yellow-200 mb-1">TOKEN ULTRA EXPIRING SOON</p>
-                                            <p className="text-[11px] text-yellow-700 dark:text-yellow-300 leading-relaxed">Your token will expire soon. Please renew early in the Token Ultra tab to avoid any service interruption.</p>
+                                            <p className="text-[11px] text-yellow-700 dark:text-yellow-300 leading-relaxed">Your token will expire soon. Please renew early using the Token Ultra Credit panel on the right to avoid any service interruption.</p>
                                         </div>
                                     </div>
                                 )}
@@ -991,18 +730,40 @@ const FlowLogin: React.FC<FlowLoginProps> = ({ currentUser, onUserUpdate, onOpen
 
                     <div className="space-y-4">
                         <div>
-                            <label htmlFor="flow-token" className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-2">Personal Token (Flow Token)</label>
-                            <div className="relative">
-                                <input id="flow-token" type={showToken ? 'text' : 'password'} value={flowToken} onChange={(e) => setFlowToken(e.target.value)} placeholder="Paste your Flow token here" className="w-full px-4 py-3 pr-20 bg-neutral-50 dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-700 rounded-lg focus:ring-2 focus:ring-primary-500 font-mono text-sm" />
-                                <div className="absolute inset-y-0 right-0 flex items-center gap-2 pr-2">
-                                    {tokenSaved && flowToken.trim() && <span className="text-xs text-green-600 dark:text-green-400 font-medium">Saved</span>}
+                            <div className="flex items-center justify-between gap-2 sm:gap-3 p-3 bg-neutral-50 dark:bg-neutral-800 rounded-lg border border-neutral-200 dark:border-neutral-700">
+                                <span className="text-xs font-bold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider shrink-0">
+                                    Flow Token:
+                                </span>
+                                <div className="flex min-w-0 flex-1 items-center justify-end gap-2">
+                                    <input
+                                        id="flow-token"
+                                        type={showToken ? 'text' : 'password'}
+                                        value={flowToken}
+                                        onChange={e => setFlowToken(e.target.value)}
+                                        placeholder="Paste token…"
+                                        autoComplete="off"
+                                        spellCheck={false}
+                                        className="min-w-0 flex-1 border-0 bg-transparent py-0.5 pl-1 text-right font-mono text-xs font-bold text-neutral-700 placeholder:font-normal placeholder:text-neutral-400 dark:text-neutral-200 focus:outline-none focus:ring-0"
+                                    />
+                                    <div className="flex shrink-0 items-center gap-1.5">
+                                        {tokenSaved && flowToken.trim() && (
+                                            <span className="text-xs font-medium text-green-600 dark:text-green-400">Saved</span>
+                                        )}
                                     {isSaving && <Spinner />}
-                                    <button type="button" onClick={() => setShowToken(!showToken)} className="px-3 flex items-center text-neutral-500 hover:text-neutral-700">
-                                        {showToken ? <EyeOffIcon className="w-4 h-4" /> : <EyeIcon className="w-4 h-4" />}
+                                        <button
+                                            type="button"
+                                            onClick={() => setShowToken(!showToken)}
+                                            className="flex items-center rounded-md p-1.5 text-neutral-500 hover:bg-neutral-200/80 hover:text-neutral-800 dark:hover:bg-neutral-700/80 dark:hover:text-neutral-200"
+                                            aria-label={showToken ? 'Hide token' : 'Show token'}
+                                        >
+                                            {showToken ? <EyeOffIcon className="h-4 w-4" /> : <EyeIcon className="h-4 w-4" />}
                                     </button>
                                 </div>
                             </div>
-                            <p className="text-xs text-neutral-500 mt-1">Token used for image/video generation requests</p>
+                            </div>
+                            <p className="mt-2 text-xs text-neutral-500 dark:text-neutral-400">
+                                Token used for image/video generation requests
+                            </p>
                         </div>
 
                         {/* Last Token Save Information */}
@@ -1055,31 +816,7 @@ const FlowLogin: React.FC<FlowLoginProps> = ({ currentUser, onUserUpdate, onOpen
                         )}
 
                         <div className="space-y-3">
-                            {/* For ESAIE: Always show "Generate NEW Token" button */}
-                            {/* For MONOKLIX: Show "Generate NEW Token" only if Token Ultra is active, otherwise show manual login buttons */}
-                            {BRAND_CONFIG.name === 'ESAIE' ? (
-                                // ESAIE: Always show Generate NEW Token button
-                                <button onClick={handleGetNewToken} disabled={isLoadingToken || !currentUser} className="w-full flex items-center justify-center gap-2 bg-purple-600 dark:bg-purple-700 text-white text-sm font-semibold py-2.5 px-4 rounded-lg hover:bg-purple-700 dark:hover:bg-purple-600 transition-colors disabled:opacity-50">
-                                    {isLoadingToken ? (
-                                        <>
-                                            <Spinner />
-                                            {countdown !== null ? (
-                                                <span>Generating Token... ({countdown > 0 ? `${countdown}s` : `-${Math.abs(countdown)}s`})</span>
-                                            ) : (
-                                                <span>Generating Token...</span>
-                                            )}
-                                        </>
-                                    ) : (
-                                        <>
-                                            <KeyIcon className="w-4 h-4" />
-                                            Generate NEW Token (Auto)
-                                        </>
-                                    )}
-                                </button>
-                            ) : (
-                                // MONOKLIX: Show buttons for all users
                                 <>
-                                    {/* Show "Login Google Flow" and "Get Token" buttons for all MONOKLIX users */}
                                     <button onClick={handleOpenFlow} className="w-full flex items-center justify-center gap-2 bg-green-600 dark:bg-green-700 text-white text-sm font-semibold py-2.5 px-4 rounded-lg hover:bg-green-700 dark:hover:bg-green-600 transition-colors">
                                         <KeyIcon className="w-4 h-4" />
                                         Login Google Flow
@@ -1088,8 +825,6 @@ const FlowLogin: React.FC<FlowLoginProps> = ({ currentUser, onUserUpdate, onOpen
                                         <KeyIcon className="w-4 h-4" />
                                         Copy Token (Manual)
                                     </button>
-                                    
-                                    {/* Show "Generate NEW Token" button if Token Ultra is active */}
                                     {isTokenUltraActive() && (
                                         <button onClick={handleGetNewToken} disabled={isLoadingToken || !currentUser} className="w-full flex items-center justify-center gap-2 bg-purple-600 dark:bg-purple-700 text-white text-sm font-semibold py-2.5 px-4 rounded-lg hover:bg-purple-700 dark:hover:bg-purple-600 transition-colors disabled:opacity-50">
                                             {isLoadingToken ? (
@@ -1110,7 +845,6 @@ const FlowLogin: React.FC<FlowLoginProps> = ({ currentUser, onUserUpdate, onOpen
                                         </button>
                                     )}
                                 </>
-                            )}
                             
                             <button onClick={handleTestToken} disabled={(!flowToken.trim() && !currentUser?.personalAuthToken) || testStatus === 'testing'} className="w-full flex items-center justify-center gap-2 bg-blue-600 dark:bg-blue-700 text-white text-sm font-semibold py-2.5 px-4 rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50">{testStatus === 'testing' ? <Spinner /> : <SparklesIcon className="w-4 h-4" />}Health Test</button>
                             <button
@@ -1230,311 +964,9 @@ const FlowLogin: React.FC<FlowLoginProps> = ({ currentUser, onUserUpdate, onOpen
                     </div>
                 </div>
 
-                {/* Right Panel: Anti-Captcha Configuration */}
-                <div className="flex flex-col gap-6">
-                    {/* Anti-Captcha Panel */}
-                    <div className="bg-white dark:bg-neutral-900 p-6 rounded-lg shadow-sm h-auto overflow-y-auto border border-neutral-200 dark:border-neutral-800">
-                        <h3 className="text-base sm:text-lg font-bold mb-4 text-neutral-800 dark:text-neutral-200 flex items-center gap-2">
-                            <KeyIcon className="w-5 h-5 text-primary-500" />
-                            reCAPTCHA Configuration
-                        </h3>
-
-                        {/* Provider Selection */}
-                        <div className="mb-4">
-                            <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-2">
-                                Captcha Provider
-                            </label>
-                            <select
-                                value={captchaProvider}
-                                onChange={(e) => {
-                                    const provider = e.target.value as 'anti-captcha' | 'ez-captcha' | 'capsolver' | 'bridge-server';
-                                    
-                                    // Check if user is admin
-                                    const isAdmin = currentUser?.role === 'admin';
-                                    
-                                    if (!isAdmin && provider !== 'anti-captcha') {
-                                        // Non-admin trying to select non-anti-captcha - prevent and reset
-                                        console.warn('[FlowLogin] Non-admin user tried to select non-anti-captcha provider, resetting to anti-captcha');
-                                        setCaptchaProvider('anti-captcha');
-                                        localStorage.setItem('captchaProvider', 'anti-captcha');
-                                        return;
-                                    }
-                                    
-                                    console.log('[FlowLogin] User changed captcha provider:', provider);
-                                    localStorage.setItem('captchaProvider', provider);
-                                    setCaptchaProvider(provider);
-                                    
-                                    // Verify it was saved
-                                    const verify = localStorage.getItem('captchaProvider');
-                                    console.log('[FlowLogin] Verified saved provider:', verify);
-                                }}
-                                className="w-full px-3 py-2 bg-white dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-600 rounded-lg text-sm text-neutral-800 dark:text-neutral-200 focus:outline-none focus:ring-2 focus:ring-primary-500"
-                                disabled={!currentUser || currentUser.role !== 'admin'}
-                            >
-                                <option value="anti-captcha">Anti-Captcha.com (Standard)</option>
-                                {currentUser?.role === 'admin' && (
-                                    <>
-                                        <option value="bridge-server">Bridge Server (Recommended)</option>
-                                        <option value="ez-captcha">EzCaptcha.com (High Score 0.9)</option>
-                                        <option value="capsolver">CapSolver.com (High Score 0.9)</option>
-                                    </>
-                                )}
-                            </select>
-                            <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">
-                                {captchaProvider === 'bridge-server'
-                                    ? 'Using Bridge Server - Highest success rate, no API key needed'
-                                    : captchaProvider === 'ez-captcha' 
-                                    ? 'Using EzCaptcha Enterprise High Score - Better quality tokens ($2.5/k)'
-                                    : captchaProvider === 'capsolver'
-                                    ? 'Using CapSolver High Score - Fast & reliable tokens ($1/k)'
-                                    : 'Using Anti-Captcha Standard - Standard quality tokens'}
-                            </p>
-                            
-                            {/* Bridge Server Info Box */}
-                            {captchaProvider === 'bridge-server' && currentUser?.role === 'admin' && (
-                                <div className="mt-3 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
-                                    <p className="text-sm font-semibold text-blue-900 dark:text-blue-200 mb-2">
-                                        🌟 Bridge Server
-                                    </p>
-                                    <ul className="text-xs text-blue-800 dark:text-blue-300 space-y-1">
-                                        <li>✅ Highest success rate - tokens from real browser</li>
-                                        <li>✅ No API key needed</li>
-                                    </ul>
-                                </div>
-                            )}
-                            
-                            {/* Info message for non-admin */}
-                            {currentUser?.role !== 'admin' && (
-                                <div className="mt-3 p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
-                                    <p className="text-xs text-yellow-800 dark:text-yellow-300">
-                                        ℹ️ Only Anti-Captcha is available for your account. Admin accounts have access to additional providers.
-                                    </p>
-                                </div>
-                            )}
-                        </div>
-
-                        {captchaProvider !== 'bridge-server' && (
-                            <div className="p-3 sm:p-4 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg border-[0.5px] border-yellow-200 dark:border-yellow-800 mb-4">
-                                <div className="flex items-start gap-2 sm:gap-3">
-                                    <InformationCircleIcon className="w-4 h-4 sm:w-5 sm:h-5 text-yellow-600 dark:text-yellow-400 flex-shrink-0 mt-0.5" />
-                                    <div className="text-[11px] sm:text-xs text-yellow-800 dark:text-blue-200">
-                                        <p className="text-[11px] sm:text-xs font-semibold mb-1">Required for Generation • Main Input</p>
-                                        <p className="text-[11px] sm:text-xs">
-                                            Google requires reCAPTCHA solving. This key allows the system to auto-solve it via{' '}
-                                            {captchaProvider === 'ez-captcha' ? (
-                                                <a href="https://ez-captcha.com" target="_blank" className="underline">ez-captcha.com</a>
-                                            ) : captchaProvider === 'capsolver' ? (
-                                                <a href="https://capsolver.com" target="_blank" className="underline">capsolver.com</a>
-                                            ) : (
-                                                <a href="https://anti-captcha.com" target="_blank" className="underline">anti-captcha.com</a>
-                                            )}.
-                                        </p>
-                                        <p className="text-[11px] sm:text-xs mt-1.5 font-medium">💡 This is the primary input for your {captchaProvider === 'ez-captcha' ? 'EzCaptcha' : captchaProvider === 'capsolver' ? 'CapSolver' : 'Anti-Captcha'} API key. Token auto-saves when you type.</p>
-                                    </div>
-                                </div>
-                            </div>
-                        )}
-
-                        <div className="space-y-4">
-                            {captchaProvider !== 'bridge-server' && (
-                                <div>
-                                    <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-2">
-                                        {captchaProvider === 'ez-captcha' ? 'EzCaptcha' : captchaProvider === 'capsolver' ? 'CapSolver' : 'Anti-Captcha'} API Key
-                                    </label>
-                                <div className="relative">
-                                    {/* For ESAIE: Always show read-only master token */}
-                                    {/* For MONOKLIX: Show read-only if Token Ultra active and NOT blocked */}
-                                    {(() => {
-                                        // ESAIE: Always use master token (read-only)
-                                        if (BRAND_CONFIG.name === 'ESAIE') {
-                                            // Show last 10 characters of master token
-                                            let displayToken = 'Loading...';
-                                            if (isLoadingMasterToken) {
-                                                displayToken = 'Loading...';
-                                            } else if (antiCaptchaApiKey && antiCaptchaApiKey.trim()) {
-                                                displayToken = showAntiCaptchaKey 
-                                                    ? antiCaptchaApiKey 
-                                                    : '•'.repeat(Math.max(0, antiCaptchaApiKey.length - 10)) + antiCaptchaApiKey.slice(-10);
-                                            } else {
-                                                displayToken = 'No master token found';
-                                            }
-                                            return (
-                                                <>
-                                                    <div className="w-full bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-2.5 pr-10 text-blue-800 dark:text-blue-200 cursor-not-allowed">
-                                                        <div className="flex items-center gap-2 mb-1">
-                                                            <InformationCircleIcon className="w-4 h-4 text-blue-600 dark:text-blue-400 flex-shrink-0" />
-                                                            <span className="text-xs font-semibold">Master Token (Read-only)</span>
-                                                        </div>
-                                                        <div className="text-xs font-mono truncate">
-                                                            {displayToken}
-                                                        </div>
-                                                    </div>
-                                                    <div className="absolute right-2 top-1/2 -translate-y-1/2">
-                                                        <button 
-                                                            onClick={() => setShowAntiCaptchaKey(!showAntiCaptchaKey)} 
-                                                            className="text-blue-600 dark:text-blue-400 p-1 cursor-pointer" 
-                                                            title="Toggle visibility"
-                                                        >
-                                                            {showAntiCaptchaKey ? <EyeOffIcon className="w-4 h-4"/> : <EyeIcon className="w-4 h-4"/>}
-                                                        </button>
-                                                    </div>
-                                                </>
-                                            );
-                                        }
-
-                                        // MONOKLIX: Check if using master token from users table
-                                        const cachedReg = sessionStorage.getItem(`token_ultra_registration_${currentUser.id}`);
-                                        let tokenUltraReg: any = null;
-                                        
-                                        if (cachedReg) {
-                                            try {
-                                                tokenUltraReg = JSON.parse(cachedReg);
-                                            } catch (e) {
-                                                // Ignore parse errors
-                                            }
-                                        }
-                                        
-                                        const isUsingMasterToken = tokenUltraReg && 
-                                            (tokenUltraReg.status === 'active' || tokenUltraReg.status === 'expiring_soon') && 
-                                            new Date(tokenUltraReg.expires_at) > new Date() &&
-                                            tokenUltraReg.allow_master_token !== false;
-                                        
-                                        if (isUsingMasterToken) {
-                                            // Show last 10 characters of master token
-                                            const displayToken = antiCaptchaApiKey 
-                                                ? (showAntiCaptchaKey 
-                                                    ? antiCaptchaApiKey 
-                                                    : '•'.repeat(Math.max(0, antiCaptchaApiKey.length - 10)) + antiCaptchaApiKey.slice(-10))
-                                                : 'Loading...';
-                                            return (
-                                                <>
-                                                    <div className="w-full bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-2.5 pr-10 text-blue-800 dark:text-blue-200 cursor-not-allowed">
-                                                        <div className="flex items-center gap-2 mb-1">
-                                                            <InformationCircleIcon className="w-4 h-4 text-blue-600 dark:text-blue-400 flex-shrink-0" />
-                                                            <span className="text-xs font-semibold">Master Token (Read-only)</span>
-                                                        </div>
-                                                        <div className="text-xs font-mono truncate">
-                                                            {displayToken}
-                                                        </div>
-                                                    </div>
-                                                    <div className="absolute right-2 top-1/2 -translate-y-1/2">
-                                                        <button 
-                                                            onClick={() => setShowAntiCaptchaKey(!showAntiCaptchaKey)} 
-                                                            className="text-blue-600 dark:text-blue-400 p-1 cursor-pointer" 
-                                                            title="Toggle visibility"
-                                                        >
-                                                            {showAntiCaptchaKey ? <EyeOffIcon className="w-4 h-4"/> : <EyeIcon className="w-4 h-4"/>}
-                                                        </button>
-                                                    </div>
-                                                </>
-                                            );
-                                        }
-                                        
-                                        // MONOKLIX: Normal user or Token Ultra blocked - show editable input
-                                        return (
-                                            <>
-                                                <input 
-                                                    type={showAntiCaptchaKey ? 'text' : 'password'} 
-                                                    value={antiCaptchaApiKey} 
-                                                    onChange={(e) => setAntiCaptchaApiKey(e.target.value)} 
-                                                    placeholder="Enter your anti-captcha.com API key" 
-                                                    className="w-full bg-neutral-50 dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-700 rounded-lg p-2.5 pr-10 focus:ring-2 focus:ring-primary-500 font-mono text-sm" 
-                                                />
-                                                <div className="absolute inset-y-0 right-0 flex items-center gap-2 pr-2">
-                                                    {recaptchaTokenSaved && antiCaptchaApiKey.trim() && <span className="text-xs text-green-600 dark:text-green-400 font-medium">Saved</span>}
-                                                    {isSavingRecaptcha && <Spinner />}
-                                                    <button onClick={() => setShowAntiCaptchaKey(!showAntiCaptchaKey)} className="px-3 flex items-center text-neutral-500 hover:text-neutral-700">
-                                                        {showAntiCaptchaKey ? <EyeOffIcon className="w-4 h-4"/> : <EyeIcon className="w-4 h-4"/>}
-                                                    </button>
-                                                </div>
-                                            </>
-                                        );
-                                    })()}
-                                </div>
-                                <p className="text-xs text-neutral-500 mt-1">Token is auto-saved upon change.</p>
-                            </div>
-                            )}
-
-                            <div className="w-full space-y-2">
-                                <button 
-                                    onClick={handleTestAntiCaptcha} 
-                                    disabled={(captchaProvider !== 'bridge-server' && !antiCaptchaApiKey) || antiCaptchaTestStatus === 'testing'} 
-                                    className="w-full flex items-center justify-center gap-2 bg-primary-600 text-white text-sm font-semibold py-2.5 px-4 rounded-lg hover:bg-primary-700 transition-colors disabled:opacity-50"
-                                >
-                                    {antiCaptchaTestStatus === 'testing' ? <Spinner /> : <SparklesIcon className="w-4 h-4" />}
-                                    {captchaProvider === 'bridge-server' ? 'Test Bridge Server' : 'Test API Key'}
-                                </button>
-                                    {antiCaptchaTestMessage && <span className={`text-sm font-medium ${antiCaptchaTestStatus === 'success' ? 'text-green-600' : 'text-red-600'}`}>{antiCaptchaTestMessage}</span>}
-                                    {captchaProvider !== 'bridge-server' && (
-                                        <button
-                                            onClick={() => setIsAntiCaptchaVideoModalOpen(true)}
-                                            className="w-full flex items-center justify-center gap-2 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-800 dark:text-red-300 text-sm font-semibold py-2.5 px-4 rounded-lg hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors"
-                                        >
-                                            <PlayIcon className="w-4 h-4" />
-                                            Video Tutorial Anti-Captcha
-                                        </button>
-                                    )}
-                                </div>
-                        </div>
-                    </div>
-
-                    {/* MONOklix API Keys Panel */}
-                    <div className="bg-white dark:bg-neutral-900 p-6 rounded-lg shadow-sm border border-neutral-200 dark:border-neutral-800">
-                        <h3 className="text-base sm:text-lg font-bold mb-4 text-neutral-800 dark:text-neutral-200 flex items-center gap-2">
-                            <SparklesIcon className="w-5 h-5 text-primary-500" />
-                            {T_Api.title}
-                        </h3>
-                        
-                        <div className="p-3 sm:p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border-[0.5px] border-blue-200 dark:border-blue-800">
-                            <div className="flex items-start gap-2 sm:gap-3">
-                                <InformationCircleIcon className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
-                                <p className="text-[11px] sm:text-xs text-blue-800 dark:text-blue-200">
-                                    {T_Api.description}
-                                </p>
-                            </div>
-                            <div className="mt-3 flex items-center gap-2 text-sm font-medium">
-                                <span className="text-neutral-600 dark:text-neutral-400">{T_Api.sharedStatus}</span>
-                                {activeApiKey ? (
-                                    <span className="flex items-center gap-1.5 text-green-600 dark:text-green-400">
-                                        <CheckCircleIcon className="w-4 h-4" />
-                                        {T_Api.connected}
-                                    </span>
-                                ) : (
-                                    <span className="flex items-center gap-1.5 text-red-500">
-                                        <XIcon className="w-4 h-4" />
-                                        {T_Api.notLoaded}
-                                    </span>
-                                )}
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Server Configuration Panel */}
-                    <div className="bg-white dark:bg-neutral-900 p-6 rounded-lg shadow-sm border border-neutral-200 dark:border-neutral-800">
-                        <h3 className="text-base sm:text-lg font-bold mb-4 text-neutral-800 dark:text-neutral-200 flex items-center gap-2">
-                            <ServerIcon className="w-5 h-5 text-primary-500" />
-                            Generation Server
-                        </h3>
-                        <p className="text-sm text-neutral-500 dark:text-neutral-400 mb-4">Choose the backend server for processing your requests. Switching servers can help if one is slow or overloaded.</p>
-                        
-                        <div className="bg-neutral-50 dark:bg-neutral-800/50 border border-neutral-200 dark:border-neutral-700 rounded-xl p-4 flex items-center justify-between transition-all">
-                            <div className="min-w-0 flex-1 mr-4">
-                                <p className="text-[10px] font-bold text-neutral-500 dark:text-neutral-400 uppercase tracking-widest mb-1">Status: Connected to</p>
-                                <p className="font-mono text-sm text-primary-600 dark:text-primary-400 truncate">
-                                    {currentServer ? currentServer.replace('https://', '').toUpperCase() : 'NOT CONFIGURED'}
-                                </p>
-                            </div>
-                            <button 
-                                onClick={onOpenChangeServerModal}
-                                className="flex items-center justify-center gap-2 bg-primary-600 text-white text-sm font-semibold py-2.5 px-4 rounded-lg hover:bg-primary-700 transition-colors shrink-0"
-                            >
-                                Change Server
-                            </button>
-                        </div>
-                    </div>
-
-                    {/* Special for MONOklix user Panel - removed by request */}
-                </div>
+                {!pairWithTokenUltraPanel && (
+                    <div className="flex min-h-0 min-w-0 flex-col xl:min-h-full">{apiKeysAndServerPanels}</div>
+                )}
             </div>
 
             {/* Video Tutorial Modal - Fullscreen */}
@@ -1559,7 +991,7 @@ const FlowLogin: React.FC<FlowLoginProps> = ({ currentUser, onUserUpdate, onOpen
                     >
                         <video
                             ref={videoRef}
-                            src="https://monoklix.com/wp-content/uploads/2026/01/Video-01-Personal-Auth-Token.mp4"
+                            src="https://veoly-ai.com/wp-content/uploads/2026/01/Video-01-Personal-Auth-Token.mp4"
                             controls
                             autoPlay
                             className="w-full h-full object-contain"
@@ -1578,46 +1010,6 @@ const FlowLogin: React.FC<FlowLoginProps> = ({ currentUser, onUserUpdate, onOpen
                 </div>
             )}
 
-            {/* Anti-Captcha Video Tutorial Modal - Fullscreen */}
-            {isAntiCaptchaVideoModalOpen && (
-                <div 
-                    className="fixed inset-0 bg-black z-[9999] flex items-center justify-center animate-zoomIn"
-                    onClick={() => setIsAntiCaptchaVideoModalOpen(false)}
-                >
-                    {/* Close Button */}
-                    <button
-                        onClick={() => setIsAntiCaptchaVideoModalOpen(false)}
-                        className="absolute top-6 right-6 z-10 p-3 bg-black/70 hover:bg-black/90 rounded-full text-white transition-colors shadow-lg"
-                        aria-label="Close video"
-                    >
-                        <XIcon className="w-6 h-6" />
-                    </button>
-
-                    {/* Fullscreen Video Player */}
-                    <div 
-                        className="relative w-full h-full flex items-center justify-center"
-                        onClick={(e) => e.stopPropagation()}
-                    >
-                        <video
-                            ref={antiCaptchaVideoRef}
-                            src="https://monoklix.com/wp-content/uploads/2026/01/Video-02-Anti-Captcha-API-Key.mp4"
-                            controls
-                            autoPlay
-                            className="w-full h-full object-contain"
-                            playsInline
-                            onLoadedMetadata={() => {
-                                if (antiCaptchaVideoRef.current) {
-                                    antiCaptchaVideoRef.current.requestFullscreen?.().catch(err => {
-                                        console.log('Fullscreen request failed:', err);
-                                    });
-                                }
-                            }}
-                        >
-                            Your browser does not support the video tag.
-                        </video>
-                    </div>
-                </div>
-            )}
         </div>
     );
 };

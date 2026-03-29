@@ -4,7 +4,7 @@ import { addLogEntry } from './aiLogService';
 import { MODELS } from './aiConfig';
 import { generateVideoWithVeo3, checkVideoStatus, uploadImageForVeo3 } from './veo3Service';
 import { cropImageToAspectRatio, cropImageToAspectRatioWithFormat } from "./imageService";
-import { decodeBase64, createWavBlob } from '../utils/audioUtils';
+import { decodeBase64, createWavBlob } from './audioUtils';
 import {
     incrementImageUsage,
     incrementVideoUsage,
@@ -15,11 +15,23 @@ import {
 import { addHistoryItem } from "./historyService";
 import eventBus from "./eventBus";
 import { type User } from '../types';
-import { getImagenProxyUrl, getVeoProxyUrl } from './apiClient';
+import { getImagenProxyUrl, getVeoProxyUrl, prepareVeolyVeoUnifiedSession } from './apiClient';
+import { v4 as uuidv4 } from 'uuid';
 import { generateImageWithNanoBanana } from "./imagenV3Service";
 import { PROXY_SERVER_URLS } from './serverConfig';
 import { BRAND_CONFIG } from './brandConfig';
 
+/** Sent after the Veo API accepts the job (e.g. ULTRA model succeeded). UI uses this to show a green spinner during render/poll. */
+export const VEO_UI_STATUS_JOB_ACCEPTED = 'Rendering your video...';
+
+/** VEOLY-AI: package credits charged after successful Veo output — must match `consume_package_credits` amount. */
+const VEO_PACKAGE_CREDIT_COST = 20;
+
+const PACKAGE_CREDITS_INSUFFICIENT_MSG =
+    'Your package credit balance is insufficient. Please purchase a new Token Ultra Credit package.';
+
+const PACKAGE_CREDITS_VERIFY_FAILED_MSG =
+    'Could not verify package credit balance. Check your internet connection and try again.';
 
 const getActiveApiKey = (): string | null => {
     // This key is set and managed by App.tsx, which places the correct key
@@ -167,6 +179,37 @@ export const streamChatResponse = async (chat: Chat, prompt: string) => {
     }
 };
 
+/** Best-effort extract of Google/Veo failure details when status is FAILED but error may be nested. */
+function summarizeVeoOperationFailure(op: unknown): string {
+  if (!op || typeof op !== 'object') return '';
+  const o = op as Record<string, unknown>;
+  const snippets: string[] = [];
+
+  const pushErr = (e: unknown) => {
+    if (!e || typeof e !== 'object') return;
+    const err = e as Record<string, unknown>;
+    const msg = err.message ?? err.msg ?? err.description ?? err.statusMessage;
+    const code = err.code ?? err.status;
+    if (typeof msg === 'string' && msg.trim()) snippets.push(msg.trim());
+    else if (code !== undefined && code !== null && String(code).trim()) snippets.push(String(code));
+  };
+
+  pushErr(o.error);
+  if (o.operation && typeof o.operation === 'object') {
+    pushErr((o.operation as Record<string, unknown>).error);
+  }
+  if (o.result && typeof o.result === 'object') {
+    pushErr((o.result as Record<string, unknown>).error);
+  }
+  if (o.metadata && typeof o.metadata === 'object') {
+    const m = o.metadata as Record<string, unknown>;
+    pushErr(m.error);
+    if (typeof m.failureReason === 'string' && m.failureReason.trim()) snippets.push(m.failureReason.trim());
+  }
+
+  return [...new Set(snippets)].join(' — ');
+}
+
 /**
  * Internal helper to execute a single video generation cycle.
  */
@@ -180,6 +223,19 @@ const attemptVideoGeneration = async (
     serverUrl: string | undefined,
     onStatusUpdate?: (status: string) => void
 ): Promise<{ videoFile: File; thumbnailUrl: string | null; }> => {
+
+    const creditUser = getCurrentUser();
+    if (creditUser?.id) {
+        if (onStatusUpdate) onStatusUpdate('Checking package credits...');
+        const profile = await getUserProfile(creditUser.id);
+        if (!profile) {
+            throw new Error(PACKAGE_CREDITS_VERIFY_FAILED_MSG);
+        }
+        const balance = profile.creditBalance ?? 0;
+        if (balance < VEO_PACKAGE_CREDIT_COST) {
+            throw new Error(PACKAGE_CREDITS_INSUFFICIENT_MSG);
+        }
+    }
 
     let successfulServerUrl: string | undefined = serverUrl;
     let successfulToken: string | null = null;
@@ -207,19 +263,37 @@ const attemptVideoGeneration = async (
         return 'landscape';
     };
     const aspectRatioForVeo3 = veo3AspectRatio(aspectRatio);
+
+    /** VEOLY-AI I2V: one Puppeteer unified session (OAuth + reCAPTCHA) for upload + generate — opt-out `bridgeUnifiedVideoSession` = '0'. */
+    let veoUnifiedPack: { oauthToken: string; recaptchaToken: string } | null = null;
+    let flowProjectId: string | undefined;
+    if (processedImage) {
+        const bridgeUnifiedOptOut =
+            typeof localStorage !== 'undefined' && localStorage.getItem('bridgeUnifiedVideoSession') === '0';
+        if (!bridgeUnifiedOptOut) {
+            const persisted =
+                typeof localStorage !== 'undefined' ? localStorage.getItem('antiCaptchaProjectId')?.trim() : null;
+            const candidateId = persisted || uuidv4();
+            veoUnifiedPack = await prepareVeolyVeoUnifiedSession(candidateId, onStatusUpdate);
+            if (veoUnifiedPack) {
+                flowProjectId = candidateId;
+            }
+        }
+    }
     
     // --- STEP 2: UPLOAD (If needed) ---
     if (processedImage) {
         if (onStatusUpdate) onStatusUpdate('Uploading reference image...');
         
-        // We upload using the provided token (or random) and server (or random)
+        const uploadAuth = veoUnifiedPack?.oauthToken ?? token;
         const uploadResult = await uploadImageForVeo3(
             processedImage.imageBytes, 
             processedImage.mimeType, 
             aspectRatioForVeo3, 
             onStatusUpdate,
-            token,
-            serverUrl
+            uploadAuth,
+            serverUrl,
+            veoUnifiedPack ? flowProjectId : undefined
         );
         
         // CAPTURE EVERYTHING
@@ -242,8 +316,11 @@ const attemptVideoGeneration = async (
         config: {
             aspectRatio: aspectRatioForVeo3,
             useStandardModel,
-            authToken: successfulToken || undefined, 
-            serverUrl: successfulServerUrl // Enforce consistency
+            authToken: veoUnifiedPack?.oauthToken ?? successfulToken ?? undefined,
+            serverUrl: successfulServerUrl,
+            ...(veoUnifiedPack && flowProjectId
+                ? { projectId: flowProjectId, unifiedSession: veoUnifiedPack }
+                : {}),
         },
     }, onStatusUpdate);
 
@@ -255,12 +332,14 @@ const attemptVideoGeneration = async (
         throw new Error("Video generation failed to start. The API did not return any operations.");
     }
 
+    if (onStatusUpdate) onStatusUpdate(VEO_UI_STATUS_JOB_ACCEPTED);
+
     // --- STEP 4: POLL STATUS ---
     let finalOperations: any[] = initialOperations;
     let finalUrl: string | null = null;
     let thumbnailUrl: string | null = null;
     
-    const POLL_INTERVAL = 25000;
+    const POLL_INTERVAL = 20000;
     const UPDATE_INTERVAL = 5000; // Update user every 5 seconds
     
     const PROCESSING_MESSAGES = [
@@ -310,7 +389,15 @@ const attemptVideoGeneration = async (
         const opStatus = finalOperations[0];
         
         if (opStatus.status === 'MEDIA_GENERATION_STATUS_FAILED') {
-            throw new Error("Video generation failed on the server (MEDIA_GENERATION_STATUS_FAILED).");
+            console.error(
+              '[Video Gen] MEDIA_GENERATION_STATUS_FAILED — full operation payload:',
+              JSON.stringify(opStatus, null, 2)
+            );
+            const detail = summarizeVeoOperationFailure(opStatus);
+            const userMsg = detail
+              ? `Video generation failed: ${detail}`
+              : "Google could not finish this video (generation failed). This may be a safety filter, the prompt or image, or a temporary issue — try adjusting your prompt or image, or try again later.";
+            throw new Error(userMsg);
         }
 
         const isCompleted = opStatus.done === true || ['MEDIA_GENERATION_STATUS_COMPLETED', 'MEDIA_GENERATION_STATUS_SUCCESS', 'MEDIA_GENERATION_STATUS_SUCCESSFUL'].includes(opStatus.status);
@@ -335,15 +422,14 @@ const attemptVideoGeneration = async (
         }
     }
 
-    // MONOKLIX: tolak kredit pakej hanya selepas Google laporkan janaan berjaya (ada URL output).
-    // ESAIE tidak guna sistem ini. Nanobanana / imej tidak sentuh kredit di sini.
-    if (finalUrl && BRAND_CONFIG.name !== 'ESAIE') {
+    // VEOLY-AI: deduct package credits only after Google reports successful generation (output URL present).
+    if (finalUrl) {
         const creditUser = getCurrentUser();
         if (creditUser?.id) {
             try {
-                const ok = await consumePackageCredits(creditUser.id, 20);
+                const ok = await consumePackageCredits(creditUser.id, VEO_PACKAGE_CREDIT_COST);
                 if (!ok) {
-                    throw new Error('Baki kredit pakej anda tidak mencukupi. Sila beli pakej Token Ultra Credit baharu.');
+                    throw new Error(PACKAGE_CREDITS_INSUFFICIENT_MSG);
                 }
                 try {
                     const refreshed = await getUserProfile(creditUser.id);
@@ -394,7 +480,7 @@ export const generateVideo = async (
     const personalToken = currentUser?.personalAuthToken;
     const selectedServer = sessionStorage.getItem('selectedProxyServer') || undefined;
 
-    // Package credits: deducted only after generation status is successful (see attemptVideoGeneration).
+    // Package credits: verified before Veo starts; deducted only after successful output (see attemptVideoGeneration).
 
     // We make a single attempt. `attemptVideoGeneration` will call `executeProxiedRequest`,
     // which now strictly enforces Personal Token usage.
@@ -600,32 +686,32 @@ export const generateVoiceOver = async (
 
     if (generationMode === 'sing') {
         let singInstruction = `Sing the following lyrics in a ${musicStyle || 'pop'} music style`;
-        if (language === 'Bahasa Melayu') {
-            singInstruction = `Nyanyikan lirik berikut dalam gaya muzik ${musicStyle || 'pop'} dalam Bahasa Melayu`;
+        if (language === 'Malay') {
+            singInstruction = `Sing the following lyrics in a ${musicStyle || 'pop'} music style, in clear Malaysian Malay`;
         }
         fullPrompt = `${singInstruction}: "${script}"`;
     } else { // 'speak'
         const moodInstructionMap: { [key: string]: string } = {
             'Normal': '',
-            'Ceria': 'Say cheerfully: ',
-            'Semangat': 'Say with an energetic and enthusiastic tone: ',
-            'Jualan': 'Say in a persuasive and compelling sales tone: ',
-            'Sedih': 'Say in a sad and melancholic tone: ',
-            'Berbisik': 'Say in a whispering tone: ',
-            'Marah': 'Say in an angry tone: ',
-            'Tenang': 'Say in a calm and soothing tone: ',
-            'Rasmi': 'Say in a formal and professional tone: ',
-            'Teruja': 'Say in an excited tone: ',
-            'Penceritaan': 'Say in a storytelling tone: ',
-            'Berwibawa': 'Say in an authoritative and firm tone: ',
-            'Mesra': 'Say in a friendly and warm tone: '
+            'Cheerful': 'Say cheerfully: ',
+            'Energetic': 'Say with an energetic and enthusiastic tone: ',
+            'Sales': 'Say in a persuasive and compelling sales tone: ',
+            'Sad': 'Say in a sad and melancholic tone: ',
+            'Whispering': 'Say in a whispering tone: ',
+            'Angry': 'Say in an angry tone: ',
+            'Calm': 'Say in a calm and soothing tone: ',
+            'Formal': 'Say in a formal and professional tone: ',
+            'Excited': 'Say in an excited tone: ',
+            'Storytelling': 'Say in a storytelling tone: ',
+            'Authoritative': 'Say in an authoritative and firm tone: ',
+            'Friendly': 'Say in a friendly and warm tone: '
         };
         
         const moodInstruction = moodInstructionMap[mood as keyof typeof moodInstructionMap] || '';
         
         let languageInstruction = '';
-        if (language === 'Bahasa Melayu') {
-            languageInstruction = 'Sebutkan yang berikut dalam Bahasa Melayu yang jelas: ';
+        if (language === 'Malay') {
+            languageInstruction = 'Clearly speak the following in Malaysian Malay: ';
         }
         
         fullPrompt = `${languageInstruction}${moodInstruction}${script}`;

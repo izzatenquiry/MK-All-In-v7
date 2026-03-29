@@ -38,8 +38,8 @@ interface MasterDashboardViewProps {
 }
 
 const PRESET_PROMPTS = {
-    'English': "Modern Malay couple posing for a photo.",
-    'Bahasa Malaysia': "Pasangan melayu moden sedang bergambar."
+    'English': "Modern couple posing for a photo.",
+    'Malay': "A modern Malay couple posing for a photo in a casual outdoor setting."
 };
 
 // Helper to safely parse JSON
@@ -270,7 +270,7 @@ const TokenHealthTester: React.FC = () => {
 };
 
 const MasterDashboardView: React.FC<MasterDashboardViewProps> = ({ currentUser, language }) => {
-    const [promptLanguage, setPromptLanguage] = useState<'English' | 'Bahasa Malaysia'>('English');
+    const [promptLanguage, setPromptLanguage] = useState<'English' | 'Malay'>('English');
     const [prompt, setPrompt] = useState(PRESET_PROMPTS['English']);
     const [targetServerId, setTargetServerId] = useState<string>('all'); 
     
@@ -339,7 +339,7 @@ const MasterDashboardView: React.FC<MasterDashboardViewProps> = ({ currentUser, 
     };
 
     const handleLanguageChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-        const lang = e.target.value as 'English' | 'Bahasa Malaysia';
+        const lang = e.target.value as 'English' | 'Malay';
         setPromptLanguage(lang);
         setPrompt(PRESET_PROMPTS[lang]);
     };
@@ -639,7 +639,7 @@ const MasterDashboardView: React.FC<MasterDashboardViewProps> = ({ currentUser, 
                         )}
                         <div className="mt-4">
                              <button 
-                                onClick={() => downloadContent(previewItem.url, previewItem.type, 'monoklix-test')}
+                                onClick={() => downloadContent(previewItem.url, previewItem.type, 'veoly-test')}
                                 className="flex items-center gap-2 bg-white text-black font-bold py-2 px-6 rounded-full hover:bg-neutral-200 transition-colors"
                             >
                                 <DownloadIcon className="w-5 h-5" /> Download Result
@@ -707,7 +707,7 @@ const MasterDashboardView: React.FC<MasterDashboardViewProps> = ({ currentUser, 
                                     className="text-xs p-1 bg-white dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-700 rounded focus:ring-2 focus:ring-primary-500 outline-none"
                                 >
                                     <option value="English">English</option>
-                                    <option value="Bahasa Malaysia">Bahasa Malaysia</option>
+                                    <option value="Malay">Malay</option>
                                 </select>
                             </div>
                             <textarea 

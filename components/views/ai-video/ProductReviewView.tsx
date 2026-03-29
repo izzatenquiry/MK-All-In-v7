@@ -10,7 +10,16 @@ import { StarIcon, DownloadIcon, ImageIcon, VideoIcon, WandIcon, AlertTriangleIc
 import { getProductReviewImagePrompt, getProductReviewStoryboardPrompt, getImageEditingPrompt } from '../../../services/promptManager';
 import { type User, type Language } from '../../../types';
 import { MODELS } from '../../../services/aiConfig';
-import { incrementVideoUsage, incrementImageUsage } from '../../../services/userService';
+import {
+  incrementVideoUsage,
+  incrementImageUsage,
+  consumePackageCredits,
+  getUserProfile,
+} from '../../../services/userService';
+import eventBus from '../../../services/eventBus';
+import { v4 as uuidv4 } from 'uuid';
+import { prepareVeolyNanobanana2UnifiedSession } from '../../../services/apiClient';
+import { generateImageWithNanobanana2, mapAspectRatio } from '../../../services/nanobanana2Service';
 import { addLogEntry } from '../../../services/aiLogService';
 import PreviewModal from '../../common/PreviewModal';
 import { handleApiError } from '../../../services/errorHandler';
@@ -19,12 +28,53 @@ import CreativeDirectionPanel from '../../common/CreativeDirectionPanel';
 import { getInitialCreativeDirectionState, type CreativeDirectionState } from '../../../services/creativeDirectionService';
 import { UI_SERVER_LIST } from '../../../services/serverConfig';
 import { BRAND_CONFIG } from '../../../services/brandConfig';
+import Tabs, { type Tab } from '../../common/Tabs';
 
 // --- CONFIG FOR PARALLEL GENERATION ---
 const SERVERS = UI_SERVER_LIST;
 
+/** Package credits per NanoBanana PRO scene image (same RPC as AI Image suite). */
+const NANO2_SCENE_CREDIT_COST = 5;
+
+async function convertNanobanana2UrlToBase64(imageUrl: string): Promise<string> {
+  const serverUrl = sessionStorage.getItem('selectedProxyServer') || 'http://localhost:3001';
+  const proxyUrl = `${serverUrl}/api/nanobanana/download-image?url=${encodeURIComponent(imageUrl)}`;
+  const response = await fetch(proxyUrl);
+  if (!response.ok) {
+    throw new Error(`Failed to fetch image: ${response.status}`);
+  }
+  const blob = await response.blob();
+  return new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      const base64String = (reader.result as string).split(',')[1];
+      resolve(base64String);
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
+}
+
+async function deductNanobananaProSceneCredits(userId: string | undefined): Promise<void> {
+  if (!userId) return;
+  const ok = await consumePackageCredits(userId, NANO2_SCENE_CREDIT_COST);
+  if (!ok) {
+    throw new Error(
+      'Your package credit balance is insufficient. Please purchase a new Token Ultra Credit package.'
+    );
+  }
+  try {
+    const refreshed = await getUserProfile(userId);
+    if (refreshed) {
+      eventBus.dispatch('userProfileUpdated', refreshed);
+    }
+  } catch (e) {
+    console.warn('[Product Review] Could not refresh profile after Pro credit deduction:', e);
+  }
+}
+
 const contentTypeOptions = ["None", "Random", "Hard Selling", "Soft Selling", "Storytelling", "Problem/Solution", "ASMR / Sensory", "Unboxing", "Educational", "Testimonial"];
-const languages = ["English", "Bahasa Malaysia", "Chinese"];
+const languages = ["English", "Malay", "Chinese"];
 
 const moodOptions = [
     'Normal', 'Cheerful', 'Energetic', 'Sales', 'Sad', 'Whispering',
@@ -37,6 +87,10 @@ const musicStyleOptions = [
     'Rap', 'Traditional Malay'
 ];
 
+const PRODUCT_REVIEW_SCENE_IMAGE_TABS: Tab<'standard' | 'pro'>[] = [
+    { id: 'standard', label: 'NanoBanana (standard)' },
+    { id: 'pro', label: 'NanoBanana PRO' },
+];
 
 interface VideoGenPreset {
   prompt: string;
@@ -75,7 +129,7 @@ const ProductReviewView: React.FC<ProductReviewViewProps> = ({ onReEdit, onCreat
   const [faceImage, setFaceImage] = useState<MultimodalContent | null>(null);
   const [productDesc, setProductDesc] = useState('');
   const [selectedContentType, setSelectedContentType] = useState<string>(contentTypeOptions[0]);
-  const [selectedLanguage, setSelectedLanguage] = useState<string>("Bahasa Malaysia");
+  const [selectedLanguage, setSelectedLanguage] = useState<string>("Malay");
   const [storyboard, setStoryboard] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [storyboardError, setStoryboardError] = useState<string | null>(null);
@@ -112,11 +166,14 @@ const ProductReviewView: React.FC<ProductReviewViewProps> = ({ onReEdit, onCreat
   // New creative direction states
   const [creativeState, setCreativeState] = useState<CreativeDirectionState>(getInitialCreativeDirectionState());
 
+  /** Step 2: NanoBanana (whisk recipe) vs NanoBanana PRO (GEM_PIX_2 / nanobanana2). */
+  const [sceneImageModel, setSceneImageModel] = useState<'standard' | 'pro'>('standard');
+
   // New video generation settings state
   const videoModel = MODELS.videoGenerationDefault;
   const [videoAspectRatio, setVideoAspectRatio] = useState('9:16');
   const [videoResolution, setVideoResolution] = useState('720p');
-  const [videoLanguage, setVideoLanguage] = useState<string>("Bahasa Malaysia");
+  const [videoLanguage, setVideoLanguage] = useState<string>("Malay");
   
   // New audio settings state
   const [voiceoverMode, setVoiceoverMode] = useState<'speak' | 'sing'>('speak');
@@ -130,7 +187,9 @@ const ProductReviewView: React.FC<ProductReviewViewProps> = ({ onReEdit, onCreat
             const state = JSON.parse(savedState);
             if (state.productDesc) setProductDesc(state.productDesc);
             if (state.selectedContentType) setSelectedContentType(state.selectedContentType);
-            if (state.selectedLanguage) setSelectedLanguage(state.selectedLanguage);
+            if (state.selectedLanguage) {
+                setSelectedLanguage(state.selectedLanguage === 'Bahasa Malaysia' ? 'Malay' : state.selectedLanguage);
+            }
             if (state.storyboard) setStoryboard(state.storyboard);
             if (state.includeCaptions) setIncludeCaptions(state.includeCaptions);
             if (state.includeVoiceover) setIncludeVoiceover(state.includeVoiceover);
@@ -140,13 +199,17 @@ const ProductReviewView: React.FC<ProductReviewViewProps> = ({ onReEdit, onCreat
             if (state.videoAspectRatio) setVideoAspectRatio(state.videoAspectRatio);
             if (state.videoResolution) setVideoResolution(state.videoResolution);
             if (state.videoLanguage) {
-                setVideoLanguage(state.videoLanguage);
+                setVideoLanguage(state.videoLanguage === 'Bahasa Malaysia' ? 'Malay' : state.videoLanguage);
             } else if (state.selectedLanguage) {
-                setVideoLanguage(state.selectedLanguage);
+                const sl = state.selectedLanguage === 'Bahasa Malaysia' ? 'Malay' : state.selectedLanguage;
+                setVideoLanguage(sl);
             }
             if (state.voiceoverMode) setVoiceoverMode(state.voiceoverMode);
             if (state.voiceoverMood) setVoiceoverMood(state.voiceoverMood);
             if (state.musicStyle) setMusicStyle(state.musicStyle);
+            if (state.sceneImageModel === 'standard' || state.sceneImageModel === 'pro') {
+                setSceneImageModel(state.sceneImageModel);
+            }
         }
     } catch (e) { console.error("Failed to load state from session storage", e); }
   }, []);
@@ -160,7 +223,8 @@ const ProductReviewView: React.FC<ProductReviewViewProps> = ({ onReEdit, onCreat
             parsedScenes, 
             creativeState,
             videoAspectRatio, videoResolution, videoLanguage,
-            voiceoverMode, voiceoverMood, musicStyle
+            voiceoverMode, voiceoverMood, musicStyle,
+            sceneImageModel,
         };
         sessionStorage.setItem(SESSION_KEY, JSON.stringify(stateToSave));
     } catch (e: any) {
@@ -175,7 +239,7 @@ const ProductReviewView: React.FC<ProductReviewViewProps> = ({ onReEdit, onCreat
     includeModel,
     parsedScenes, creativeState,
     videoAspectRatio, videoResolution, videoLanguage,
-    voiceoverMode, voiceoverMood, musicStyle
+    voiceoverMode, voiceoverMood, musicStyle, sceneImageModel
   ]);
 
   const generatedVideosRef = useRef(generatedVideos);
@@ -282,8 +346,7 @@ const ProductReviewView: React.FC<ProductReviewViewProps> = ({ onReEdit, onCreat
         const updatedScenes = [...parsedScenes];
         updatedScenes[index] = newText;
 
-        const isMalay = selectedLanguage === 'Bahasa Malaysia';
-        const sceneTitle = isMalay ? 'Babak' : 'Scene';
+        const sceneTitle = 'Scene';
         
         // This regex will find all scene titles in the original storyboard.
         const titles = storyboard?.match(/\*\*(?:Scene|Babak)\s+\d+:.*?\*\*/gi) || [];
@@ -327,6 +390,53 @@ const ProductReviewView: React.FC<ProductReviewViewProps> = ({ onReEdit, onCreat
                 includeModel,
                 creativeDirection: creativeState
             });
+
+            if (sceneImageModel === 'pro') {
+                const flowProjectId = uuidv4();
+                const unifiedPack = await prepareVeolyNanobanana2UnifiedSession(flowProjectId);
+                const referenceImageMediaIds: string[] = [productMediaId];
+                if (includeModel === 'Yes' && faceMediaId) {
+                    referenceImageMediaIds.push(faceMediaId);
+                }
+                const sharedAuth = unifiedPack?.oauthToken ?? authToken ?? currentUser.personalAuthToken;
+                const nb2Result = await generateImageWithNanobanana2(
+                    {
+                        prompt,
+                        config: {
+                            aspectRatio: mapAspectRatio(videoAspectRatio as '1:1' | '9:16' | '16:9'),
+                            sampleCount: 1,
+                            referenceImageMediaIds,
+                            authToken: sharedAuth,
+                            serverUrl: serverUrl || mediaServerUrl,
+                            projectId: flowProjectId,
+                            ...(unifiedPack ? { unifiedSession: unifiedPack } : {}),
+                        },
+                    },
+                    undefined,
+                    false
+                );
+                const imageUrl = nb2Result.images[0]?.image?.generatedImage?.fifeUrl;
+                if (!imageUrl) {
+                    throw new Error('The AI did not return an image. Please try a different prompt.');
+                }
+                const imageBase64 = await convertNanobanana2UrlToBase64(imageUrl);
+                await deductNanobananaProSceneCredits(currentUser.id);
+                await addHistoryItem({
+                    type: 'Image',
+                    prompt: `Storyboard Scene ${index + 1}: ${parsedScenes[index].substring(0, 50)}...`,
+                    result: imageBase64,
+                });
+                const updateResult = await incrementImageUsage(currentUser);
+                if (updateResult.success && updateResult.user) {
+                    onUserUpdate(updateResult.user);
+                }
+                setGeneratedImages((prev) => {
+                    const newImages = [...prev];
+                    newImages[index] = imageBase64;
+                    return newImages;
+                });
+                return;
+            }
             
             // Build recipe media inputs using pre-uploaded media IDs
             const recipeMediaInputs = [
@@ -415,40 +525,126 @@ const ProductReviewView: React.FC<ProductReviewViewProps> = ({ onReEdit, onCreat
                 includeModel,
                 creativeDirection: creativeState
             });
-            
-            const imagesToCompose: { base64: string, mimeType: string, category: string, caption: string }[] = [{ ...productImage, category: 'MEDIA_CATEGORY_SUBJECT', caption: 'product' }];
-            if (includeModel === 'Yes' && faceImage) {
-              imagesToCompose.push({ ...faceImage, category: 'MEDIA_CATEGORY_SUBJECT', caption: 'model face' });
-            }
 
-            // The executeProxiedRequest within editOrComposeWithNanoBanana handles all token logic.
-            // If serverUrl is provided, use it for multi-server distribution
-            const result = await editOrComposeWithNanoBanana({
-                prompt,
-                images: imagesToCompose,
-                config: { 
-                    aspectRatio: videoAspectRatio as '1:1' | '9:16' | '16:9',
-                    serverUrl: serverUrl // Pass server URL for multi-server distribution
+            if (sceneImageModel === 'pro') {
+                const { uploadImageForNanoBanana } = await import('../../../services/imagenV3Service');
+                const { cropImageToAspectRatio } = await import('../../../services/imageService');
+
+                let processedProduct = productImage.base64;
+                try {
+                    processedProduct = await cropImageToAspectRatio(productImage.base64, videoAspectRatio || '1:1');
+                } catch (cropError) {
+                    console.warn('Failed to process product image, using original', cropError);
                 }
-            });
-            const imageBase64 = result.imagePanels?.[0]?.generatedImages?.[0]?.encodedImage;
+                const upProd = await uploadImageForNanoBanana(
+                    processedProduct,
+                    productImage.mimeType,
+                    undefined,
+                    undefined,
+                    serverUrl
+                );
+                const referenceImageMediaIds: string[] = [upProd.mediaId];
+                let authTok = upProd.successfulToken;
+                let srvUrl = upProd.successfulServerUrl;
 
-            if (!imageBase64) {
-                throw new Error("The AI did not return an image. Please try a different prompt.");
+                if (includeModel === 'Yes' && faceImage) {
+                    let processedFace = faceImage.base64;
+                    try {
+                        processedFace = await cropImageToAspectRatio(faceImage.base64, videoAspectRatio || '1:1');
+                    } catch (cropError) {
+                        console.warn('Failed to process face image, using original', cropError);
+                    }
+                    const upFace = await uploadImageForNanoBanana(
+                        processedFace,
+                        faceImage.mimeType,
+                        authTok,
+                        undefined,
+                        srvUrl
+                    );
+                    referenceImageMediaIds.push(upFace.mediaId);
+                    authTok = upFace.successfulToken;
+                    srvUrl = upFace.successfulServerUrl;
+                }
+
+                const flowProjectId = uuidv4();
+                const unifiedPack = await prepareVeolyNanobanana2UnifiedSession(flowProjectId);
+                const sharedAuth = unifiedPack?.oauthToken ?? authTok ?? currentUser.personalAuthToken;
+
+                const nb2Result = await generateImageWithNanobanana2(
+                    {
+                        prompt,
+                        config: {
+                            aspectRatio: mapAspectRatio(videoAspectRatio as '1:1' | '9:16' | '16:9'),
+                            sampleCount: 1,
+                            referenceImageMediaIds,
+                            authToken: sharedAuth,
+                            serverUrl: serverUrl || srvUrl,
+                            projectId: flowProjectId,
+                            ...(unifiedPack ? { unifiedSession: unifiedPack } : {}),
+                        },
+                    },
+                    undefined,
+                    false
+                );
+                const imageUrl = nb2Result.images[0]?.image?.generatedImage?.fifeUrl;
+                if (!imageUrl) {
+                    throw new Error('The AI did not return an image. Please try a different prompt.');
+                }
+                const imageBase64 = await convertNanobanana2UrlToBase64(imageUrl);
+                await deductNanobananaProSceneCredits(currentUser.id);
+                await addHistoryItem({
+                    type: 'Image',
+                    prompt: `Storyboard Scene ${index + 1}: ${parsedScenes[index].substring(0, 50)}...`,
+                    result: imageBase64,
+                });
+                const updateResult = await incrementImageUsage(currentUser);
+                if (updateResult.success && updateResult.user) {
+                    onUserUpdate(updateResult.user);
+                }
+                setGeneratedImages((prev) => {
+                    const newImages = [...prev];
+                    newImages[index] = imageBase64;
+                    return newImages;
+                });
+            } else {
+                const imagesToCompose: { base64: string; mimeType: string; category: string; caption: string }[] = [
+                    { ...productImage, category: 'MEDIA_CATEGORY_SUBJECT', caption: 'product' },
+                ];
+                if (includeModel === 'Yes' && faceImage) {
+                    imagesToCompose.push({ ...faceImage, category: 'MEDIA_CATEGORY_SUBJECT', caption: 'model face' });
+                }
+
+                const result = await editOrComposeWithNanoBanana({
+                    prompt,
+                    images: imagesToCompose,
+                    config: {
+                        aspectRatio: videoAspectRatio as '1:1' | '9:16' | '16:9',
+                        serverUrl: serverUrl,
+                    },
+                });
+                const imageBase64 = result.imagePanels?.[0]?.generatedImages?.[0]?.encodedImage;
+
+                if (!imageBase64) {
+                    throw new Error('The AI did not return an image. Please try a different prompt.');
+                }
+
+                await addHistoryItem({
+                    type: 'Image',
+                    prompt: `Storyboard Scene ${index + 1}: ${parsedScenes[index].substring(0, 50)}...`,
+                    result: imageBase64,
+                });
+
+                const updateResult = await incrementImageUsage(currentUser);
+                if (updateResult.success && updateResult.user) {
+                    onUserUpdate(updateResult.user);
+                }
+
+                setGeneratedImages((prev) => {
+                    const newImages = [...prev];
+                    newImages[index] = imageBase64;
+                    return newImages;
+                });
             }
-            
-            await addHistoryItem({ type: 'Image', prompt: `Storyboard Scene ${index + 1}: ${parsedScenes[index].substring(0, 50)}...`, result: imageBase64 });
-
-            const updateResult = await incrementImageUsage(currentUser);
-            if (updateResult.success && updateResult.user) {
-                onUserUpdate(updateResult.user);
-            }
-
-            setGeneratedImages(prev => {
-                const newImages = [...prev];
-                newImages[index] = imageBase64;
-                return newImages;
-            });
         } catch (e) {
             const userFriendlyMessage = handleApiError(e);
             setImageGenerationErrors(prev => {
@@ -485,34 +681,82 @@ const ProductReviewView: React.FC<ProductReviewViewProps> = ({ onReEdit, onCreat
     const prompt = getImageEditingPrompt(editPrompt);
     
     try {
-        const result = await editOrComposeWithNanoBanana({
-            prompt,
-            images: [{ 
-                base64: baseImage, 
-                mimeType: 'image/png', 
-                category: 'MEDIA_CATEGORY_SUBJECT', 
-                caption: 'image to edit' 
-            }],
-            config: { aspectRatio: '1:1' }
-        });
-        const imageBase64 = result.imagePanels?.[0]?.generatedImages?.[0]?.encodedImage;
+        if (sceneImageModel === 'pro') {
+            const { uploadImageForNanoBanana } = await import('../../../services/imagenV3Service');
+            const up = await uploadImageForNanoBanana(baseImage, 'image/png', undefined, undefined, undefined);
+            const flowProjectId = uuidv4();
+            const unifiedPack = await prepareVeolyNanobanana2UnifiedSession(flowProjectId);
+            const sharedAuth = unifiedPack?.oauthToken ?? up.successfulToken ?? currentUser.personalAuthToken;
+            const nb2Result = await generateImageWithNanobanana2(
+                {
+                    prompt,
+                    config: {
+                        aspectRatio: mapAspectRatio(videoAspectRatio as '1:1' | '9:16' | '16:9'),
+                        sampleCount: 1,
+                        referenceImageMediaIds: [up.mediaId],
+                        authToken: sharedAuth,
+                        serverUrl: up.successfulServerUrl,
+                        projectId: flowProjectId,
+                        ...(unifiedPack ? { unifiedSession: unifiedPack } : {}),
+                    },
+                },
+                undefined,
+                false
+            );
+            const imageUrl = nb2Result.images[0]?.image?.generatedImage?.fifeUrl;
+            if (!imageUrl) {
+                throw new Error('The AI did not return an edited image. Please try a different prompt.');
+            }
+            const imageBase64 = await convertNanobanana2UrlToBase64(imageUrl);
+            await deductNanobananaProSceneCredits(currentUser.id);
+            await addHistoryItem({
+                type: 'Image',
+                prompt: `Edited Storyboard Scene ${index + 1}: ${editPrompt}`,
+                result: imageBase64,
+            });
+            const updateResult = await incrementImageUsage(currentUser);
+            if (updateResult.success && updateResult.user) {
+                onUserUpdate(updateResult.user);
+            }
+            setGeneratedImages((prev) => {
+                const newImages = [...prev];
+                newImages[index] = imageBase64;
+                return newImages;
+            });
+        } else {
+            const result = await editOrComposeWithNanoBanana({
+                prompt,
+                images: [{
+                    base64: baseImage,
+                    mimeType: 'image/png',
+                    category: 'MEDIA_CATEGORY_SUBJECT',
+                    caption: 'image to edit',
+                }],
+                config: { aspectRatio: '1:1' },
+            });
+            const imageBase64 = result.imagePanels?.[0]?.generatedImages?.[0]?.encodedImage;
 
-        if (!imageBase64) {
-            throw new Error("The AI did not return an edited image. Please try a different prompt.");
+            if (!imageBase64) {
+                throw new Error('The AI did not return an edited image. Please try a different prompt.');
+            }
+
+            await addHistoryItem({
+                type: 'Image',
+                prompt: `Edited Storyboard Scene ${index + 1}: ${editPrompt}`,
+                result: imageBase64,
+            });
+
+            const updateResult = await incrementImageUsage(currentUser);
+            if (updateResult.success && updateResult.user) {
+                onUserUpdate(updateResult.user);
+            }
+
+            setGeneratedImages((prev) => {
+                const newImages = [...prev];
+                newImages[index] = imageBase64;
+                return newImages;
+            });
         }
-        
-        await addHistoryItem({ type: 'Image', prompt: `Edited Storyboard Scene ${index + 1}: ${editPrompt}`, result: imageBase64 });
-
-        const updateResult = await incrementImageUsage(currentUser);
-        if (updateResult.success && updateResult.user) {
-            onUserUpdate(updateResult.user);
-        }
-
-        setGeneratedImages(prev => {
-            const newImages = [...prev];
-            newImages[index] = imageBase64;
-            return newImages;
-        });
 
         setEditingSceneIndex(null);
         setEditPrompt('');
@@ -687,7 +931,7 @@ const ProductReviewView: React.FC<ProductReviewViewProps> = ({ onReEdit, onCreat
 
         visualDescription = visualDescription.replace(/\*\*(.*?):\*\*/g, '').replace(/[\*\-]/g, '').replace(/\s+/g, ' ').trim();
         
-        const isMalay = videoLanguage === 'Bahasa Malaysia';
+        const isMalay = videoLanguage === 'Malay';
         
         let targetLanguage = videoLanguage;
         if (isMalay) {
@@ -708,69 +952,57 @@ const ProductReviewView: React.FC<ProductReviewViewProps> = ({ onReEdit, onCreat
         const promptLines: string[] = [];
 
         // System Rules
-        promptLines.push(isMalay ? '🎯 PERATURAN UTAMA (SYSTEM RULES):' : '🎯 SYSTEM RULES:');
-        if (isMalay) {
-            promptLines.push('Bahasa lisan dan suara latar MESTILAH 100% dalam Bahasa Melayu Malaysia. Ini adalah arahan PALING PENTING.');
-            promptLines.push('❌ Dilarang menggunakan bahasa lain atau loghat luar.');
-        } else {
-            promptLines.push(`Spoken language and voiceover MUST be 100% in ${targetLanguage}. This is the MOST IMPORTANT instruction.`);
-            promptLines.push('❌ Do not use other languages or foreign accents.');
-        }
+        promptLines.push('🎯 SYSTEM RULES:');
+        promptLines.push(`Spoken language and voiceover MUST be 100% in ${targetLanguage}. This is the MOST IMPORTANT instruction.`);
+        promptLines.push('❌ Do not use other languages or foreign accents.');
         promptLines.push('\n---');
 
         // Visuals
-        promptLines.push(isMalay ? '🎬 VISUAL (SCENE DESCRIPTION):' : '🎬 VISUAL (SCENE DESCRIPTION):');
-        promptLines.push(isMalay ? 'Animasikan imej yang diberikan.' : 'Animate the provided image.');
+        promptLines.push('🎬 VISUAL (SCENE DESCRIPTION):');
+        promptLines.push('Animate the provided image.');
         if (includeModel === 'No') {
-            promptLines.push(isMalay
-                ? 'ARAHAN PENTING: Animasi mesti fokus HANYA pada produk dalam imej yang diberikan. JANGAN tambah atau animasikan sebarang orang, tangan, atau bahagian badan ke dalam babak.'
-                : 'CRITICAL INSTRUCTION: The animation must focus ONLY on the product within the provided image. DO NOT add or animate any people, hands, or body parts into the scene.'
+            promptLines.push(
+                'CRITICAL INSTRUCTION: The animation must focus ONLY on the product within the provided image. DO NOT add or animate any people, hands, or body parts into the scene.'
             );
         }
         promptLines.push(visualDescription);
         promptLines.push('\n---');
 
         // Creative Style
-        promptLines.push(isMalay ? '🎨 GAYA KREATIF (CREATIVE STYLE):' : '🎨 CREATIVE STYLE:');
-        promptLines.push(`• ${isMalay ? 'Gaya artistik' : 'Artistic style'}: ${creativeState.style === 'Random' ? (isMalay ? 'fotorealistik' : 'photorealistic') : creativeState.style}`);
-        promptLines.push(`• ${isMalay ? 'Pencahayaan' : 'Lighting'}: ${creativeState.lighting === 'Random' ? (isMalay ? 'semula jadi' : 'natural') : creativeState.lighting}`);
-        promptLines.push(`• ${isMalay ? 'Kamera' : 'Camera'}: ${creativeState.camera === 'Random' ? (isMalay ? 'shot sederhana' : 'medium shot') : creativeState.camera}`);
+        promptLines.push('🎨 CREATIVE STYLE:');
+        promptLines.push(`• Artistic style: ${creativeState.style === 'Random' ? 'photorealistic' : creativeState.style}`);
+        promptLines.push(`• Lighting: ${creativeState.lighting === 'Random' ? 'natural' : creativeState.lighting}`);
+        promptLines.push(`• Camera: ${creativeState.camera === 'Random' ? 'medium shot' : creativeState.camera}`);
         promptLines.push('\n---');
 
         // Audio
         if (includeVoiceover === 'Yes' && voiceover) {
-            promptLines.push(isMalay ? '🔊 AUDIO (DIALOGUE):' : '🔊 AUDIO (DIALOGUE):');
+            promptLines.push('🔊 AUDIO (DIALOGUE):');
             
             if (voiceoverMode === 'sing') {
-                 promptLines.push(isMalay
-                    ? `Nyanyikan lirik berikut dalam gaya muzik ${musicStyle}:`
-                    : `Sing the following lyrics in a ${musicStyle} music style:`);
+                 promptLines.push(`Sing the following lyrics in a ${musicStyle} music style:`);
             } else {
-                 promptLines.push(isMalay
-                    ? `Gunakan hanya dialog berikut dalam Bahasa Melayu Malaysia:`
-                    : `Use only the following dialogue in ${targetLanguage}:`);
+                 promptLines.push(`Use only the following dialogue in ${targetLanguage}:`);
             }
             
             promptLines.push(`"${voiceover}"`);
             
-            promptLines.push(isMalay ? 'ARAHAN PENTING: Sebutkan skrip ini dengan lengkap, perkataan demi perkataan. Jangan ubah atau ringkaskan ayat.' : 'CRITICAL INSTRUCTION: Speak this script completely, word for word. Do not change or shorten the sentences.');
+            promptLines.push('CRITICAL INSTRUCTION: Speak this script completely, word for word. Do not change or shorten the sentences.');
             
             if (voiceoverMode === 'speak') {
-                 promptLines.push(isMalay 
-                    ? `Nada suara: ${voiceoverMood}.` 
-                    : `Voice tone: ${voiceoverMood}.`);
+                 promptLines.push(`Voice tone: ${voiceoverMood}.`);
             }
             promptLines.push('\n---');
         }
 
         // Additional Reminders
-        promptLines.push(isMalay ? '🚫 PERINGATAN TAMBAHAN:' : '🚫 ADDITIONAL REMINDERS:');
+        promptLines.push('🚫 ADDITIONAL REMINDERS:');
         if (includeCaptions === 'Yes' && caption) {
-            promptLines.push(isMalay ? `• Paparkan teks pada skrin ini sahaja: "${caption}".` : `• Display this exact on-screen text: "${caption}".`);
+            promptLines.push(`• Display this exact on-screen text: "${caption}".`);
         } else {
-            promptLines.push(isMalay ? '• Jangan sertakan teks, kapsyen, atau sari kata pada skrin.' : '• Do not include any on-screen text, captions, or subtitles.');
+            promptLines.push('• Do not include any on-screen text, captions, or subtitles.');
         }
-        promptLines.push(isMalay ? '• Jangan ubah bahasa.' : '• Do not change the language.');
+        promptLines.push('• Do not change the language.');
 
         const fullPrompt = promptLines.join('\n');
         
@@ -1067,7 +1299,7 @@ const ProductReviewView: React.FC<ProductReviewViewProps> = ({ onReEdit, onCreat
           <div className="bg-neutral-100 dark:bg-neutral-800/50 rounded-lg p-4 relative min-h-[300px] flex flex-col">
             <h3 className="text-base sm:text-lg font-semibold mb-2 flex-shrink-0">Generated Storyboard</h3>
             {storyboard && (
-                 <button onClick={() => downloadText(storyboard, `monoklix-storyboard-${Date.now()}.txt`)} className="absolute top-4 right-4 text-xs bg-neutral-200 dark:bg-neutral-700 py-1 px-3 rounded-full flex items-center gap-1 z-10">
+                 <button onClick={() => downloadText(storyboard, `veoly-storyboard-${Date.now()}.txt`)} className="absolute top-4 right-4 text-xs bg-neutral-200 dark:bg-neutral-700 py-1 px-3 rounded-full flex items-center gap-1 z-10">
                     <DownloadIcon className="w-3 h-3"/> Download Text
                 </button>
             )}
@@ -1101,7 +1333,31 @@ const ProductReviewView: React.FC<ProductReviewViewProps> = ({ onReEdit, onCreat
             <h2 className="text-lg sm:text-xl font-semibold">Step 2: Generate Scene Images</h2>
             <span className="text-xs bg-neutral-200 dark:bg-neutral-700 px-2 py-1 rounded font-mono">Aspect Ratio: {videoAspectRatio}</span>
         </div>
-        <p className="text-sm text-neutral-500 dark:text-neutral-400 mb-6">Create a unique AI-generated image for each scene from your storyboard.</p>
+        <p className="text-sm text-neutral-500 dark:text-neutral-400 mb-4">Create a unique AI-generated image for each scene from your storyboard.</p>
+
+        <div className="mb-6 space-y-2">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <p className="text-sm font-medium text-neutral-800 dark:text-neutral-200 shrink-0">
+              Image generation model
+            </p>
+            <div
+              className={`flex justify-center sm:justify-end ${isGeneratingImages ? 'pointer-events-none opacity-50' : ''}`}
+            >
+              <Tabs
+                tabs={PRODUCT_REVIEW_SCENE_IMAGE_TABS}
+                activeTab={sceneImageModel}
+                setActiveTab={setSceneImageModel}
+              />
+            </div>
+          </div>
+          {sceneImageModel === 'pro' && (
+            <p className="text-xs text-neutral-500 dark:text-neutral-400 sm:text-right">
+              PRO uses GEM_PIX_2 (nanobanana2). Each successful scene image deducts {NANO2_SCENE_CREDIT_COST}{' '}
+              package credits (generate, retry, or edit).
+            </p>
+          )}
+        </div>
+
         <button onClick={handleGenerateAllImages} disabled={isGeneratingImages || step2Disabled} className="w-full mb-6 bg-primary-600 text-white font-semibold py-3 px-4 rounded-lg hover:bg-primary-700 transition-colors disabled:opacity-50">
             {isGeneratingImages ? <Spinner/> : 'Create All 4 Images'}
         </button>
@@ -1331,7 +1587,7 @@ const ProductReviewView: React.FC<ProductReviewViewProps> = ({ onReEdit, onCreat
                        {videoGenerationStatus[i] === 'loading' ? <Spinner/> : <><VideoIcon className="w-4 h-4"/> Create Video</>}
                     </button>
                     <button
-                        onClick={() => handleDownloadVideo(generatedVideos[i], videoFilenames[i] || `monoklix-scene-${i+1}.mp4`, i)}
+                        onClick={() => handleDownloadVideo(generatedVideos[i], videoFilenames[i] || `veoly-scene-${i+1}.mp4`, i)}
                         disabled={!generatedVideos[i] || downloadingVideoIndex !== null}
                         className="w-full text-sm bg-green-600 text-white font-semibold py-2 px-3 rounded-md hover:bg-green-700 transition-colors flex items-center justify-center gap-2 text-center disabled:opacity-50 disabled:cursor-not-allowed"
                     >

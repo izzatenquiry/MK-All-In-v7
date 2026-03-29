@@ -1,10 +1,10 @@
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { type User, type AiLogItem, type Language } from '../../../types';
 import { assignPersonalTokenAndIncrementUsage, hasActiveTokenUltra, hasActiveTokenUltraWithRegistration } from '../../../services/userService';
 import {
     CreditCardIcon, CheckCircleIcon, XIcon, EyeIcon, EyeOffIcon, ChatIcon,
-    AlertTriangleIcon, DatabaseIcon, TrashIcon, RefreshCwIcon, WhatsAppIcon, InformationCircleIcon, SparklesIcon, VideoIcon, ImageIcon, KeyIcon, ActivityIcon, TelegramIcon, DownloadIcon, PlayIcon, UserIcon
+    AlertTriangleIcon, DatabaseIcon, TrashIcon, RefreshCwIcon, WhatsAppIcon, SparklesIcon, VideoIcon, ImageIcon, KeyIcon, ActivityIcon, DownloadIcon, PlayIcon, UserIcon, ServerIcon
 } from '../../Icons';
 import Spinner from '../../common/Spinner';
 import Tabs, { type Tab } from '../../common/Tabs';
@@ -13,6 +13,7 @@ import { getFormattedCacheStats, clearVideoCache } from '../../../services/video
 import { runComprehensiveTokenTest, type TokenTestResult } from '../../../services/imagenV3Service';
 import eventBus from '../../../services/eventBus';
 import FlowLogin from './FlowLogin';
+import RecaptchaSettingsPanel from './RecaptchaSettingsPanel';
 import RegisterTokenUltra from './RegisterTokenUltra';
 import FAQView from './FAQView';
 import MasterDashboardView from '../admin/MasterDashboardView';
@@ -20,7 +21,7 @@ import ETutorialAdminView from '../admin/ETutorialAdminView';
 import { BRAND_CONFIG } from '../../../services/brandConfig';
 
 // Define the types for the settings view tabs
-type SettingsTabId = 'profile' | 'flowLogin' | 'registerTokenUltra' | 'faq' | 'server-status' | 'content-admin';
+export type SettingsTabId = 'profile' | 'flowLogin' | 'recaptcha' | 'faq' | 'server-status' | 'content-admin';
 
 interface Message {
   role: 'user' | 'model';
@@ -36,6 +37,10 @@ interface SettingsViewProps {
   veoTokenRefreshedAt: string | null;
   assignTokenProcess: () => Promise<{ success: boolean; error: string | null; }>;
   onOpenChangeServerModal: () => void;
+  initialTab?: SettingsTabId;
+  onTabChange?: (tab: SettingsTabId) => void;
+  /** When true (FAQ opened from sidebar), only FAQ content is shown — no Profile / Token Setting tabs. */
+  hideSettingsTabBar?: boolean;
 }
 
 const ClaimTokenModal: React.FC<{
@@ -89,12 +94,12 @@ const ClaimTokenModal: React.FC<{
 
 // --- PANELS ---
 
-interface ProfilePanelProps extends Pick<SettingsViewProps, 'currentUser' | 'onUserUpdate' | 'assignTokenProcess'> {
+interface ProfilePanelProps extends Pick<SettingsViewProps, 'currentUser' | 'onUserUpdate' | 'assignTokenProcess' | 'onOpenChangeServerModal'> {
     language: Language;
     setLanguage: (lang: Language) => void;
 }
 
-const ProfilePanel: React.FC<ProfilePanelProps> = ({ currentUser, onUserUpdate, language, setLanguage, assignTokenProcess }) => {
+const ProfilePanel: React.FC<ProfilePanelProps> = ({ currentUser, onUserUpdate, language, setLanguage, assignTokenProcess, onOpenChangeServerModal }) => {
     const T = getTranslations().settingsView;
     const T_Profile = T.profile;
 
@@ -103,6 +108,20 @@ const ProfilePanel: React.FC<ProfilePanelProps> = ({ currentUser, onUserUpdate, 
     // Video Tutorial Modal State
     const [isVideoModalOpen, setIsVideoModalOpen] = useState(false);
     const videoRef = useRef<HTMLVideoElement>(null);
+
+    const [currentServer, setCurrentServer] = useState<string | null>(null);
+    const fetchCurrentServer = useCallback(() => {
+        setCurrentServer(sessionStorage.getItem('selectedProxyServer'));
+    }, []);
+
+    useEffect(() => {
+        fetchCurrentServer();
+        const handleServerChanged = () => fetchCurrentServer();
+        eventBus.on('serverChanged', handleServerChanged);
+        return () => {
+            eventBus.remove('serverChanged', handleServerChanged);
+        };
+    }, [fetchCurrentServer]);
 
     // Auto-play video when modal opens
     useEffect(() => {
@@ -165,22 +184,39 @@ const ProfilePanel: React.FC<ProfilePanelProps> = ({ currentUser, onUserUpdate, 
                 </div>
             </div>
 
-            {/* Support & Downloads Section */}
+            {/* Generation Server — same UI as former Token Setting panel; lives on Profile for quick access */}
+            <div className="bg-white dark:bg-neutral-900 p-6 rounded-lg shadow-sm border border-neutral-200 dark:border-neutral-800 mb-6">
+                <h3 className="text-base sm:text-lg font-bold mb-4 text-neutral-800 dark:text-neutral-200 flex items-center gap-2">
+                    <ServerIcon className="w-5 h-5 text-primary-500" />
+                    Generation Server
+                </h3>
+                <p className="text-sm text-neutral-500 dark:text-neutral-400 mb-4">
+                    Choose the backend server for processing your requests. Switching servers can help if one is slow or overloaded.
+                </p>
+                <div className="bg-neutral-50 dark:bg-neutral-800/50 border border-neutral-200 dark:border-neutral-700 rounded-xl p-4 flex items-center justify-between transition-all">
+                    <div className="min-w-0 flex-1 mr-4">
+                        <p className="text-[10px] font-bold text-neutral-500 dark:text-neutral-400 uppercase tracking-widest mb-1">Status: Connected to</p>
+                        <p className="font-mono text-sm text-brand-start dark:text-brand-end truncate">
+                            {currentServer ? currentServer.replace('https://', '').toUpperCase() : 'NOT CONFIGURED'}
+                        </p>
+                    </div>
+                    <button
+                        type="button"
+                        onClick={onOpenChangeServerModal}
+                        className="flex items-center justify-center gap-2 shrink-0 rounded-lg bg-gradient-to-r from-brand-start to-brand-end text-white text-sm font-semibold py-2.5 px-4 border border-white/15 shadow-[0_8px_24px_rgba(74,108,247,0.25)] hover:opacity-95 active:scale-[0.99] transition-all dark:shadow-[0_8px_28px_rgba(74,108,247,0.35)]"
+                    >
+                        Change Server
+                    </button>
+                </div>
+            </div>
+
+            {/* Downloads: PC app + video tutorial (Telegram support lives in FAQ) */}
             <div className="bg-white dark:bg-neutral-900 p-6 rounded-lg shadow-sm border border-neutral-200 dark:border-neutral-800">
                 <h3 className="text-base sm:text-lg font-bold mb-4 text-neutral-800 dark:text-neutral-200 flex items-center gap-2">
-                    <InformationCircleIcon className="w-5 h-5 text-primary-500" />
-                    Support & Downloads
+                    <DownloadIcon className="w-5 h-5 text-brand-start dark:text-brand-end" />
+                    Downloads
                 </h3>
                 <div className="space-y-3">
-                    <a
-                        href="https://t.me/+rrbqeAkFJqFlY2E1"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="w-full flex items-center justify-center gap-2 bg-blue-500 dark:bg-blue-600 text-white text-sm font-semibold py-2.5 px-4 rounded-lg hover:bg-blue-600 dark:hover:bg-blue-700 transition-colors"
-                    >
-                        <TelegramIcon className="w-5 h-5" />
-                        Join Telegram Support Group
-                    </a>
                     <a
                         href="https://drive.google.com/file/d/1aTNwIXpx7JekPui2UmsXkVL1MNKEWjdd/view?usp=sharing"
                         target="_blank"
@@ -222,7 +258,7 @@ const ProfilePanel: React.FC<ProfilePanelProps> = ({ currentUser, onUserUpdate, 
                     >
                         <video
                             ref={videoRef}
-                            src="https://monoklix.com/wp-content/uploads/2026/01/Video-04-Desktop-PC-Mode.mp4"
+                            src="https://veoly-ai.com/wp-content/uploads/2026/01/Video-04-Desktop-PC-Mode.mp4"
                             controls
                             autoPlay
                             className="w-full h-full object-contain"
@@ -370,7 +406,11 @@ const CacheManagerPanel: React.FC<CacheManagerPanelProps> = ({ currentUser }) =>
               <button onClick={loadStats} disabled={isLoading} className="flex-1 flex items-center justify-center gap-2 bg-neutral-200 dark:bg-neutral-700 text-neutral-700 dark:text-neutral-200 font-semibold py-2 px-4 rounded-lg hover:bg-neutral-300 dark:hover:bg-neutral-600 transition-colors disabled:opacity-50">
                 <RefreshCwIcon className="w-4 h-4" /> {T.refresh}
               </button>
-              <button onClick={handleClearCache} disabled={isClearing || stats.count === 0} className="flex-1 flex items-center justify-center gap-2 bg-red-600 text-white font-semibold py-2 px-4 rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+              <button
+                onClick={handleClearCache}
+                disabled={isClearing || stats.count === 0}
+                className="flex-1 flex items-center justify-center gap-2 rounded-lg border border-red-300/90 dark:border-red-500/35 bg-red-50/90 dark:bg-red-950/35 text-red-800 dark:text-red-200 font-semibold py-2 px-4 hover:bg-red-100 dark:hover:bg-red-950/55 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
                 {isClearing ? (<><Spinner /> {T.clearing}</>) : (<><TrashIcon className="w-4 h-4" /> {T.clear}</>)}
               </button>
             </div>
@@ -382,11 +422,38 @@ const CacheManagerPanel: React.FC<CacheManagerPanelProps> = ({ currentUser }) =>
   );
 };
 
-const SettingsView: React.FC<SettingsViewProps> = ({ currentUser, tempApiKey, onUserUpdate, language, setLanguage, veoTokenRefreshedAt, assignTokenProcess, onOpenChangeServerModal }) => {
+const SettingsView: React.FC<SettingsViewProps> = ({
+    currentUser,
+    tempApiKey,
+    onUserUpdate,
+    language,
+    setLanguage,
+    veoTokenRefreshedAt,
+    assignTokenProcess,
+    onOpenChangeServerModal,
+    initialTab = 'profile',
+    onTabChange,
+    hideSettingsTabBar = false,
+}) => {
     // ============================================================================
     // STATE
     // ============================================================================
-    const [activeTab, setActiveTab] = useState<SettingsTabId>('profile');
+    const [activeTab, setActiveTab] = useState<SettingsTabId>(initialTab);
+
+    useEffect(() => {
+        setActiveTab(initialTab);
+    }, [initialTab]);
+
+    const handleTabChange = useCallback(
+        (action: React.SetStateAction<SettingsTabId>) => {
+            setActiveTab(prev => {
+                const next = typeof action === 'function' ? action(prev) : action;
+                onTabChange?.(next);
+                return next;
+            });
+        },
+        [onTabChange]
+    );
     const [isTokenUltraActive, setIsTokenUltraActive] = useState(false);
     const [tokenUltraStatus, setTokenUltraStatus] = useState<'active' | 'expired' | 'expiring_soon' | null>(null);
     
@@ -430,16 +497,7 @@ const SettingsView: React.FC<SettingsViewProps> = ({ currentUser, tempApiKey, on
             setIsTokenUltraActive(result.isActive);
             setTokenUltraStatus(result.registration?.status || null);
             
-            // If user is on registerTokenUltra tab and Token Ultra becomes active, switch to profile tab
-            // But only if status is 'active' (not expiring_soon or expired)
-            if (result.isActive && result.registration?.status === 'active') {
-                setActiveTab(prevTab => {
-                    if (prevTab === 'registerTokenUltra') {
-                        return 'profile';
-                    }
-                    return prevTab;
-                });
-            }
+            // Token Ultra UI is merged into Token Setting; no separate tab to switch away from.
         };
         
         checkTokenUltraStatus();
@@ -460,25 +518,17 @@ const SettingsView: React.FC<SettingsViewProps> = ({ currentUser, tempApiKey, on
     // Basic tabs - always shown
     tabs.push(
         { id: 'profile', label: T.tabs.profile },
-        { id: 'flowLogin', label: 'Token Setting' },
-        { id: 'faq', label: 'FAQ' }
+        { id: 'flowLogin', label: 'Token Setting' }
     );
     
     const shouldShowTokenUltraTab = !isTokenUltraActive || 
                                      tokenUltraStatus === 'expiring_soon' || 
                                      tokenUltraStatus === 'expired';
-    // Token Ultra tab:
-    // - ESAIE: hidden
-    // - MONOKLIX: always visible for all users (regardless of Token Ultra status)
-    // - Other brands (if any): follow shouldShowTokenUltraTab logic
-    if (BRAND_CONFIG.name === 'MONOKLIX' || 
-        (BRAND_CONFIG.name !== 'ESAIE' && shouldShowTokenUltraTab)) {
-        tabs.push({ id: 'registerTokenUltra', label: 'Token Ultra' });
-    }
-    
+
     // Admin tabs - only add if user is admin
     if (isAdmin) {
         tabs.push(
+            { id: 'recaptcha', label: 'reCAPTCHA', adminOnly: true },
             { id: 'server-status', label: 'Server Status', adminOnly: true },
             { id: 'content-admin', label: 'Content Admin', adminOnly: true }
         );
@@ -486,7 +536,8 @@ const SettingsView: React.FC<SettingsViewProps> = ({ currentUser, tempApiKey, on
 
     // Final filter - remove admin tabs if user is not admin (safety check)
     const finalTabs = tabs.filter(tab => {
-        const isAdminTab = tab.id === 'server-status' || tab.id === 'content-admin';
+        const isAdminTab =
+            tab.id === 'recaptcha' || tab.id === 'server-status' || tab.id === 'content-admin';
         return !(isAdminTab && !isAdmin);
     });
 
@@ -494,17 +545,23 @@ const SettingsView: React.FC<SettingsViewProps> = ({ currentUser, tempApiKey, on
     // PROTECT ADMIN TABS FROM NON-ADMIN ACCESS
     // ============================================================================
     useEffect(() => {
-        if (!isAdmin && (activeTab === 'server-status' || activeTab === 'content-admin')) {
-            setActiveTab('profile');
+        if (
+            !isAdmin &&
+            (activeTab === 'recaptcha' || activeTab === 'server-status' || activeTab === 'content-admin')
+        ) {
+            handleTabChange('profile');
         }
-    }, [isAdmin, activeTab, setActiveTab]);
+    }, [isAdmin, activeTab, handleTabChange]);
 
     // ============================================================================
     // RENDER CONTENT
     // ============================================================================
     const renderContent = () => {
         // Block admin routes for non-admin users
-        if (!isAdmin && (activeTab === 'server-status' || activeTab === 'content-admin')) {
+        if (
+            !isAdmin &&
+            (activeTab === 'recaptcha' || activeTab === 'server-status' || activeTab === 'content-admin')
+        ) {
             return (
                 <div className="flex items-center justify-center h-full">
                     <div className="text-center p-6">
@@ -520,35 +577,54 @@ const SettingsView: React.FC<SettingsViewProps> = ({ currentUser, tempApiKey, on
             case 'profile':
                 return (
                     <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
-                        <ProfilePanel 
-                            currentUser={currentUser} 
-                            onUserUpdate={onUserUpdate} 
-                            language={language} 
+                        <ProfilePanel
+                            currentUser={currentUser}
+                            onUserUpdate={onUserUpdate}
+                            language={language}
                             setLanguage={setLanguage}
                             assignTokenProcess={assignTokenProcess}
+                            onOpenChangeServerModal={onOpenChangeServerModal}
                         />
                         <div className="h-full">
                             <CacheManagerPanel currentUser={currentUser} />
                         </div>
                     </div>
                 );
-            case 'flowLogin':
+            case 'flowLogin': {
+                const showTokenUltraColumn =
+                    BRAND_CONFIG.name === 'VEOLY-AI' || shouldShowTokenUltraTab;
                 return (
                     <div className="w-full">
-                        <FlowLogin 
-                            currentUser={currentUser}
-                            onUserUpdate={onUserUpdate}
-                            onOpenChangeServerModal={onOpenChangeServerModal}
-                        />
+                        <div
+                            className={
+                                showTokenUltraColumn
+                                    ? 'grid w-full grid-cols-1 items-stretch gap-8 xl:grid-cols-2'
+                                    : 'w-full'
+                            }
+                        >
+                            <div className="flex h-full min-h-0 w-full min-w-0 flex-col">
+                                <FlowLogin
+                                    currentUser={currentUser}
+                                    onUserUpdate={onUserUpdate}
+                                    pairWithTokenUltraPanel={showTokenUltraColumn}
+                                />
+                            </div>
+                            {showTokenUltraColumn && (
+                                <div className="flex h-full min-h-0 w-full min-w-0 flex-col">
+                                    <RegisterTokenUltra
+                                        currentUser={currentUser}
+                                        onUserUpdate={onUserUpdate}
+                                    />
+                                </div>
+                            )}
+                        </div>
                     </div>
                 );
-            case 'registerTokenUltra':
+            }
+            case 'recaptcha':
                 return (
                     <div className="w-full">
-                        <RegisterTokenUltra 
-                            currentUser={currentUser}
-                            onUserUpdate={onUserUpdate}
-                        />
+                        <RecaptchaSettingsPanel currentUser={currentUser} onUserUpdate={onUserUpdate} />
                     </div>
                 );
             case 'faq':
@@ -579,16 +655,18 @@ const SettingsView: React.FC<SettingsViewProps> = ({ currentUser, tempApiKey, on
 
     return (
         <div className="h-full flex flex-col">
-            <div className="flex-shrink-0 mb-6 flex justify-center">
-                <Tabs 
-                    tabs={finalTabs}
-                    activeTab={activeTab}
-                    setActiveTab={setActiveTab}
-                    isAdmin={isAdmin}
-                />
-            </div>
+            {!hideSettingsTabBar && (
+                <div className="mb-6 flex shrink-0 justify-center">
+                    <Tabs
+                        tabs={finalTabs}
+                        activeTab={activeTab}
+                        setActiveTab={handleTabChange}
+                        isAdmin={isAdmin}
+                    />
+                </div>
+            )}
 
-            <div className="flex-1 overflow-y-auto min-h-0">
+            <div className="min-h-0 flex-1 overflow-y-auto">
                 {renderContent()}
             </div>
         </div>
