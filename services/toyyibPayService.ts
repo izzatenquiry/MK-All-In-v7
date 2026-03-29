@@ -48,7 +48,10 @@ export interface PaymentReturnData {
   status: string; // '1' = success, '2' = failed, '3' = pending
   billcode: string | null;
   order_id: string | null;
+  /** Explicit `refno` query param from ToyyibPay (do not confuse with transaction_id). */
   refno: string | null;
+  /** Gateway transaction id — not the same as billExternalReferenceNo / saved referenceNo. */
+  transactionId: string | null;
 }
 
 export interface SavedOrderData extends OrderData {
@@ -229,6 +232,8 @@ export const handlePaymentReturn = (): PaymentReturnData | null => {
     status: paymentStatus, // '1' = success, '2' = failed, '3' = pending
     billcode: billcode,
     order_id: order_id,
-    refno: refno || transaction_id, // Use transaction_id as fallback for refno
+    // Never merge transaction_id into refno — it is not billExternalReferenceNo (ORD-...).
+    refno: refno,
+    transactionId: transaction_id,
   };
 };

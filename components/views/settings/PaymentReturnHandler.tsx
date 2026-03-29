@@ -89,8 +89,22 @@ const PaymentReturnHandler: React.FC<PaymentReturnHandlerProps> = ({
         return;
       }
 
+      // Match saved billExternalReferenceNo to ToyyibPay return `order_id` (not transaction_id).
+      if (
+        paymentData.order_id &&
+        orderData.referenceNo &&
+        paymentData.order_id !== orderData.referenceNo
+      ) {
+        console.error('[PaymentReturn] Order reference mismatch', {
+          callback: paymentData.order_id,
+          expected: orderData.referenceNo,
+        });
+        setStatus('failed');
+        setMessage('Payment validation failed (order reference mismatch). Please contact support.');
+        return;
+      }
       if (paymentData.refno && orderData.referenceNo && paymentData.refno !== orderData.referenceNo) {
-        console.error('[PaymentReturn] Reference mismatch', { callback: paymentData.refno, expected: orderData.referenceNo });
+        console.error('[PaymentReturn] Refno mismatch', { callback: paymentData.refno, expected: orderData.referenceNo });
         setStatus('failed');
         setMessage('Payment validation failed (reference mismatch). Please contact support.');
         return;
