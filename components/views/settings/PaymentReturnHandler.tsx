@@ -5,131 +5,6 @@ import { supabase } from '../../../services/supabaseClient';
 import { CheckCircleIcon, AlertTriangleIcon } from '../../Icons';
 import Spinner from '../../common/Spinner';
 
-/**
- * Wait for Supabase JWT after ToyyibPay redirect (session hydrates async).
- * Do NOT cancel this wait from useEffect cleanup when `currentUser` changes — that left the UI spinning forever.
- */
-const SESSION_WAIT_MS = 25_000;
-const SESSION_POLL_MS = 400;
-const GET_USER_TIMEOUT_MS = 8_000;
-
-type AuthWaitResult = { ok: true } | { ok: false; reason: 'no_session' | 'wrong_account' };
-
-async function trySessionMatch(expectedUserId: string): Promise<'match' | 'wrong' | 'none'> {
-  const {
-    data: { session },
-  } = await supabase.auth.getSession();
-  let uid = session?.user?.id ?? null;
-  if (uid === expectedUserId) return 'match';
-  if (uid !== null && uid !== expectedUserId) return 'wrong';
-
-  const raced = await Promise.race([
-    supabase.auth.getUser(),
-    new Promise<null>((resolve) => setTimeout(() => resolve(null), GET_USER_TIMEOUT_MS)),
-  ]);
-  if (raced === null) {
-    return 'none';
-  }
-  const { data: userData, error } = raced;
-  if (error) {
-    return 'none';
-  }
-  uid = userData.user?.id ?? null;
-  if (uid === expectedUserId) return 'match';
-  if (uid !== null && uid !== expectedUserId) return 'wrong';
-  return 'none';
-}
-
-async function waitUntilSupabaseUserMatches(
-  expectedUserId: string,
-  getCurrentUserId?: () => string | null | undefined
-): Promise<AuthWaitResult> {
-  const quickHint = getCurrentUserId?.() ?? null;
-  if (quickHint && quickHint === expectedUserId) {
-    const quick = await trySessionMatch(expectedUserId);
-    if (quick === 'match') {
-      await supabase.auth.getUser().catch(() => undefined);
-      return { ok: true };
-    }
-    if (quick === 'wrong') return { ok: false, reason: 'wrong_account' };
-  }
-
-  return new Promise((resolve) => {
-    let settled = false;
-    let pollId: ReturnType<typeof setInterval> | undefined;
-    let authSub: { unsubscribe: () => void } | null = null;
-
-    const finish = (r: AuthWaitResult) => {
-      if (settled) return;
-      settled = true;
-      window.clearTimeout(timeoutId);
-      if (pollId !== undefined) window.clearInterval(pollId);
-      authSub?.unsubscribe();
-      resolve(r);
-    };
-
-    const timeoutId = window.setTimeout(() => {
-      finish({ ok: false, reason: 'no_session' });
-    }, SESSION_WAIT_MS);
-
-    const { data: subData } = supabase.auth.onAuthStateChange((_event, session) => {
-      void (async () => {
-        if (settled) return;
-        const uid = session?.user?.id ?? null;
-        if (uid === expectedUserId) {
-          await supabase.auth.getUser().catch(() => undefined);
-          finish({ ok: true });
-          return;
-        }
-        if (uid !== null && uid !== expectedUserId) {
-          finish({ ok: false, reason: 'wrong_account' });
-        }
-      })();
-    });
-    authSub = subData.subscription;
-
-    pollId = window.setInterval(() => {
-      void (async () => {
-        if (settled) return;
-        const hint = getCurrentUserId?.() ?? null;
-        if (hint && hint === expectedUserId) {
-          const m = await trySessionMatch(expectedUserId);
-          if (m === 'match') {
-            await supabase.auth.getUser().catch(() => undefined);
-            finish({ ok: true });
-            return;
-          }
-          if (m === 'wrong') {
-            finish({ ok: false, reason: 'wrong_account' });
-          }
-        }
-        const m = await trySessionMatch(expectedUserId);
-        if (m === 'match') {
-          await supabase.auth.getUser().catch(() => undefined);
-          finish({ ok: true });
-        } else if (m === 'wrong') {
-          finish({ ok: false, reason: 'wrong_account' });
-        }
-      })();
-    }, SESSION_POLL_MS);
-
-    void (async () => {
-      await Promise.race([
-        supabase.auth.refreshSession().catch(() => undefined),
-        new Promise<void>((resolve) => setTimeout(resolve, 10_000)),
-      ]);
-      if (settled) return;
-      const m = await trySessionMatch(expectedUserId);
-      if (m === 'match') {
-        await supabase.auth.getUser().catch(() => undefined);
-        finish({ ok: true });
-      } else if (m === 'wrong') {
-        finish({ ok: false, reason: 'wrong_account' });
-      }
-    })();
-  });
-}
-
 interface PaymentReturnHandlerProps {
   currentUser: any;
   onUserUpdate?: (user: any) => void;
@@ -145,8 +20,6 @@ const PaymentReturnHandler: React.FC<PaymentReturnHandlerProps> = ({
   const [message, setMessage] = useState<string>('');
   const [isRegistering, setIsRegistering] = useState(false);
   const flowTerminalRef = useRef(false);
-  const currentUserIdRef = useRef<string | undefined>(undefined);
-  currentUserIdRef.current = currentUser?.id;
 
   useEffect(() => {
     if (flowTerminalRef.current) {
@@ -235,26 +108,27 @@ const PaymentReturnHandler: React.FC<PaymentReturnHandlerProps> = ({
       
       if (paymentData.status === '1') {
         setStatus('checking');
-        setMessage('Confirming your login session...');
+        setMessage('Applying your payment...');
 
-        const authWait = await waitUntilSupabaseUserMatches(
-          userId,
-          () => currentUserIdRef.current ?? undefined
-        );
-        if (!authWait.ok) {
+        // One cheap read — never call refreshSession() here (it can hang indefinitely on bad network).
+        const {
+          data: { session },
+        } = await supabase.auth.getSession();
+        const sid = session?.user?.id;
+        if (sid && sid !== userId) {
           flowTerminalRef.current = true;
           setStatus('failed');
           setMessage(
-            authWait.reason === 'wrong_account'
-              ? 'You are signed in as a different account than the one used for this payment. Log out, sign in with the correct account, then open the payment return link again.'
-              : 'Your session was not ready after returning from payment. Please log in with the account you used to pay, then reload this page (or open the return link from your email again).'
+            'You are signed in as a different account than the one used for this payment. Log out, sign in with the correct account, then open the payment return link again.'
           );
           return;
         }
 
+        console.log('[PaymentReturn] Validated return URL + order; proceeding (session:', sid ? 'payer' : 'none', ')');
+
         flowTerminalRef.current = true;
 
-        setMessage('Payment successful! Registering your account...');
+        setMessage('Payment successful! Updating your account...');
 
         setIsRegistering(true);
         try {
