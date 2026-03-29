@@ -1319,21 +1319,37 @@ export const consumePackageCredits = async (
 
 /**
  * Apply a purchased credit package to a user.
- * Adds credits via RPC `apply_credit_package` (DB should update `credit_balance` and `expires_at` only).
+ * Uses the same path as other profile updates (`registerTokenUltra`): direct `users` update so RLS + session apply — no separate RPC / auth.uid() mismatch.
+ * Payment-return flow already validates billcode + order_id against stored order before calling this.
  */
 export const applyCreditPackage = async (
     userId: string,
     creditsToAdd: number
 ): Promise<{ success: boolean; message?: string }> => {
     try {
-        const { error } = await supabase.rpc('apply_credit_package', {
-            p_user_id: userId,
-            p_credits: creditsToAdd,
-        });
+        const { data: row, error: fetchError } = await supabase
+            .from('users')
+            .select('credit_balance')
+            .eq('id', userId)
+            .single();
 
-        if (error) {
-            const msg = getErrorMessage(error);
-            console.error('applyCreditPackage error:', msg);
+        if (fetchError) {
+            const msg = getErrorMessage(fetchError);
+            console.error('applyCreditPackage fetch error:', msg);
+            return { success: false, message: msg };
+        }
+
+        const current = typeof row?.credit_balance === 'number' ? row.credit_balance : 0;
+        const nextBalance = current + creditsToAdd;
+
+        const { error: updateError } = await supabase
+            .from('users')
+            .update({ credit_balance: nextBalance })
+            .eq('id', userId);
+
+        if (updateError) {
+            const msg = getErrorMessage(updateError);
+            console.error('applyCreditPackage update error:', msg);
             return { success: false, message: msg };
         }
 

@@ -5,40 +5,138 @@ import { supabase } from '../../../services/supabaseClient';
 import { CheckCircleIcon, AlertTriangleIcon } from '../../Icons';
 import Spinner from '../../common/Spinner';
 
-/** After ToyyibPay redirect, Supabase may not have hydrated JWT yet; RPC apply_credit_package checks auth.uid(). */
-const SESSION_POLL_MS = 200;
-const SESSION_POLL_ATTEMPTS = 30;
+/**
+ * After ToyyibPay redirect, Supabase often loads the JWT asynchronously (`INITIAL_SESSION`).
+ * Polling `getSession()` alone can miss that; we combine `onAuthStateChange`, `getUser()`, and a long backup poll.
+ * RPC `apply_credit_package` requires `auth.uid()` to match `p_user_id`.
+ */
+const SESSION_WAIT_MS = 60_000;
+const SESSION_POLL_MS = 400;
+
+type AuthWaitResult = { ok: true } | { ok: false; reason: 'no_session' | 'wrong_account' };
+type AuthWaitOutcome = AuthWaitResult | { cancelled: true };
+
+async function trySessionMatch(expectedUserId: string): Promise<'match' | 'wrong' | 'none'> {
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+  let uid = session?.user?.id ?? null;
+  if (uid === expectedUserId) return 'match';
+  if (uid !== null && uid !== expectedUserId) return 'wrong';
+
+  const { data: userData, error } = await supabase.auth.getUser();
+  if (error) {
+    return 'none';
+  }
+  uid = userData.user?.id ?? null;
+  if (uid === expectedUserId) return 'match';
+  if (uid !== null && uid !== expectedUserId) return 'wrong';
+  return 'none';
+}
 
 async function waitUntilSupabaseUserMatches(
-  expectedUserId: string
-): Promise<{ ok: true } | { ok: false; reason: 'no_session' | 'wrong_account' }> {
-  for (let attempt = 0; attempt < SESSION_POLL_ATTEMPTS; attempt++) {
-    const {
-      data: { session },
-    } = await supabase.auth.getSession();
-    const uid = session?.user?.id ?? null;
-    if (uid === expectedUserId) {
+  expectedUserId: string,
+  getCurrentUserId?: () => string | null | undefined,
+  isCancelled?: () => boolean
+): Promise<AuthWaitOutcome> {
+  const quickHint = getCurrentUserId?.() ?? null;
+  if (quickHint && quickHint === expectedUserId) {
+    const quick = await trySessionMatch(expectedUserId);
+    if (isCancelled?.()) return { cancelled: true };
+    if (quick === 'match') {
       await supabase.auth.getUser().catch(() => undefined);
       return { ok: true };
     }
-    if (uid !== null && uid !== expectedUserId) {
-      return { ok: false, reason: 'wrong_account' };
-    }
-    if (attempt === 3) {
+    if (quick === 'wrong') return { ok: false, reason: 'wrong_account' };
+  }
+
+  return new Promise((resolve) => {
+    let settled = false;
+    let pollId: ReturnType<typeof setInterval> | undefined;
+    let authSub: { unsubscribe: () => void } | null = null;
+
+    const finish = (r: AuthWaitOutcome) => {
+      if (settled) return;
+      settled = true;
+      window.clearTimeout(timeoutId);
+      if (pollId !== undefined) window.clearInterval(pollId);
+      authSub?.unsubscribe();
+      resolve(r);
+    };
+
+    const timeoutId = window.setTimeout(() => {
+      if (isCancelled?.()) {
+        finish({ cancelled: true });
+        return;
+      }
+      finish({ ok: false, reason: 'no_session' });
+    }, SESSION_WAIT_MS);
+
+    const { data: subData } = supabase.auth.onAuthStateChange((_event, session) => {
+      void (async () => {
+        if (settled || isCancelled?.()) return;
+        const uid = session?.user?.id ?? null;
+        if (uid === expectedUserId) {
+          await supabase.auth.getUser().catch(() => undefined);
+          finish({ ok: true });
+          return;
+        }
+        if (uid !== null && uid !== expectedUserId) {
+          finish({ ok: false, reason: 'wrong_account' });
+        }
+      })();
+    });
+    authSub = subData.subscription;
+
+    pollId = window.setInterval(() => {
+      void (async () => {
+        if (settled || isCancelled?.()) return;
+        const hint = getCurrentUserId?.() ?? null;
+        if (hint && hint === expectedUserId) {
+          const m = await trySessionMatch(expectedUserId);
+          if (isCancelled?.()) {
+            finish({ cancelled: true });
+            return;
+          }
+          if (m === 'match') {
+            await supabase.auth.getUser().catch(() => undefined);
+            finish({ ok: true });
+            return;
+          }
+          if (m === 'wrong') {
+            finish({ ok: false, reason: 'wrong_account' });
+          }
+        }
+        const m = await trySessionMatch(expectedUserId);
+        if (isCancelled?.()) {
+          finish({ cancelled: true });
+          return;
+        }
+        if (m === 'match') {
+          await supabase.auth.getUser().catch(() => undefined);
+          finish({ ok: true });
+        } else if (m === 'wrong') {
+          finish({ ok: false, reason: 'wrong_account' });
+        }
+      })();
+    }, SESSION_POLL_MS);
+
+    void (async () => {
       await supabase.auth.refreshSession().catch(() => undefined);
-    }
-    await new Promise((r) => setTimeout(r, SESSION_POLL_MS));
-  }
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  const uid = user?.id ?? null;
-  if (uid === expectedUserId) {
-    await supabase.auth.getUser().catch(() => undefined);
-    return { ok: true };
-  }
-  if (uid !== null && uid !== expectedUserId) return { ok: false, reason: 'wrong_account' };
-  return { ok: false, reason: 'no_session' };
+      if (settled || isCancelled?.()) return;
+      const m = await trySessionMatch(expectedUserId);
+      if (isCancelled?.()) {
+        finish({ cancelled: true });
+        return;
+      }
+      if (m === 'match') {
+        await supabase.auth.getUser().catch(() => undefined);
+        finish({ ok: true });
+      } else if (m === 'wrong') {
+        finish({ ok: false, reason: 'wrong_account' });
+      }
+    })();
+  });
 }
 
 interface PaymentReturnHandlerProps {
@@ -55,17 +153,20 @@ const PaymentReturnHandler: React.FC<PaymentReturnHandlerProps> = ({
   const [status, setStatus] = useState<'checking' | 'success' | 'failed' | 'pending'>('checking');
   const [message, setMessage] = useState<string>('');
   const [isRegistering, setIsRegistering] = useState(false);
-  const hasProcessed = useRef(false); // ✅ Prevent multiple execution
+  /** Set when flow ends successfully or with a non-retryable error (session wait uses cancel + re-run instead). */
+  const flowTerminalRef = useRef(false);
+  /** Fresh id on every render so session wait sees App user as soon as it loads. */
+  const currentUserIdRef = useRef<string | undefined>(undefined);
+  currentUserIdRef.current = currentUser?.id;
 
   useEffect(() => {
-    // ✅ Guard: Only process once
-    if (hasProcessed.current) {
+    if (flowTerminalRef.current) {
       return;
     }
 
+    const cancelledRef = { current: false };
+
     const processPaymentReturn = async () => {
-      hasProcessed.current = true; // ✅ Mark as processing
-      
       console.log('[PaymentReturn] Processing payment return...');
       console.log('[PaymentReturn] URL:', window.location.href);
       console.log('[PaymentReturn] Query params:', window.location.search);
@@ -96,6 +197,7 @@ const PaymentReturnHandler: React.FC<PaymentReturnHandlerProps> = ({
       
       if (!userId) {
         console.error('[PaymentReturn] User ID not found');
+        flowTerminalRef.current = true;
         setStatus('failed');
         setMessage('User information not found. Please contact support.');
         return;
@@ -105,6 +207,7 @@ const PaymentReturnHandler: React.FC<PaymentReturnHandlerProps> = ({
       // it might be a return visit after successful registration
       if (!orderData && paymentData.status === '1') {
         console.warn('[PaymentReturn] Order data not found but payment is success - might be return visit after successful registration');
+        flowTerminalRef.current = true;
         setStatus('success');
         setMessage('Payment was successful and has been processed previously.');
         return;
@@ -113,6 +216,7 @@ const PaymentReturnHandler: React.FC<PaymentReturnHandlerProps> = ({
       // If orderData is null and payment is not success, fail
       if (!orderData) {
         console.error('[PaymentReturn] Order data not found in sessionStorage');
+        flowTerminalRef.current = true;
         setStatus('failed');
         setMessage('Order data not found. Please contact support.');
         return;
@@ -121,6 +225,7 @@ const PaymentReturnHandler: React.FC<PaymentReturnHandlerProps> = ({
       // Critical validation to prevent URL tampering or stale callbacks
       if (paymentData.billcode && orderData.billCode && paymentData.billcode !== orderData.billCode) {
         console.error('[PaymentReturn] Bill code mismatch', { callback: paymentData.billcode, expected: orderData.billCode });
+        flowTerminalRef.current = true;
         setStatus('failed');
         setMessage('Payment validation failed (bill code mismatch). Please contact support.');
         return;
@@ -136,12 +241,14 @@ const PaymentReturnHandler: React.FC<PaymentReturnHandlerProps> = ({
           callback: paymentData.order_id,
           expected: orderData.referenceNo,
         });
+        flowTerminalRef.current = true;
         setStatus('failed');
         setMessage('Payment validation failed (order reference mismatch). Please contact support.');
         return;
       }
       if (paymentData.refno && orderData.referenceNo && paymentData.refno !== orderData.referenceNo) {
         console.error('[PaymentReturn] Refno mismatch', { callback: paymentData.refno, expected: orderData.referenceNo });
+        flowTerminalRef.current = true;
         setStatus('failed');
         setMessage('Payment validation failed (reference mismatch). Please contact support.');
         return;
@@ -156,8 +263,16 @@ const PaymentReturnHandler: React.FC<PaymentReturnHandlerProps> = ({
         setStatus('checking'); // Keep as checking until registration complete
         setMessage('Confirming your login session...');
 
-        const authWait = await waitUntilSupabaseUserMatches(userId);
+        const authWait = await waitUntilSupabaseUserMatches(
+          userId,
+          () => currentUserIdRef.current ?? undefined,
+          () => cancelledRef.current
+        );
+        if ('cancelled' in authWait && authWait.cancelled) {
+          return;
+        }
         if (!authWait.ok) {
+          flowTerminalRef.current = true;
           setStatus('failed');
           setMessage(
             authWait.reason === 'wrong_account'
@@ -166,6 +281,9 @@ const PaymentReturnHandler: React.FC<PaymentReturnHandlerProps> = ({
           );
           return;
         }
+
+        // Prevent a second effect (e.g. when currentUser hydrates) from running registration twice.
+        flowTerminalRef.current = true;
 
         setMessage('Payment successful! Registering your account...');
 
@@ -192,6 +310,7 @@ const PaymentReturnHandler: React.FC<PaymentReturnHandlerProps> = ({
               const creditResult = await applyCreditPackage(userId, expectedCredits);
               if (!creditResult.success) {
                 creditApplyFailed = true;
+                flowTerminalRef.current = true;
                 setStatus('failed');
                 const detail =
                   creditResult.message && creditResult.message.trim().length > 0
@@ -237,27 +356,35 @@ const PaymentReturnHandler: React.FC<PaymentReturnHandlerProps> = ({
             }, 3000);
           } else {
             console.error('[PaymentReturn] Registration failed:', result.message);
+            flowTerminalRef.current = true;
             setStatus('failed');
             setMessage(`Payment successful but registration failed: ${result.message}. Please contact support.`);
           }
         } catch (error) {
           console.error('[PaymentReturn] Registration error:', error);
+          flowTerminalRef.current = true;
           setStatus('failed');
           setMessage(`Payment successful but registration failed: ${error instanceof Error ? error.message : 'Unknown error'}. Please contact support.`);
         } finally {
           setIsRegistering(false);
         }
       } else if (paymentData.status === '2') {
+        flowTerminalRef.current = true;
         setStatus('failed');
         setMessage('Payment failed. Please try again.');
       } else if (paymentData.status === '3') {
+        flowTerminalRef.current = true;
         setStatus('pending');
         setMessage('Payment is pending. Please wait for confirmation.');
       }
     };
 
-    processPaymentReturn();
-  }, []); // ✅ Empty dependency array - only run once on mount
+    void processPaymentReturn();
+
+    return () => {
+      cancelledRef.current = true;
+    };
+  }, [currentUser?.id]);
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4 bg-neutral-50 dark:bg-neutral-900">
