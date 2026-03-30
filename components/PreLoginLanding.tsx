@@ -9,6 +9,7 @@ import {
   CheckCircleIcon,
 } from './Icons';
 import { TOKEN_ULTRA_PACKAGES } from '../services/creditPackages';
+import { isElectron } from '../services/environment';
 
 interface PreLoginLandingProps {
   onOpenLogin: () => void;
@@ -20,6 +21,7 @@ interface PreLoginLandingProps {
  * Mobile-first: single column, readable type, touch-friendly CTAs.
  */
 const PreLoginLanding: React.FC<PreLoginLandingProps> = ({ onOpenLogin, onOpenRegister }) => {
+  const isElectronMode = isElectron();
   const [heroTilt, setHeroTilt] = useState({ x: 0, y: 0 });
   const [activeTestimonialSlide, setActiveTestimonialSlide] = useState(0);
   const [testimonialsPerSlide, setTestimonialsPerSlide] = useState<number>(() =>
@@ -175,7 +177,7 @@ const PreLoginLanding: React.FC<PreLoginLandingProps> = ({ onOpenLogin, onOpenRe
                 className="absolute inset-0 rounded-3xl bg-gradient-to-br from-brand-start/35 to-brand-end/30 blur-2xl scale-110"
                 aria-hidden
               />
-              <div className="absolute inset-[-18%] rounded-[28px] border border-white/50 dark:border-white/10 animate-[spin_20s_linear_infinite]" />
+              <div className="absolute inset-[-14%] rounded-[28px] border border-white/50 dark:border-white/10 animate-[spin_20s_linear_infinite]" />
               <LogoIcon className="relative block w-full h-auto text-neutral-900 dark:text-white drop-shadow-lg" />
             </div>
           </div>
@@ -218,6 +220,8 @@ const PreLoginLanding: React.FC<PreLoginLandingProps> = ({ onOpenLogin, onOpenRe
         </div>
       </header>
 
+      {!isElectronMode && (
+        <>
       {/* Highlights */}
       <section className="mt-14 sm:mt-20" aria-labelledby="prelogin-why-heading">
         <h2 id="prelogin-why-heading" className="sr-only">
@@ -300,7 +304,6 @@ const PreLoginLanding: React.FC<PreLoginLandingProps> = ({ onOpenLogin, onOpenRe
         </h2>
         <div className="mt-5 grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5">
           <div className="rounded-2xl border border-sky-300/50 dark:border-sky-500/30 bg-gradient-to-br from-sky-500/90 to-blue-700/90 p-5 text-white shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_20px_46px_rgba(37,99,235,0.35)]">
-            <p className="text-xs uppercase tracking-wider font-semibold text-sky-100">Monthly Payment</p>
             <h3 className="mt-2 text-xl font-extrabold">Old Way</h3>
             <ul className="mt-4 space-y-2 text-sm text-sky-50">
               {oldWay.map(item => (
@@ -315,9 +318,6 @@ const PreLoginLanding: React.FC<PreLoginLandingProps> = ({ onOpenLogin, onOpenRe
             </p>
           </div>
           <div className="rounded-2xl border border-emerald-200/80 dark:border-emerald-700/40 bg-white/90 dark:bg-white/[0.04] p-5 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_20px_46px_rgba(16,185,129,0.22)]">
-            <p className="text-xs uppercase tracking-wider font-semibold text-neutral-500 dark:text-neutral-400">
-              One-time Payment
-            </p>
             <h3 className="mt-2 text-xl font-extrabold text-red-600 dark:text-red-400">With VEOLY-AI</h3>
             <ul className="mt-4 space-y-2 text-sm text-neutral-700 dark:text-neutral-300">
               {newWay.map(item => (
@@ -602,6 +602,8 @@ const PreLoginLanding: React.FC<PreLoginLandingProps> = ({ onOpenLogin, onOpenRe
         <p className="text-xs text-neutral-500 dark:text-neutral-500">Copyright © 2026 VEOLY-AI.com</p>
         <p className="mt-1 text-xs text-neutral-500 dark:text-neutral-500">Built with ❤️ for Malaysian creators</p>
       </footer>
+        </>
+      )}
     </div>
   );
 };

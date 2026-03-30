@@ -72,6 +72,7 @@ const App: React.FC = () => {
   const [isLogSidebarOpen, setIsLogSidebarOpen] = useState(false);
   const [isShowingWelcome, setIsShowingWelcome] = useState(false);
   const [justLoggedIn, setJustLoggedIn] = useState(false);
+  const [showPcWebsitePrompt, setShowPcWebsitePrompt] = useState(false);
   const [veoTokenRefreshedAt, setVeoTokenRefreshedAt] = useState<string | null>(null);
   const [scanProgress, setScanProgress] = useState({ current: 0, total: 0 });
   const isAssigningTokenRef = useRef(false);
@@ -257,6 +258,25 @@ const App: React.FC = () => {
         setSessionChecked(true);
         setIsApiKeyLoading(false);
   }, []);
+
+  // After login (web only), prompt user to prefer PC mode (Electron) because it is more stable.
+  useEffect(() => {
+    if (!currentUser) return;
+    if (!justLoggedIn) return;
+    if (isElectron()) {
+      setJustLoggedIn(false);
+      return;
+    }
+
+    const alreadyShown = sessionStorage.getItem('pc_mode_prompt_shown') === '1';
+    if (alreadyShown) {
+      setJustLoggedIn(false);
+      return;
+    }
+
+    setShowPcWebsitePrompt(true);
+    setJustLoggedIn(false);
+  }, [currentUser, justLoggedIn]);
 
   // AUTO-SYNC: Fetch fresh profile from DB on load to ensure personalAuthToken is up to date
   useEffect(() => {
@@ -804,6 +824,70 @@ const App: React.FC = () => {
             setIsMenuOpen={setIsMenuOpen}
             appVersion={APP_VERSION}
         />
+
+        {showPcWebsitePrompt && (
+          <div
+            className="fixed inset-0 z-[100] bg-black/60 flex items-center justify-center p-4"
+            role="dialog"
+            aria-modal="true"
+            onClick={() => setShowPcWebsitePrompt(false)}
+          >
+            <div
+              className="bg-white dark:bg-neutral-900 rounded-2xl shadow-xl w-full max-w-lg border border-neutral-200/80 dark:border-white/10 p-6"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-start justify-between gap-4 mb-4">
+                <div className="min-w-0">
+                  <h3 className="text-lg font-bold text-neutral-900 dark:text-neutral-100">
+                    Choose Mode
+                  </h3>
+                  <p className="text-sm text-neutral-600 dark:text-neutral-300 mt-1">
+                    PC Mode is more stable. Please download the PC version first.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowPcWebsitePrompt(false)}
+                  className="p-2 rounded-full hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors text-neutral-600 dark:text-neutral-300"
+                  aria-label="Close"
+                >
+                  <XIcon className="w-4 h-4" />
+                </button>
+              </div>
+
+              <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl p-4 mb-4">
+                <p className="text-sm text-neutral-700 dark:text-neutral-200">
+                  If you continue using Mobile Mode, some features may be slower or less stable.
+                </p>
+              </div>
+
+              <div className="space-y-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    sessionStorage.setItem('pc_mode_prompt_shown', '1');
+                    window.open('https://drive.google.com/file/d/1aTNwIXpx7JekPui2UmsXkVL1MNKEWjdd/view?usp=sharing', '_blank', 'noopener,noreferrer');
+                    setShowPcWebsitePrompt(false);
+                  }}
+                  className="w-full bg-gradient-to-r from-brand-start to-brand-end text-white font-bold py-3 px-4 rounded-xl shadow-sm hover:opacity-95 active:scale-[0.99] transition-all"
+                >
+                  PC Mode (Download PC Version)
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    sessionStorage.setItem('pc_mode_prompt_shown', '1');
+                    setShowPcWebsitePrompt(false);
+                  }}
+                  className="w-full bg-neutral-100 dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100 font-semibold py-3 px-4 rounded-xl border border-neutral-200 dark:border-white/10 hover:bg-neutral-200 dark:hover:bg-neutral-700 transition-colors"
+                >
+                  Mobile Mode
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         <main className="flex-1 flex flex-col min-w-0 md:pl-[292px] transition-all duration-300 relative z-10 h-full">
             {/* Header (Full Width "Full Petak") */}

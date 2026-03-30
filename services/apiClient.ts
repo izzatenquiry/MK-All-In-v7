@@ -246,7 +246,7 @@ export async function prepareVeolyNanobanana2UnifiedSession(
   const fullLogin =
     typeof localStorage !== 'undefined' && localStorage.getItem('bridgeUnifiedVideoSessionFullLogin') !== '0';
   try {
-    if (onStatusUpdate) onStatusUpdate('Preparing Google Flow session (reference upload + generate)...');
+    if (onStatusUpdate) onStatusUpdate('Preparing session (reference upload + generate)...');
     const pack = await getBridgeUnifiedVideoSession(
       undefined,
       resolvedFlow,
@@ -284,7 +284,7 @@ export async function prepareVeolyVeoUnifiedSession(
   const fullLogin =
     typeof localStorage !== 'undefined' && localStorage.getItem('bridgeUnifiedVideoSessionFullLogin') !== '0';
   try {
-    if (onStatusUpdate) onStatusUpdate('Preparing Google Flow session (video upload + generate)...');
+    if (onStatusUpdate) onStatusUpdate('Preparing session (video upload + generate)...');
     const pack = await getBridgeUnifiedVideoSession(
       undefined,
       resolvedFlow,

@@ -184,7 +184,14 @@ const sendVeoTelemetry = async (authToken, requestBody, req, generationType = 'v
     const aspectRatio = String(aspectRatioRaw).includes('LANDSCAPE') ? 'LANDSCAPE' : 'PORTRAIT';
     const userPaygateTier = requestBody?.clientContext?.userPaygateTier || 'PAYGATE_TIER_TWO';
     const referenceImagesRaw = Array.isArray(request0?.referenceImages) ? request0.referenceImages : [];
-    const referenceImages = referenceImagesRaw
+    const startImageMediaId = request0?.startImage?.mediaId;
+    const referenceImages = (
+      referenceImagesRaw.length > 0
+        ? referenceImagesRaw
+        : startImageMediaId
+          ? [{ mediaId: startImageMediaId }]
+          : []
+    )
       .map((img) => img?.mediaId)
       .filter(Boolean)
       .map((mediaId) => ({ imageId: `fe_id_${mediaId}` }));
@@ -285,6 +292,8 @@ app.use(cors({
       'https://dev1.monoklix.com',
       'https://captcha.monoklix.com',
       'https://esaie.tech',
+	  'https://veoly-ai.com',
+	  'https://captcha.veoly-ai.com',
       'http://localhost:8080',
       'http://localhost:3001',
       'http://localhost:6003' // Bridge Server (reCAPTCHA Generator)
