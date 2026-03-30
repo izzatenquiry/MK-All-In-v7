@@ -126,9 +126,12 @@ export async function getTokenFromBridge(
         // Pool is empty - auto generator will refill it
         throw new Error(`Bridge server pool is empty. Auto generator is refilling pool. Please retry in a few seconds.`);
       }
-      
-      const errorMsg = data?.error || data?.message || 'Unknown error';
-      throw new Error(`Bridge server returned ${response.status}: ${response.statusText}. Error: ${errorMsg}`);
+
+      const detail =
+        typeof data?.message === 'string' && data.message.trim()
+          ? `${data.error ? `${data.error}: ` : ''}${data.message}`.trim()
+          : data?.error || data?.message || 'Unknown error';
+      throw new Error(`Bridge server returned ${response.status}: ${response.statusText}. Error: ${detail}`);
     }
     
     if (data.success && data.token) {
@@ -197,8 +200,11 @@ export async function getBridgeUnifiedVideoSession(
     }
 
     if (!response.ok) {
-      const errorMsg = data?.error || data?.message || 'Unknown error';
-      throw new Error(`Bridge server returned ${response.status}: ${errorMsg}`);
+      const detail =
+        typeof data?.message === 'string' && data.message.trim()
+          ? `${data.error ? `${data.error}: ` : ''}${data.message}`.trim()
+          : data?.error || data?.message || 'Unknown error';
+      throw new Error(`Bridge server returned ${response.status}: ${detail}`);
     }
 
     if (data.success && data.token && data.oauthToken) {

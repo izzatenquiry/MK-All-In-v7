@@ -11,10 +11,14 @@ export const APP_VERSION = isElectron()
 
 const PROD_API = 'https://api.monoklix.com';
 
+/** Optional override — `.env`: `VITE_BOT_ADMIN_API_URL` (same-origin proxy, etc.) */
+const envBotAdminBase = (import.meta.env?.VITE_BOT_ADMIN_API_URL as string | undefined)?.trim().replace(/\/$/, '') || '';
+
 export const getBotAdminApiUrl = (): string => {
   if (isLocalhost() || isElectron()) {
     return 'http://localhost:1247';
   }
+  if (envBotAdminBase) return envBotAdminBase;
   return PROD_API;
 };
 
@@ -22,6 +26,7 @@ export const getBotAdminApiUrlWithFallback = async (): Promise<string> => {
   if (isLocalhost() || isElectron()) {
     return 'http://localhost:1247';
   }
+  if (envBotAdminBase) return envBotAdminBase;
   return PROD_API;
 };
 
