@@ -6,12 +6,12 @@ import { PROXY_SERVER_URLS } from './serverConfig';
 import { BRAND_CONFIG } from './brandConfig';
 
 // Brand-aware localStorage keys to prevent data mixing between brands
-const TUTORIAL_CONTENT_KEY = `${BRAND_CONFIG.shortName.toLowerCase()}-ai-tutorial-content`;
+const TUTORIAL_CONTENT_KEY = `${BRAND_CONFIG.shortName.toLowerCase()}-ai-tutorial-content-v2`;
 const PLATFORM_STATUS_KEY = `${BRAND_CONFIG.shortName.toLowerCase()}-ai-platform-status`;
 /** Bump when default marquee copy changes so IndexedDB picks up new defaults. */
 const ANNOUNCEMENTS_KEY = `${BRAND_CONFIG.shortName.toLowerCase()}-ai-announcements-v3`;
 
-const getMainVideoUrl = (): string => 'https://www.youtube.com/embed/G6G8JJrV9VM';
+const getMainVideoUrl = (): string => 'https://www.youtube.com/embed/z2aKxUV915M?rel=0';
 
 const defaultTutorialContent: TutorialContent = {
   mainVideoUrl: getMainVideoUrl(),

@@ -142,7 +142,7 @@ const RegisterModal: React.FC<RegisterModalProps> = ({ isOpen, onClose, onSucces
       <div className="relative z-10 w-full max-w-4xl max-h-[min(92vh,780px)] overflow-y-auto rounded-2xl border border-neutral-200 dark:border-white/10 bg-white dark:bg-[#0b0b0b] shadow-2xl">
         <div className="flex items-center justify-between gap-3 px-5 py-4 border-b border-neutral-200/90 dark:border-white/10">
           <h2 id="register-modal-title" className="text-lg font-bold text-neutral-900 dark:text-white">
-            Sign up & buy credits
+            Register Now
           </h2>
           <button
             type="button"
@@ -196,9 +196,6 @@ const RegisterModal: React.FC<RegisterModalProps> = ({ isOpen, onClose, onSucces
               </p>
               <p className="text-2xl sm:text-[1.65rem] font-bold text-neutral-900 dark:text-white tabular-nums tracking-tight mt-1">
                 RM {totalRm.toFixed(2)}
-              </p>
-              <p className="mt-3 text-[11px] sm:text-xs text-neutral-600 dark:text-neutral-400 leading-relaxed border-l-2 border-brand-start/50 pl-2.5">
-                {T.registerAutoCodeHint}
               </p>
             </div>
           </div>
@@ -258,20 +255,23 @@ const RegisterModal: React.FC<RegisterModalProps> = ({ isOpen, onClose, onSucces
               />
             </div>
 
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full flex justify-center items-center gap-2 py-3.5 rounded-xl bg-gradient-to-r from-brand-start to-brand-end text-white font-bold min-h-[48px] disabled:opacity-50 mt-auto"
-            >
-              {loading ? <Spinner /> : (
-                <>
-                  {T.registerCreateAndContinue}
-                  <SparklesIcon className="w-4 h-4 text-white/70" />
-                </>
-              )}
-            </button>
-
-            <p className="text-[11px] text-center text-neutral-500">{T.registerSummary}</p>
+            <div className="mt-auto w-full space-y-2.5">
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full flex justify-center items-center gap-2 py-3.5 rounded-xl bg-gradient-to-r from-brand-start to-brand-end text-white font-bold min-h-[48px] disabled:opacity-50"
+              >
+                {loading ? <Spinner /> : (
+                  <>
+                    {T.registerCreateAndContinue}
+                    <SparklesIcon className="w-4 h-4 text-white/70" />
+                  </>
+                )}
+              </button>
+              <p className="text-[11px] sm:text-xs text-center text-neutral-500 dark:text-neutral-400 leading-relaxed px-0.5">
+                {T.registerPaymentNote}
+              </p>
+            </div>
           </div>
         </form>
       </div>

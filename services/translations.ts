@@ -1,5 +1,8 @@
 import { BRAND_CONFIG } from './brandConfig';
 
+/**
+ * UI copy: English (`en`) only. Product naming: VEOLY-AI; site references use veoly-ai.com.
+ */
 const translations = {
     en: {
         welcome: "Welcome to",
@@ -47,7 +50,7 @@ const translations = {
             accessDenied: 'Access Denied',
             adminOnlyFeature: 'This feature is available for administrators only.',
             subscriptionExpired: 'Subscription Expired',
-            subscriptionExpiredMessage: 'Your subscription has ended. Please renew your plan to continue accessing this feature.\n\n[BUTTON]Renew Subscription[URL]https://monoklix.com/step/checkout/',
+            subscriptionExpiredMessage: 'Your subscription has ended. Please renew your plan to continue accessing this feature.\n\n[BUTTON]Renew Subscription[URL]https://veoly-ai.com/',
             accountStatusBlocked: 'Your account is currently {status}. Please contact support for assistance.',
             openMenu: 'Open menu',
             openConsole: 'Open Console Log',
@@ -141,8 +144,6 @@ const translations = {
             loginButton: 'Log In',
             noAccount: "Don't have an account?",
             registerButton: 'Register Now',
-            registerAutoCodeHint:
-                'Your account is fully activated only after ToyyibPay confirms payment. Credits are applied then, and your login access code is emailed to you.',
             registerAccountCreated: 'Account created',
             registerYourAccessCode: 'Your access code',
             registerSaveWarning: 'Copy or write this down. You will need it together with your email to log in.',
@@ -157,8 +158,8 @@ const translations = {
             registerProceedToyyib: 'Proceed to ToyyibPay',
             registerOpeningPayment: 'Opening payment…',
             registerPaymentStartError: 'Could not start payment. You can log in with your email and access code and buy credits from Settings.',
-            registerSummary:
-                'Secure payment via ToyyibPay. After payment succeeds, credits are applied in the app and your access code is sent to your email.',
+            registerPaymentNote:
+                'Secure payment via ToyyibPay. Your account is fully activated after payment is confirmed—credits are applied in the app and your login access code is emailed to you.',
         },
         welcomeAnimation: {
             welcome: 'Welcome to'
@@ -212,10 +213,10 @@ const translations = {
         // All Views
         getStartedView: {
             title: 'Get Started Guide',
-            subtitle: 'Your comprehensive guide to mastering the MONOklix.com AI platform.',
-            overviewTitle: 'Overview: How MONOklix Works',
+            subtitle: 'Your comprehensive guide to mastering the VEOLY-AI platform.',
+            overviewTitle: 'Overview: How VEOLY-AI works',
             overviewP1: 'Before you begin, it’s important to understand the two parts of our service. Think of our platform like a high-performance car:',
-            overviewL1: 'The MONOklix Platform is the car: Your account gives you access to the dashboard, the tools (like the Image and Video Suites), and the garage (your Gallery). You’re in the driver’s seat.',
+            overviewL1: 'The VEOLY-AI platform is the car: Your account gives you access to the dashboard, the tools (like the Image and Video Suites), and the garage (your Gallery). You’re in the driver’s seat.',
             overviewL2: 'Google\'s AI API is the "fuel": To make the car go (to generate content), you need fuel. This is provided by Google\'s powerful AI engine, and it requires an API Key to access.',
             overviewP2: 'This guide will explain how the "fuel" is provided automatically and how these services work.',
             ch1Title: 'Chapter 1: Accounts & API Keys',
@@ -223,16 +224,16 @@ const translations = {
             ch1s1P1: 'The platform uses a simple, password-free login system. Just enter the email address you used for registration on our main website and click \'Log In\'. Your session will be saved automatically.',
             ch1s2Title: 'The API Key: Fully Automated!',
             ch1s2P1: 'Good news: You do not need to get or manage your own API key.',
-            ch1s2P2: 'The MONOklix platform handles everything for you. When you log in, the system automatically loads a shared, central API key that gives you access to all AI features. You can confirm the key is active by looking for the icon in the top-right corner of the screen.',
+            ch1s2P2: 'The VEOLY-AI platform handles everything for you. When you log in, the system automatically loads a shared, central API key that gives you access to all AI features. You can confirm the key is active by looking for the icon in the top-right corner of the screen.',
             ch1s2P3: 'This system ensures you have a seamless experience without any complex setup.',
             ch2Title: 'Chapter 2: Understanding Costs & Billing',
-            ch2P1: 'MONOklix.com operates on a subscription basis, which covers your access to the platform and the cost of AI usage.',
+            ch2P1: 'VEOLY-AI operates on a subscription basis, which covers your access to the platform and the cost of AI usage.',
             ch2L1: 'No Per-Use Billing: You are not billed for every image or video you generate. Your account status (e.g., Lifetime, Subscription) determines your access to the AI features.',
             ch2L2: 'Fair Use Policy: While we don’t have hard limits, the service is subject to a fair use policy to ensure stable performance for all users. The shared API key has a high daily quota, which is more than sufficient for professional use.',
-            ch2L3: 'You Are in Full Control: Your access is managed entirely through your account status on MONOklix.com. You do not need a Google Cloud account or a separate billing setup.',
+            ch2L3: 'You Are in Full Control: Your access is managed entirely through your account status on veoly-ai.com. You do not need a Google Cloud account or a separate billing setup.',
             ch3Title: 'Chapter 3: The AI Content Idea Suite',
             ch3P1: 'This suite is designed to help you brainstorm and create written content for your marketing needs.',
-            ch3L1: '<strong>Staff MONOklix:</strong> A team of specialized AI agents. Select an agent (like a Market Researcher or a Copywriter), provide your input, and get expert-level output for specific tasks.',
+            ch3L1: '<strong>Staff VEOLY-AI:</strong> A team of specialized AI agents. Select an agent (like a Market Researcher or a Copywriter), provide your input, and get expert-level output for specific tasks.',
             ch3L2: '<strong>Content Ideas:</strong> Break through creative blocks by entering a topic. The AI uses Google Search to find current trends and generates 5 fresh content ideas with titles and descriptions.',
             ch3L3: '<strong>Marketing Copy:</strong> Craft persuasive copy for ads, social media, or websites. Just describe the product, target audience, and desired tone.',
             ch3L4: '<strong>Storyline Generator:</strong> The perfect starting point for a video ad. Upload a product image, write a brief description, and the AI will generate a complete 1-scene storyboard concept.',
@@ -324,7 +325,7 @@ const translations = {
                 header3: 'Solution',
                 row1_1: 'Email not registered',
                 row1_2: 'The user entered an email that does not exist in the database.',
-                row1_3: "1. Double-check the email spelling.<br/>2. Ensure the user has registered on the main website (monoklix.com).<br/>3. If it still fails, contact an admin to check the account status.",
+                row1_3: "1. Double-check the email spelling.<br/>2. Ensure the user has registered on the main website (veoly-ai.com).<br/>3. If it still fails, contact an admin to check the account status.",
                 row2_1: 'Account is inactive',
                 row2_2: 'The user\'s status has been set to inactive by an admin.',
                 row2_3: 'Contact an admin for account reactivation.',
@@ -362,9 +363,9 @@ const translations = {
         },
         eCourseView: {
             getStarted: 'Start Here',
-            mainVideoUrl: 'https://www.youtube.com/embed/G6G8JJrV9VM',
-            mainTitle: 'Welcome to MONOKlix.com',
-            mainDescription: 'Welcome! This video is your introduction to the MONOKlix.com platform. Understand the big picture, the powerful features, and how to get started on your creative projects with the help of AI.',
+            mainVideoUrl: 'https://www.youtube.com/embed/z2aKxUV915M?rel=0',
+            mainTitle: 'Welcome to VEOLY-AI',
+            mainDescription: 'Welcome! This video is your introduction to the VEOLY-AI platform. Understand the big picture, the powerful features, and how to get started on your creative projects with the help of AI.',
             platformUpdates: 'Platform Updates',
             status: {
                 operational: 'VEO3 Major Outage',
@@ -379,7 +380,7 @@ const translations = {
         },
         aiTextSuiteView: {
             tabs: {
-                staff: 'Staff MONOklix',
+                staff: 'Staff VEOLY-AI',
                 contentIdeas: 'Content Ideas',
                 marketingCopy: 'Marketing Copy'
             }
@@ -794,7 +795,7 @@ const translations = {
                 failLoad: 'Failed to load cache statistics',
             },
             api: {
-                title: 'MONOklix API Keys',
+                title: 'VEOLY-AI API Keys',
                 description: 'This platform uses a shared, central API key for all AI services. You do not need to provide your own. The status of the shared key is shown below.',
                 sharedStatus: 'Shared API Key Status:',
                 connected: 'Connected',
@@ -884,14 +885,16 @@ export const getTranslations = () => {
     const brandDomain = BRAND_CONFIG.domain;
     const translationsCopy = JSON.parse(JSON.stringify(translations.en)); // Deep copy
     
-    // Replace hardcoded brand names and domains with dynamic values
+    // Safety net: normalize any leftover legacy brand strings to current BRAND_CONFIG
     const replaceBrandName = (obj: any): any => {
         if (typeof obj === 'string') {
-            // Replace all variations: MONOklix, MONOKLIX, monoklix, etc.
-            let result = obj.replace(/MONOklix|MONOKLIX|monoklix/gi, brandName);
+            let result = obj;
+            result = result.replace(/https?:\/\/(?:www\.)?monoklix\.com[^\s]*/gi, `https://${brandDomain}`);
+            result = result.replace(/monoklix\.com/gi, brandDomain);
+            result = result.replace(/MONOKlix\.com|MONOklix\.com/gi, brandDomain);
+            result = result.replace(/MONOklix|MONOKlix|MONOKLIX|monoklix/gi, brandName);
             result = result.replace(/\bESAIE\b/g, brandName);
             result = result.replace(/esaie\.tech/gi, brandDomain);
-            result = result.replace(/monoklix\.com/gi, brandDomain);
             result = result.replace(/veoly\.ai/gi, brandDomain);
             return result;
         }

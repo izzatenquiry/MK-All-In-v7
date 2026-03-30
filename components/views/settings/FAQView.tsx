@@ -443,44 +443,43 @@ const FAQView: React.FC = () => {
         ))}
       </div>
 
-      {/* Footer - PM Admin Section (typography aligned with intro + category headers) */}
-      <div className="mt-12 border-t border-neutral-200 pt-8 dark:border-neutral-800">
-        <div className="rounded-2xl border border-yellow-200 bg-gradient-to-br from-yellow-50 to-orange-50 p-6 sm:p-8 dark:border-yellow-800 dark:from-yellow-900/20 dark:to-orange-900/20">
-          <div className="space-y-6">
-            <div className="flex items-start gap-3">
-              <div className="flex shrink-0 rounded-lg bg-yellow-100 p-2 dark:bg-yellow-900/30">
-                <InformationCircleIcon className="h-5 w-5 text-yellow-700 dark:text-yellow-300" aria-hidden />
-              </div>
-              <div className="min-w-0 flex-1 space-y-3">
-                <h2 className="text-xl font-bold text-neutral-800 sm:text-2xl dark:text-neutral-200">
-                  Still stuck?
-                </h2>
-                <div className="space-y-3 text-sm leading-relaxed text-neutral-700 sm:text-base dark:text-neutral-300">
-                  <p>
-                    Before messaging an admin, please{' '}
-                    <span className="font-semibold text-neutral-900 dark:text-neutral-100">clear your browser cache</span>
-                    {' '}and confirm your{' '}
-                    <span className="font-semibold text-neutral-900 dark:text-neutral-100">green token</span>
-                    {' '}and{' '}
-                    <span className="font-semibold text-neutral-900 dark:text-neutral-100">Anti-Captcha key</span>
-                    {' '}are valid. Then try again.
-                  </p>
-                  <p>If you still can’t fix it yourself, contact an admin.</p>
-                </div>
+      {/* Footer — warm orange/yellow accent; compact padding; CTA centered */}
+      <div className="mt-8 border-t border-neutral-200 pt-6 dark:border-neutral-800">
+        <div className="rounded-xl border border-yellow-200/90 bg-gradient-to-br from-yellow-50 to-orange-50 p-4 sm:p-5 dark:border-yellow-800/80 dark:from-yellow-950/35 dark:to-orange-950/25">
+          <div className="flex gap-3">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-yellow-100 dark:bg-yellow-900/40">
+              <InformationCircleIcon className="h-4 w-4 text-yellow-800 dark:text-yellow-200" aria-hidden />
+            </div>
+            <div className="min-w-0 space-y-2">
+              <h2 className="text-base font-bold text-neutral-800 dark:text-neutral-100 sm:text-lg">
+                Still stuck?
+              </h2>
+              <div className="space-y-2 text-xs leading-relaxed text-yellow-900/90 sm:text-sm dark:text-yellow-100/85">
+                <p>
+                  Before messaging an admin,{' '}
+                  <span className="font-semibold text-neutral-900 dark:text-white">clear your browser cache</span>
+                  {' '}and confirm your{' '}
+                  <span className="font-semibold text-neutral-900 dark:text-white">green token</span>
+                  {' '}and{' '}
+                  <span className="font-semibold text-neutral-900 dark:text-white">Anti-Captcha key</span>
+                  {' '}are valid, then try again.
+                </p>
+                <p className="text-yellow-900/75 dark:text-yellow-200/70">
+                  If you still can’t fix it yourself, contact an admin.
+                </p>
               </div>
             </div>
-
-            <div className="flex justify-center border-t border-yellow-200/80 pt-6 dark:border-yellow-800/80">
-              <a
-                href="https://t.me/+rrbqeAkFJqFlY2E1"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex w-full max-w-md items-center justify-center gap-2 rounded-xl border border-white/15 bg-gradient-to-r from-brand-start to-brand-end px-5 py-2.5 text-sm font-semibold text-white shadow-[0_8px_24px_rgba(74,108,247,0.25)] transition-all hover:opacity-95 active:scale-[0.99] dark:shadow-[0_8px_28px_rgba(74,108,247,0.35)] sm:w-auto"
-              >
-                <TelegramIcon className="h-5 w-5 shrink-0" aria-hidden />
-                Join Telegram Support Group
-              </a>
-            </div>
+          </div>
+          <div className="mt-4 flex justify-center border-t border-yellow-200/80 pt-4 dark:border-yellow-800/70">
+            <a
+              href="https://t.me/+rrbqeAkFJqFlY2E1"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex w-full max-w-md items-center justify-center gap-2 rounded-xl border border-white/15 bg-gradient-to-r from-brand-start to-brand-end px-5 py-2.5 text-sm font-semibold text-white shadow-[0_6px_20px_rgba(74,108,247,0.22)] transition-all hover:opacity-95 active:scale-[0.99] dark:shadow-[0_6px_22px_rgba(74,108,247,0.3)] sm:w-auto"
+            >
+              <TelegramIcon className="h-5 w-5 shrink-0" aria-hidden />
+              Join Telegram Support Group
+            </a>
           </div>
         </div>
       </div>
