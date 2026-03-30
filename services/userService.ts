@@ -139,6 +139,85 @@ export const loginUser = async (email: string, accessCodeInput?: string): Promis
     return { success: false, message: 'emailNotRegistered' };
 };
 
+/** 9-digit numeric access code (e.g. "041782903"). Uses crypto for unpredictability. */
+const generateNineDigitAccessCode = (): string => {
+    const bytes = new Uint8Array(9);
+    crypto.getRandomValues(bytes);
+    return Array.from(bytes, (b) => (b % 10).toString()).join('');
+};
+
+/** Create a new row in `public.users` for self-service signup. Access code is auto-generated and stored (same value used for login). Requires Supabase INSERT policy for `anon` or a compatible RPC. */
+export const registerNewUser = async (params: {
+    email: string;
+    fullName: string;
+    phone: string;
+}): Promise<LoginResult> => {
+    const cleanedEmail = params.email.trim().toLowerCase();
+    const fullName = params.fullName.trim();
+    const phone = params.phone.trim().replace(/\s+/g, ' ');
+
+    if (!cleanedEmail) {
+        return { success: false, message: 'emailRequired' };
+    }
+    if (!fullName) {
+        return { success: false, message: 'fullNameRequired' };
+    }
+    if (!phone) {
+        return { success: false, message: 'phoneRequired' };
+    }
+
+    const accessCode = generateNineDigitAccessCode();
+
+    const { data: existing, error: existingErr } = await supabase
+        .from('users')
+        .select('id')
+        .eq('email', cleanedEmail)
+        .maybeSingle();
+
+    if (existingErr) {
+        console.error('[registerNewUser] lookup error:', getErrorMessage(existingErr));
+        return { success: false, message: 'registrationFailed' };
+    }
+    if (existing) {
+        return { success: false, message: 'emailAlreadyRegistered' };
+    }
+
+    const newId = uuidv4();
+    const insert: Database['public']['Tables']['users']['Insert'] = {
+        id: newId,
+        email: cleanedEmail,
+        full_name: fullName,
+        phone,
+        access_code: accessCode,
+        role: 'user',
+        status: 'trial',
+    };
+
+    const { error: insertError } = await supabase.from('users').insert(insert);
+
+    if (insertError) {
+        console.error('[registerNewUser] insert error:', getErrorMessage(insertError));
+        return { success: false, message: 'registrationFailed' };
+    }
+
+    const { data: row, error: fetchError } = await supabase
+        .from('users')
+        .select('*')
+        .eq('id', newId)
+        .single();
+
+    if (fetchError || !row) {
+        return { success: false, message: 'registrationFetchFailed' };
+    }
+
+    const mapped = mapProfileToUser(row as UserProfileData);
+    // Do not expose access code to the client until after payment (email via N8n).
+    return {
+        success: true,
+        user: { ...mapped, accessCode: undefined },
+    };
+};
+
 // Get a specific user profile by ID (refresh data)
 export const getUserProfile = async (userId: string): Promise<User | null> => {
     const { data, error } = await supabase

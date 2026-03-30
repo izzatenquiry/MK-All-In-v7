@@ -8,16 +8,18 @@ import {
   LibraryIcon,
   CheckCircleIcon,
 } from './Icons';
+import { TOKEN_ULTRA_PACKAGES } from '../services/creditPackages';
 
 interface PreLoginLandingProps {
   onOpenLogin: () => void;
+  onOpenRegister: () => void;
 }
 
 /**
  * Marketing-style hero + highlights for the pre-login screen (VEOLY-AI).
  * Mobile-first: single column, readable type, touch-friendly CTAs.
  */
-const PreLoginLanding: React.FC<PreLoginLandingProps> = ({ onOpenLogin }) => {
+const PreLoginLanding: React.FC<PreLoginLandingProps> = ({ onOpenLogin, onOpenRegister }) => {
   const [heroTilt, setHeroTilt] = useState({ x: 0, y: 0 });
   const [activeTestimonialSlide, setActiveTestimonialSlide] = useState(0);
   const [testimonialsPerSlide, setTestimonialsPerSlide] = useState<number>(() =>
@@ -205,14 +207,13 @@ const PreLoginLanding: React.FC<PreLoginLandingProps> = ({ onOpenLogin }) => {
               Log in
               <SparklesIcon className="w-4 h-4 opacity-90" />
             </button>
-            <a
-              href="https://veoly-ai.com/step/checkout/"
-              target="_blank"
-              rel="noopener noreferrer"
+            <button
+              type="button"
+              onClick={onOpenRegister}
               className="inline-flex items-center justify-center min-h-[48px] px-6 sm:px-8 rounded-2xl font-semibold text-neutral-800 dark:text-neutral-100 bg-white/90 dark:bg-white/5 border border-neutral-200/90 dark:border-white/10 hover:bg-neutral-50 dark:hover:bg-white/10 transition-colors"
             >
               Register now
-            </a>
+            </button>
           </div>
         </div>
       </header>
@@ -360,7 +361,7 @@ const PreLoginLanding: React.FC<PreLoginLandingProps> = ({ onOpenLogin }) => {
 
       {/* Token Ultra credit packages */}
       <section className="mt-10 sm:mt-12" aria-labelledby="prelogin-credit-heading">
-        <div className="rounded-2xl p-4 sm:p-5 bg-gradient-to-r from-sky-50/90 via-indigo-50/70 to-violet-50/80 dark:from-slate-900/70 dark:via-indigo-950/35 dark:to-violet-950/35 border border-sky-200/70 dark:border-indigo-700/35 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_20px_45px_rgba(99,102,241,0.2)] hover:border-indigo-300/70 dark:hover:border-indigo-500/40">
+        <div className="rounded-2xl p-4 sm:p-6 bg-gradient-to-r from-sky-50/90 via-indigo-50/70 to-violet-50/80 dark:from-slate-900/70 dark:via-indigo-950/35 dark:to-violet-950/35 border border-sky-200/70 dark:border-indigo-700/35 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_20px_45px_rgba(99,102,241,0.2)] hover:border-indigo-300/70 dark:hover:border-indigo-500/40">
           <h2
             id="prelogin-credit-heading"
             className="text-base sm:text-lg font-bold text-neutral-900 dark:text-white"
@@ -368,28 +369,79 @@ const PreLoginLanding: React.FC<PreLoginLandingProps> = ({ onOpenLogin }) => {
             Token Ultra Credit Packages
           </h2>
           <p className="mt-1.5 text-sm text-neutral-700 dark:text-neutral-300">
-            Same package info as Token Ultra settings.
+            Same packages as in Token Ultra settings — Creator &amp; Business.
           </p>
 
-          <ul className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <li className="rounded-xl bg-white/80 dark:bg-white/[0.05] border border-neutral-200/90 dark:border-white/10 p-4 transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_12px_28px_rgba(74,108,247,0.12)]">
-              <p className="text-xs uppercase tracking-wider font-semibold text-neutral-500 dark:text-neutral-400">
-                Package 1
-              </p>
-              <p className="mt-1 text-xl font-extrabold text-brand-start">RM38.50</p>
-              <p className="mt-1 text-sm font-semibold text-neutral-800 dark:text-neutral-200">3,000 credits</p>
-            </li>
-            <li className="rounded-xl bg-white/80 dark:bg-white/[0.05] border border-neutral-200/90 dark:border-white/10 p-4 transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_12px_28px_rgba(74,108,247,0.12)]">
-              <p className="text-xs uppercase tracking-wider font-semibold text-neutral-500 dark:text-neutral-400">
-                Package 2
-              </p>
-              <p className="mt-1 text-xl font-extrabold text-brand-start">RM88.50</p>
-              <p className="mt-1 text-sm font-semibold text-neutral-800 dark:text-neutral-200">15,000 credits</p>
-            </li>
-          </ul>
+          <div className="mt-5 grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-5">
+            {TOKEN_ULTRA_PACKAGES.map((pkg) => {
+              const isPopular = pkg.popular === true;
+              return (
+                <div
+                  key={pkg.id}
+                  className={`relative flex flex-col rounded-2xl border p-5 sm:p-6 text-left transition-all duration-300 hover:-translate-y-0.5 hover:shadow-lg ${
+                    isPopular
+                      ? 'border-indigo-300/90 dark:border-indigo-500/45 bg-white dark:bg-neutral-950/40 shadow-[0_12px_40px_rgba(99,102,241,0.15)]'
+                      : 'border-neutral-200/90 dark:border-neutral-700/80 bg-neutral-900 text-neutral-100 dark:bg-neutral-950/90'
+                  }`}
+                >
+                  {isPopular && (
+                    <span className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-gradient-to-r from-violet-600 to-indigo-600 px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-white shadow-md">
+                      Most popular
+                    </span>
+                  )}
+                  <div className={isPopular ? 'pt-2' : 'pt-0'}>
+                    <h3
+                      className={`text-lg font-bold ${isPopular ? 'text-neutral-900 dark:text-white' : 'text-white'}`}
+                    >
+                      {pkg.label}
+                    </h3>
+                    <p
+                      className={`mt-2 text-sm leading-relaxed ${isPopular ? 'text-neutral-600 dark:text-neutral-400' : 'text-neutral-300'}`}
+                    >
+                      {pkg.description}
+                    </p>
+                    <div className="mt-4 flex flex-wrap items-baseline gap-1">
+                      <span
+                        className={`text-3xl sm:text-4xl font-extrabold tabular-nums ${isPopular ? 'text-brand-start dark:text-primary-400' : 'text-white'}`}
+                      >
+                        RM{pkg.price.toFixed(2)}
+                      </span>
+                      <span
+                        className={`text-sm font-medium ${isPopular ? 'text-neutral-600 dark:text-neutral-400' : 'text-neutral-400'}`}
+                      >
+                        {pkg.billingPeriod}
+                      </span>
+                    </div>
+                    <p
+                      className={`mt-1 text-sm font-semibold ${isPopular ? 'text-emerald-700 dark:text-emerald-400' : 'text-emerald-300'}`}
+                    >
+                      {pkg.credits.toLocaleString('en-US')} credits / month
+                    </p>
+                  </div>
+                  <ul className={`mt-5 space-y-2.5 text-sm flex-1 ${isPopular ? 'text-neutral-700 dark:text-neutral-300' : 'text-neutral-200'}`}>
+                    {pkg.features.map((f) => (
+                      <li key={f.text} className="flex gap-2">
+                        <CheckCircleIcon
+                          className={`w-4 h-4 flex-shrink-0 mt-0.5 ${isPopular ? 'text-emerald-600 dark:text-emerald-400' : 'text-emerald-400'}`}
+                        />
+                        <span className="leading-snug">
+                          {f.text}
+                          {f.isNew ? (
+                            <span className="ml-1.5 inline-block rounded bg-red-500 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-white">
+                              New
+                            </span>
+                          ) : null}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              );
+            })}
+          </div>
 
-          <ul className="mt-4 list-disc pl-5 text-sm text-neutral-700 dark:text-neutral-300 space-y-1.5">
-            <li>Package validity: 26 days from purchase date.</li>
+          <ul className="mt-5 list-disc pl-5 text-sm text-neutral-700 dark:text-neutral-300 space-y-1.5">
+            <li>Package validity: 26 days from the date of purchase.</li>
           </ul>
         </div>
       </section>
@@ -534,14 +586,13 @@ const PreLoginLanding: React.FC<PreLoginLandingProps> = ({ onOpenLogin }) => {
             >
               Log in now
             </button>
-            <a
-              href="https://veoly-ai.com/step/checkout/"
-              target="_blank"
-              rel="noopener noreferrer"
+            <button
+              type="button"
+              onClick={onOpenRegister}
               className="inline-flex items-center justify-center min-h-[48px] px-6 rounded-xl border border-neutral-300 dark:border-white/10 text-neutral-800 dark:text-neutral-100 font-semibold hover:bg-neutral-50 dark:hover:bg-white/10 transition-colors"
             >
               Register now
-            </a>
+            </button>
           </div>
         </div>
       </section>

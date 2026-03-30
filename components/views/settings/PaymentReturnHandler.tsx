@@ -1,6 +1,8 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { handlePaymentReturn, getOrderData, clearOrderData } from '../../../services/toyyibPayService';
 import { registerTokenUltra, applyCreditPackage, getUserProfile } from '../../../services/userService';
+import { notifyN8nPaymentSuccessWithAccessCode } from '../../../services/n8nWebhookService';
+import { getExpectedCreditsForProductName } from '../../../services/creditPackages';
 import { supabase } from '../../../services/supabaseClient';
 import { CheckCircleIcon, AlertTriangleIcon } from '../../Icons';
 import Spinner from '../../common/Spinner';
@@ -140,14 +142,8 @@ const PaymentReturnHandler: React.FC<PaymentReturnHandlerProps> = ({
             let creditApplyFailed = false;
             console.log('[PaymentReturn] Registration successful!');
             const productName: string | undefined = orderData?.productName;
-            const isPackage1 =
-              productName?.includes('Pakej 1') ||
-              productName?.includes('Package 1');
-            const isPackage2 =
-              productName?.includes('Pakej 2') ||
-              productName?.includes('Package 2');
-            if (isPackage1 || isPackage2) {
-              const expectedCredits = isPackage1 ? 3000 : 15000;
+            const expectedCredits = getExpectedCreditsForProductName(productName);
+            if (expectedCredits != null) {
               const creditResult = await applyCreditPackage(userId, expectedCredits);
               if (!creditResult.success) {
                 creditApplyFailed = true;
@@ -169,7 +165,7 @@ const PaymentReturnHandler: React.FC<PaymentReturnHandlerProps> = ({
 
             setStatus('success');
             setMessage('Payment successful! Your Token Ultra registration and credits are complete.');
-            
+
             clearOrderData();
             localStorage.removeItem('toyyibpay_user_id');
             sessionStorage.removeItem('toyyibpay_user_id');
@@ -178,6 +174,18 @@ const PaymentReturnHandler: React.FC<PaymentReturnHandlerProps> = ({
               const freshUser = await getUserProfile(userId);
               if (freshUser) {
                 onUserUpdate(freshUser);
+                const creditsAdded = getExpectedCreditsForProductName(productName) ?? 0;
+                const ac = freshUser.accessCode != null ? String(freshUser.accessCode).trim() : '';
+                if (freshUser.email && ac) {
+                  void notifyN8nPaymentSuccessWithAccessCode({
+                    userId,
+                    email: freshUser.email,
+                    fullName: freshUser.fullName,
+                    accessCode: ac,
+                    creditsAdded,
+                    productName,
+                  });
+                }
               } else if (result.user) {
                 onUserUpdate(result.user);
               }

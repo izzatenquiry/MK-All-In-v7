@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { LogoIcon, SparklesIcon, XIcon } from './components/Icons';
 import PreLoginLanding from './components/PreLoginLanding';
+import RegisterModal from './components/RegisterModal';
 import { loginUser } from './services/userService';
 import Spinner from './components/common/Spinner';
 import { type User } from './types';
@@ -21,6 +22,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
     const [error, setError] = useState<string | null>(null);
     const [theme, setTheme] = useState('light'); // Default to light
     const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
+    const [isRegisterModalOpen, setIsRegisterModalOpen] = useState(false);
     const T = getTranslations().loginPage;
     const commonT = getTranslations().common;
     const isMonoklix = BRAND_CONFIG.name === 'VEOLY-AI';
@@ -173,14 +175,13 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
 
                 <div className="mt-8 pt-6 border-t border-neutral-200/90 dark:border-white/10 text-center">
                     <p className="text-xs text-neutral-600 dark:text-neutral-500 mb-4">{T.noAccount}</p>
-                    <a
-                        href="https://veoly-ai.com/step/checkout/"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="w-full inline-block py-3 px-4 border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-900 hover:bg-neutral-50 dark:hover:bg-neutral-800 rounded-xl text-sm font-semibold text-neutral-700 dark:text-neutral-200 transition-all min-h-[48px] flex items-center justify-center"
+                    <button
+                        type="button"
+                        onClick={() => setIsRegisterModalOpen(true)}
+                        className="w-full py-3 px-4 border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-900 hover:bg-neutral-50 dark:hover:bg-neutral-800 rounded-xl text-sm font-semibold text-neutral-700 dark:text-neutral-200 transition-all min-h-[48px]"
                     >
                         {T.registerButton}
-                    </a>
+                    </button>
                 </div>
             </div>
             
@@ -199,8 +200,18 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
                 <div className="relative z-10 flex flex-col min-h-screen">
                     <PreLoginLanding
                         onOpenLogin={() => setIsLoginModalOpen(true)}
+                        onOpenRegister={() => setIsRegisterModalOpen(true)}
                     />
                 </div>
+
+                <RegisterModal
+                    isOpen={isRegisterModalOpen}
+                    onClose={() => setIsRegisterModalOpen(false)}
+                    onSuccess={(user) => {
+                        setIsRegisterModalOpen(false);
+                        onLoginSuccess(user);
+                    }}
+                />
 
                 {isLoginModalOpen && (
                     <div

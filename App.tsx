@@ -754,6 +754,32 @@ const App: React.FC = () => {
   if (isMaintenanceMode()) return <MaintenancePage />;
 
   if (!sessionChecked || isApiKeyLoading) return <div className="flex items-center justify-center min-h-screen bg-[#050505]"><Spinner /></div>;
+
+  /** ToyyibPay return URL must run even when the user is not logged in yet (signup → pay → apply credits). */
+  const paymentReturnParams =
+    typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
+  const isPaymentReturnFlow =
+    typeof window !== 'undefined' &&
+    window.location.pathname === '/payment-return' &&
+    !!(
+      paymentReturnParams?.get('status_id') ||
+      paymentReturnParams?.get('status') ||
+      paymentReturnParams?.get('billcode')
+    );
+
+  if (isPaymentReturnFlow) {
+    return (
+      <PaymentReturnHandler
+        currentUser={currentUser}
+        onUserUpdate={(u) => {
+          localStorage.setItem('currentUser', JSON.stringify(u));
+          setCurrentUser(u);
+          setJustLoggedIn(true);
+        }}
+        onNavigateToSettings={() => setActiveView('settings')}
+      />
+    );
+  }
   
   if (!currentUser) return <LoginPage onLoginSuccess={(u) => { 
       // CRITICAL FIX: Save to localStorage immediately upon login to ensure API client can read it.

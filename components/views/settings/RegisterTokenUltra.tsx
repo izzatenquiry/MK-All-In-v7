@@ -4,6 +4,11 @@ import { createPortal } from 'react-dom';
 import { type User, type TokenUltraRegistration } from '../../../types';
 import { registerTokenUltra, saveUserRecaptchaToken, getTokenUltraRegistration, hasActiveTokenUltra } from '../../../services/userService';
 import { createToyyibPayOrder, type OrderData } from '../../../services/toyyibPayService';
+import {
+  TOKEN_ULTRA_PACKAGES,
+  TOYYIBPAY_FEE,
+  type TokenUltraPackageId,
+} from '../../../services/creditPackages';
 import { CheckCircleIcon, AlertTriangleIcon, TelegramIcon, XIcon, ClockIcon, KeyIcon, SparklesIcon, InformationCircleIcon } from '../../Icons';
 import Spinner from '../../common/Spinner';
 
@@ -12,33 +17,12 @@ interface RegisterTokenUltraProps {
   onUserUpdate?: (user: User) => void;
 }
 
-// Simple package definition for display and ToyyibPay amount
-const TOKEN_ULTRA_PACKAGES = [
-  {
-    id: 'P29',
-    label: 'Package 1',
-    price: 1.5,
-    credits: 3000,
-    description: 'Best for regular / individual use.',
-  },
-  {
-    id: 'P79',
-    label: 'Package 2',
-    price: 88.5,
-    credits: 15000,
-    description: 'Best for heavy use / agencies.',
-  },
-] as const;
-
-type TokenUltraPackageId = (typeof TOKEN_ULTRA_PACKAGES)[number]['id'];
-
 const RegisterTokenUltra: React.FC<RegisterTokenUltraProps> = ({ currentUser, onUserUpdate }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitStatus, setSubmitStatus] = useState<'idle' | 'success' | 'error'>('idle');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [showTelegramModal, setShowTelegramModal] = useState(false);
-  const [selectedPackage, setSelectedPackage] = useState<TokenUltraPackageId>('P29');
-  const TOYYIBPAY_FEE = 1.5;
+  const [selectedPackage, setSelectedPackage] = useState<TokenUltraPackageId>('CREATOR');
   
   // Order form state - Get phone from currentUser
   const [orderFormData, setOrderFormData] = useState<OrderData>(() => {
@@ -48,8 +32,8 @@ const RegisterTokenUltra: React.FC<RegisterTokenUltraProps> = ({ currentUser, on
       email: currentUser.email || '',
       phone: currentUser.phone || '',
       amount: pkg1.price + TOYYIBPAY_FEE,
-      productName: 'Token Ultra Package 1',
-      productDescription: `Token Ultra Package 1 — RM${pkg1.price.toFixed(2)} + RM${TOYYIBPAY_FEE.toFixed(2)} fee (${pkg1.credits.toLocaleString()} credits)`,
+      productName: `Token Ultra ${pkg1.label}`,
+      productDescription: `Token Ultra ${pkg1.label} — RM${pkg1.price.toFixed(2)} + RM${TOYYIBPAY_FEE.toFixed(2)} fee (${pkg1.credits.toLocaleString('en-US')} credits)`,
     };
   });
   const [isCreatingOrder, setIsCreatingOrder] = useState(false);
@@ -160,7 +144,7 @@ const RegisterTokenUltra: React.FC<RegisterTokenUltraProps> = ({ currentUser, on
       ...prev,
       amount: totalWithFee,
       productName: `Token Ultra ${pkg.label}`,
-      productDescription: `Token Ultra ${pkg.label} — RM${pkg.price.toFixed(2)} + RM${TOYYIBPAY_FEE.toFixed(2)} fee (${pkg.credits.toLocaleString()} credits)`,
+      productDescription: `Token Ultra ${pkg.label} — RM${pkg.price.toFixed(2)} + RM${TOYYIBPAY_FEE.toFixed(2)} fee (${pkg.credits.toLocaleString('en-US')} credits)`,
     }));
   };
 
@@ -243,7 +227,7 @@ const RegisterTokenUltra: React.FC<RegisterTokenUltraProps> = ({ currentUser, on
                   </div>
                   <div className="space-y-0.5">
                     <p className="text-[11px] font-semibold text-neutral-700 dark:text-neutral-200">
-                      {pkg.credits.toLocaleString()} credits
+                      {pkg.credits.toLocaleString('en-US')} credits
                     </p>
                     <p className="text-[11px] font-semibold text-neutral-700 dark:text-neutral-200">
                       Valid 26 days
