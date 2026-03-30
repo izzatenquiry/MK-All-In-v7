@@ -5,7 +5,6 @@ import { loadData } from './indexedDBService';
 import { MODELS } from './aiConfig';
 import { APP_VERSION } from './appConfig';
 import { v4 as uuidv4 } from 'uuid';
-import { getProxyServers } from './contentService';
 import { PROXY_SERVER_URLS, getLocalhostServerUrl } from './serverConfig';
 import { isElectron, isLocalhost } from './environment';
 import { resetEmailCodeFromUser } from './flowAccountService';
@@ -1291,13 +1290,7 @@ export const getAvailableServersForUser = async (user: User): Promise<string[]> 
     // Web: full server list with logic
     let availableServers = PROXY_SERVER_URLS;
 
-    // Admin gets dynamic list from DB if possible, otherwise falls back to static list
-    if (user.role === 'admin') {
-        const dynamicList = await getProxyServers();
-        if (dynamicList && dynamicList.length > 0) {
-            availableServers = dynamicList;
-        }
-    }
+    // Keep admin list consistent with normal users (use PROXY_SERVER_URLS -> BRAND_CONFIG.domain).
 
     // RESTRICT S12: Only for Admin or Special Role users
     const domain = BRAND_CONFIG.domain;
