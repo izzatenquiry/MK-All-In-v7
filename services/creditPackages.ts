@@ -9,7 +9,7 @@ export const TOKEN_ULTRA_PACKAGES = [
   {
     id: 'CREATOR',
     label: 'Creator',
-    price: 1.5,
+    price: 38.5,
     credits: 3000,
     billingPeriod: '/month',
     description: 'For solo creators, personal brands & newcomers getting started.',
@@ -28,7 +28,7 @@ export const TOKEN_ULTRA_PACKAGES = [
   {
     id: 'BUSINESS',
     label: 'Business',
-    price: 1.5,
+    price: 88.5,
     credits: 15000,
     billingPeriod: '/month',
     description: 'For SMEs, marketing teams & agencies that need higher content volume.',
