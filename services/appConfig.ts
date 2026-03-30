@@ -9,7 +9,7 @@ export const APP_VERSION = isElectron()
   ? BRAND_CONFIG.appVersion.electron
   : BRAND_CONFIG.appVersion.web;
 
-const PROD_API = 'https://api.veoly-ai.com';
+const PROD_API = 'https://api.monoklix.com';
 
 export const getBotAdminApiUrl = (): string => {
   if (isLocalhost() || isElectron()) {
