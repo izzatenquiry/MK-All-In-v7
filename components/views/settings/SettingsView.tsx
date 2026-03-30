@@ -176,6 +176,13 @@ const ProfilePanel: React.FC<ProfilePanelProps> = ({ currentUser, onUserUpdate, 
                         <span className="text-sm text-neutral-600 dark:text-neutral-400">{T_Profile.email}</span>
                         <span className="text-sm font-medium text-neutral-800 dark:text-neutral-200">{email}</span>
                     </div>
+                    {/* Access code: show what is stored in `users.access_code`. */}
+                    <div className="flex items-center justify-between pt-2 border-t border-blue-200 dark:border-blue-800">
+                        <span className="text-sm text-neutral-600 dark:text-neutral-400">Access code</span>
+                        <span className="text-sm font-mono text-neutral-800 dark:text-neutral-200">
+                            {currentUser.accessCode ? String(currentUser.accessCode).trim() : 'NOT CONFIGURED'}
+                        </span>
+                    </div>
                     {expiryInfo && (
                         <div className="pt-2 border-t border-blue-200 dark:border-blue-800">
                             <p className="text-xs text-blue-800 dark:text-blue-200">{expiryInfo}</p>
