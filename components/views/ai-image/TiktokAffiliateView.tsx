@@ -110,63 +110,9 @@ const TiktokAffiliateView: React.FC<TiktokAffiliateViewProps> = ({ onReEdit, onC
     const [productImageUploadKey, setProductImageUploadKey] = useState(Date.now());
     const [faceImageUploadKey, setFaceImageUploadKey] = useState(Date.now() + 1);
     const [progress, setProgress] = useState(0);
-    const [imageGenerationStartedAt, setImageGenerationStartedAt] = useState<(number | null)[]>([]);
-    const [imageGenerationElapsedSec, setImageGenerationElapsedSec] = useState<number[]>([]);
-    const [imageGenerationDurationSec, setImageGenerationDurationSec] = useState<(number | null)[]>([]);
     
     const T = getTranslations().tiktokAffiliateView;
     const commonT = getTranslations().common;
-
-    const formatDuration = (totalSec: number) => {
-        const s = Math.max(0, Math.floor(totalSec));
-        const m = Math.floor(s / 60);
-        const r = s % 60;
-        return `${m}:${String(r).padStart(2, '0')}`;
-    };
-
-    useEffect(() => {
-        if (!isLoading) return;
-        if (!imageGenerationStartedAt.some(Boolean)) return;
-        const id = window.setInterval(() => {
-            const now = Date.now();
-            setImageGenerationElapsedSec((prev) =>
-                prev.map((_, i) => {
-                    const startedAt = imageGenerationStartedAt[i];
-                    return startedAt ? Math.max(0, Math.floor((now - startedAt) / 1000)) : 0;
-                })
-            );
-        }, 1000);
-        return () => window.clearInterval(id);
-    }, [isLoading, imageGenerationStartedAt]);
-
-    const markSlotStart = useCallback((index: number) => {
-        const startedAt = Date.now();
-        setImageGenerationStartedAt((prev) => {
-            const next = prev.length ? [...prev] : Array(Math.max(numberOfImages, index + 1)).fill(null);
-            next[index] = startedAt;
-            return next;
-        });
-        setImageGenerationElapsedSec((prev) => {
-            const next = prev.length ? [...prev] : Array(Math.max(numberOfImages, index + 1)).fill(0);
-            next[index] = 0;
-            return next;
-        });
-        setImageGenerationDurationSec((prev) => {
-            const next = prev.length ? [...prev] : Array(Math.max(numberOfImages, index + 1)).fill(null);
-            next[index] = null;
-            return next;
-        });
-        return startedAt;
-    }, [numberOfImages]);
-
-    const markSlotEnd = useCallback((index: number, startedAt: number) => {
-        const end = Date.now();
-        setImageGenerationDurationSec((prev) => {
-            const next = prev.length ? [...prev] : Array(Math.max(numberOfImages, index + 1)).fill(null);
-            next[index] = Math.max(0, Math.floor((end - startedAt) / 1000));
-            return next;
-        });
-    }, [numberOfImages]);
 
     useEffect(() => {
         try {
@@ -245,7 +191,6 @@ const TiktokAffiliateView: React.FC<TiktokAffiliateViewProps> = ({ onReEdit, onC
         mediaServerUrl: string | undefined
     ) => {
         if (!productMediaId) return;
-        const startedAt = markSlotStart(index);
     
         try {
             const prompt = getTiktokAffiliatePrompt({
@@ -314,14 +259,10 @@ const TiktokAffiliateView: React.FC<TiktokAffiliateViewProps> = ({ onReEdit, onC
             });
             setProgress(prev => prev + 1);
         }
-        finally {
-            markSlotEnd(index, startedAt);
-        }
-    }, [gender, modelFace, customPrompt, creativeState, aspectRatio, currentUser, onUserUpdate, markSlotStart, markSlotEnd]);
+    }, [gender, modelFace, customPrompt, creativeState, aspectRatio, currentUser, onUserUpdate]);
 
     const generateOneImage = useCallback(async (index: number, serverUrl?: string) => {
         if (!productImage) return;
-        const startedAt = markSlotStart(index);
     
         try {
             const { imageBase64, prompt } = await performGeneration(serverUrl);
@@ -349,10 +290,7 @@ const TiktokAffiliateView: React.FC<TiktokAffiliateViewProps> = ({ onReEdit, onC
             });
             setProgress(prev => prev + 1);
         }
-        finally {
-            markSlotEnd(index, startedAt);
-        }
-    }, [productImage, faceImage, gender, modelFace, customPrompt, creativeState, aspectRatio, currentUser, onUserUpdate, markSlotStart, markSlotEnd]);
+    }, [productImage, faceImage, gender, modelFace, customPrompt, creativeState, aspectRatio, currentUser, onUserUpdate]);
     
     const handleGenerate = useCallback(async () => {
         if (!productImage) {
@@ -362,9 +300,6 @@ const TiktokAffiliateView: React.FC<TiktokAffiliateViewProps> = ({ onReEdit, onC
         setIsLoading(true);
         setError(null);
         setImages(Array(numberOfImages).fill(null));
-        setImageGenerationStartedAt(Array(numberOfImages).fill(null));
-        setImageGenerationElapsedSec(Array(numberOfImages).fill(0));
-        setImageGenerationDurationSec(Array(numberOfImages).fill(null));
         setSelectedImageIndex(0);
         setProgress(0);
 
@@ -587,28 +522,7 @@ const TiktokAffiliateView: React.FC<TiktokAffiliateViewProps> = ({ onReEdit, onC
       <>
           {images.length > 0 ? (
                <div className="w-full h-full flex flex-col items-center justify-center gap-2 p-2">
-                <div className="flex-1 flex items-center justify-center min-h-0 w-full relative group overflow-hidden rounded-xl bg-neutral-200/60 dark:bg-neutral-800/40">
-                    <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_22%_18%,rgba(74,108,247,0.22),transparent_60%),radial-gradient(circle_at_82%_26%,rgba(160,91,255,0.18),transparent_55%),linear-gradient(135deg,rgba(255,255,255,0.14),rgba(255,255,255,0.0))] dark:bg-[radial-gradient(circle_at_22%_18%,rgba(74,108,247,0.14),transparent_60%),radial-gradient(circle_at_82%_26%,rgba(160,91,255,0.12),transparent_55%),linear-gradient(135deg,rgba(255,255,255,0.04),rgba(255,255,255,0.0))]" />
-                    {(() => {
-                        const elapsed = imageGenerationElapsedSec[selectedImageIndex] ?? 0;
-                        const dur = imageGenerationDurationSec[selectedImageIndex];
-                        const isSlotLoading = images[selectedImageIndex] == null && isLoading;
-                        if (isSlotLoading) {
-                            return (
-                                <div className="absolute bottom-2 right-2 z-10 rounded-lg bg-red-600/80 px-2.5 py-1 text-[11px] font-bold text-white backdrop-blur">
-                                    Time: <span className="font-mono">{formatDuration(elapsed)}</span>
-                                </div>
-                            );
-                        }
-                        if (dur != null) {
-                            return (
-                                <div className="absolute bottom-2 right-2 z-10 rounded-lg bg-red-600/70 px-2.5 py-1 text-[11px] font-bold text-white/95 backdrop-blur">
-                                    Time: <span className="font-mono">{formatDuration(dur)}</span>
-                                </div>
-                            );
-                        }
-                        return null;
-                    })()}
+                <div className="flex-1 flex items-center justify-center min-h-0 w-full relative group">
                     {(() => {
                         const selectedImage = images[selectedImageIndex];
                         if (typeof selectedImage === 'string') {

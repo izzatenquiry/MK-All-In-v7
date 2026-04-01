@@ -246,21 +246,21 @@ export const assignEmailCodeToUser = async (
         .maybeSingle();
 
       if (userError) {
-        console.error('[assignEmailCodeToUser] VEOLY: Failed to fetch user:', userError);
+        console.error('[assignEmailCodeToUser] MONOKLIX: Failed to fetch user:', userError);
         return { success: false, message: getErrorMessage(userError) };
       }
 
       if (!existingUser) {
         // No user exists
-        console.error('[assignEmailCodeToUser] VEOLY: No user found');
+        console.error('[assignEmailCodeToUser] MONOKLIX: No user found');
         return { success: false, message: 'User not found' };
       }
 
-      console.log('[assignEmailCodeToUser] VEOLY: Current email_code:', existingUser.email_code, 'New code:', nextCode, 'token_ultra_status:', existingUser.token_ultra_status);
+      console.log('[assignEmailCodeToUser] MONOKLIX: Current email_code:', existingUser.email_code, 'New code:', nextCode, 'token_ultra_status:', existingUser.token_ultra_status);
 
       // If user already has an email_code, decrement the old flow account count first
       if (existingUser.email_code && existingUser.email_code !== nextCode) {
-        console.log('[assignEmailCodeToUser] VEOLY: User has existing code, decrementing old flow account:', existingUser.email_code);
+        console.log('[assignEmailCodeToUser] MONOKLIX: User has existing code, decrementing old flow account:', existingUser.email_code);
         const { data: oldFlowAccount } = await supabase
           .from('ultra_ai_email_pool')
           .select('id, current_users_count')
@@ -270,7 +270,7 @@ export const assignEmailCodeToUser = async (
 
         if (oldFlowAccount && oldFlowAccount.current_users_count > 0) {
           const newCount = oldFlowAccount.current_users_count - 1;
-          console.log('[assignEmailCodeToUser] VEOLY: Decrementing old flow account count from', oldFlowAccount.current_users_count, 'to', newCount);
+          console.log('[assignEmailCodeToUser] MONOKLIX: Decrementing old flow account count from', oldFlowAccount.current_users_count, 'to', newCount);
           const { error: decrementError } = await supabase
             .from('ultra_ai_email_pool')
             .update({ 
@@ -279,9 +279,9 @@ export const assignEmailCodeToUser = async (
             .eq('id', oldFlowAccount.id);
           
           if (decrementError) {
-            console.error('[assignEmailCodeToUser] VEOLY: Failed to decrement old flow account:', decrementError);
+            console.error('[assignEmailCodeToUser] MONOKLIX: Failed to decrement old flow account:', decrementError);
           } else {
-            console.log('[assignEmailCodeToUser] VEOLY: Old flow account decremented successfully');
+            console.log('[assignEmailCodeToUser] MONOKLIX: Old flow account decremented successfully');
           }
         }
       }
@@ -301,11 +301,11 @@ export const assignEmailCodeToUser = async (
         updateData.token_ultra_status = 'active';
         updateData.registered_at = registeredAt.toISOString();
         updateData.expires_at = expiryIso;
-        console.log('[assignEmailCodeToUser] VEOLY: Initializing Token Ultra registration for user');
+        console.log('[assignEmailCodeToUser] MONOKLIX: Initializing Token Ultra registration for user');
       }
 
       // Update user with new email_code (and Token Ultra registration if needed)
-      console.log('[assignEmailCodeToUser] VEOLY: Updating users.email_code to:', nextCode);
+      console.log('[assignEmailCodeToUser] MONOKLIX: Updating users.email_code to:', nextCode);
       const { error: updateError, data: updateDataResult } = await supabase
         .from('users')
         .update(updateData)
@@ -313,11 +313,11 @@ export const assignEmailCodeToUser = async (
         .select('email_code'); // Add select to verify update
 
       if (updateError) {
-        console.error('[assignEmailCodeToUser] VEOLY: Update failed:', updateError);
+        console.error('[assignEmailCodeToUser] MONOKLIX: Update failed:', updateError);
         return { success: false, message: `Failed to update email_code: ${getErrorMessage(updateError)}` };
       }
       
-      console.log('[assignEmailCodeToUser] VEOLY: Update successful, verified email_code:', updateDataResult?.[0]?.email_code);
+      console.log('[assignEmailCodeToUser] MONOKLIX: Update successful, verified email_code:', updateDataResult?.[0]?.email_code);
 
       // Fetch fresh flow account data before incrementing to avoid stale count
       const { data: freshFlowAccount, error: freshError } = await supabase
@@ -327,14 +327,14 @@ export const assignEmailCodeToUser = async (
         .single();
       
       if (freshError) {
-        console.error('[assignEmailCodeToUser] VEOLY: Failed to fetch fresh flow account:', freshError);
+        console.error('[assignEmailCodeToUser] MONOKLIX: Failed to fetch fresh flow account:', freshError);
       }
 
       // Only increment if email_code actually changed (not reassigning to same code)
       if (existingUser.email_code !== nextCode) {
         const currentCount = freshFlowAccount?.current_users_count ?? availableEmail.current_users_count;
         const newCount = currentCount + 1;
-        console.log('[assignEmailCodeToUser] VEOLY: Incrementing flow account count from', currentCount, 'to', newCount);
+        console.log('[assignEmailCodeToUser] MONOKLIX: Incrementing flow account count from', currentCount, 'to', newCount);
         
         // Increment current_users_count in email pool
         const { error: incrementError } = await supabase
@@ -345,16 +345,16 @@ export const assignEmailCodeToUser = async (
           .eq('id', availableEmail.id);
 
         if (incrementError) {
-          console.error('[assignEmailCodeToUser] VEOLY: Failed to increment user count:', incrementError);
+          console.error('[assignEmailCodeToUser] MONOKLIX: Failed to increment user count:', incrementError);
           // Still return success since email_code was updated
         } else {
-          console.log('[assignEmailCodeToUser] VEOLY: Flow account count incremented successfully');
+          console.log('[assignEmailCodeToUser] MONOKLIX: Flow account count incremented successfully');
         }
       } else {
-        console.log('[assignEmailCodeToUser] VEOLY: Email code unchanged, skipping increment');
+        console.log('[assignEmailCodeToUser] MONOKLIX: Email code unchanged, skipping increment');
       }
 
-      console.log('[assignEmailCodeToUser] VEOLY: Assignment completed successfully');
+      console.log('[assignEmailCodeToUser] MONOKLIX: Assignment completed successfully');
       return {
         success: true,
         emailCode: nextCode,
@@ -373,7 +373,7 @@ export const resetEmailCodeFromUser = async (
   userId: string
 ): Promise<{ success: boolean; message?: string }> => {
   try {
-    // Standardized logic for both brands (ESAIE and VEOLY-AI)
+    // Standardized logic for both brands (ESAIE and MONOKLIX)
     // Get user's current email_code from users table
     const { data: user, error: userError } = await supabase
       .from('users')
@@ -393,7 +393,7 @@ export const resetEmailCodeFromUser = async (
       return { success: false, message: 'User does not have an email code assigned' };
     }
 
-    // Email code is the same as flow account code (E1, E2, E3 for ESAIE; G1, G2, G3 for VEOLY-AI)
+    // Email code is the same as flow account code (E1, E2, E3 for ESAIE; G1, G2, G3 for MONOKLIX)
     const baseCode = user.email_code;
 
     // Find the flow account (only need id and current_users_count)

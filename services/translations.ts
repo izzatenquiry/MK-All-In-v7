@@ -363,7 +363,7 @@ const translations = {
         },
         eCourseView: {
             getStarted: 'Start Here',
-            mainVideoUrl: 'https://www.youtube.com/embed/XX',
+            mainVideoUrl: 'https://www.youtube.com/embed/z2aKxUV915M?rel=0',
             mainTitle: 'Welcome to VEOLY-AI',
             mainDescription: 'Welcome! This video is your introduction to the VEOLY-AI platform. Understand the big picture, the powerful features, and how to get started on your creative projects with the help of AI.',
             platformUpdates: 'Platform Updates',

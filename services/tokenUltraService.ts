@@ -35,7 +35,7 @@ export interface TokenUltraRegistrationWithUser extends TokenUltraRegistration {
  */
 export const getAllTokenUltraRegistrations = async (): Promise<TokenUltraRegistrationWithUser[] | null> => {
   try {
-    // Get all users with token_ultra_status (VEOLY-AI users with Token Ultra registration)
+    // Get all users with token_ultra_status (MONOKLIX users with Token Ultra registration)
     const { data: users, error: usersError } = await supabase
       .from('users')
       .select('*')

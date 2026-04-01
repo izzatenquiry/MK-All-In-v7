@@ -11,7 +11,7 @@ const PLATFORM_STATUS_KEY = `${BRAND_CONFIG.shortName.toLowerCase()}-ai-platform
 /** Bump when default marquee copy changes so IndexedDB picks up new defaults. */
 const ANNOUNCEMENTS_KEY = `${BRAND_CONFIG.shortName.toLowerCase()}-ai-announcements-v3`;
 
-const getMainVideoUrl = (): string => 'https://www.youtube.com/embed/BGuxsk79sYY?rel=0';
+const getMainVideoUrl = (): string => 'https://www.youtube.com/embed/z2aKxUV915M?rel=0';
 
 const defaultTutorialContent: TutorialContent = {
   mainVideoUrl: getMainVideoUrl(),

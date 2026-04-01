@@ -19,10 +19,9 @@ import FAQView from './FAQView';
 import MasterDashboardView from '../admin/MasterDashboardView';
 import ETutorialAdminView from '../admin/ETutorialAdminView';
 import { BRAND_CONFIG } from '../../../services/brandConfig';
-import { APP_VERSION } from '../../../services/appConfig';
 
 // Define the types for the settings view tabs
-export type SettingsTabId = 'profile' | 'flowLogin' | 'downloads' | 'recaptcha' | 'faq' | 'server-status' | 'content-admin';
+export type SettingsTabId = 'profile' | 'flowLogin' | 'recaptcha' | 'faq' | 'server-status' | 'content-admin';
 
 interface Message {
   role: 'user' | 'model';
@@ -43,13 +42,6 @@ interface SettingsViewProps {
   /** When true (FAQ opened from sidebar), only FAQ content is shown — no Profile / Token Setting tabs. */
   hideSettingsTabBar?: boolean;
 }
-
-const BTN_BASE =
-    'inline-flex items-center justify-center gap-1 px-3 py-2 rounded-xl text-xs font-semibold border transition-colors disabled:opacity-50 disabled:cursor-not-allowed';
-const BTN_PRIMARY = `${BTN_BASE} bg-gradient-to-r from-brand-start to-brand-end text-white border border-white/15 shadow-[0_8px_24px_rgba(74,108,247,0.25)] hover:opacity-95 active:scale-[0.99] dark:shadow-[0_8px_28px_rgba(74,108,247,0.35)]`;
-const BTN_NEUTRAL = `${BTN_BASE} bg-neutral-100 dark:bg-white/5 hover:bg-neutral-200 dark:hover:bg-white/10 text-neutral-700 dark:text-neutral-300 border-neutral-200/80 dark:border-white/10`;
-const BTN_INFO = `${BTN_BASE} bg-blue-600 dark:bg-blue-700 text-white hover:bg-blue-700 dark:hover:bg-blue-600`;
-const BTN_DANGER_OUTLINE = `${BTN_BASE} bg-red-50 dark:bg-red-600/20 hover:bg-red-100 dark:hover:bg-red-600/30 text-red-600 dark:text-red-300 border-red-200 dark:border-red-600/30`;
 
 const ClaimTokenModal: React.FC<{
   status: 'searching' | 'success' | 'error';
@@ -113,17 +105,11 @@ const ProfilePanel: React.FC<ProfilePanelProps> = ({ currentUser, onUserUpdate, 
 
     const [email, setEmail] = useState(currentUser.email);
     
+    // Video Tutorial Modal State
+    const [isVideoModalOpen, setIsVideoModalOpen] = useState(false);
+    const videoRef = useRef<HTMLVideoElement>(null);
+
     const [currentServer, setCurrentServer] = useState<string | null>(null);
-    const [isRestartingBridge, setIsRestartingBridge] = useState(false);
-    const [restartBridgeMessage, setRestartBridgeMessage] = useState<string | null>(null);
-    const [portStatuses, setPortStatuses] = useState<Record<number, boolean>>({
-        3001: false,
-        1247: false,
-        6003: false,
-        // 8080 is the UI host in Electron; show as operational (dummy).
-        8080: true,
-    });
-    const [isCheckingPorts, setIsCheckingPorts] = useState(true);
     const fetchCurrentServer = useCallback(() => {
         setCurrentServer(sessionStorage.getItem('selectedProxyServer'));
     }, []);
@@ -137,64 +123,14 @@ const ProfilePanel: React.FC<ProfilePanelProps> = ({ currentUser, onUserUpdate, 
         };
     }, [fetchCurrentServer]);
 
+    // Auto-play video when modal opens
     useEffect(() => {
-        const checkEndpoint = async (url: string): Promise<boolean> => {
-            const controller = new AbortController();
-            const timeoutId = window.setTimeout(() => controller.abort(), 1800);
-            try {
-                // no-cors allows lightweight reachability check without strict CORS requirements.
-                await fetch(url, { method: 'GET', mode: 'no-cors', cache: 'no-store', signal: controller.signal });
-                return true;
-            } catch {
-                return false;
-            } finally {
-                window.clearTimeout(timeoutId);
-            }
-        };
-
-        const refreshPortStatuses = async () => {
-            const [p3001, p1247, p6003] = await Promise.all([
-                checkEndpoint('http://127.0.0.1:3001/health'),
-                checkEndpoint('http://127.0.0.1:1247/'),
-                checkEndpoint('http://127.0.0.1:6003/status'),
-            ]);
-            setPortStatuses({
-                3001: p3001,
-                1247: p1247,
-                6003: p6003,
-                8080: true,
+        if (isVideoModalOpen && videoRef.current) {
+            videoRef.current.play().catch(err => {
+                console.error('Error auto-playing video:', err);
             });
-            setIsCheckingPorts(false);
-        };
-
-        refreshPortStatuses();
-        const intervalId = window.setInterval(refreshPortStatuses, 15000);
-        return () => window.clearInterval(intervalId);
-    }, []);
-
-    const isDesktopShell = Boolean((window as any)?.veolyElectron?.isDesktopShell);
-    const handleRestartBridge = useCallback(async () => {
-        setRestartBridgeMessage(null);
-        setIsRestartingBridge(true);
-        try {
-            const api = (window as any)?.electron;
-            if (!api?.restartBridge6003) {
-                const available = api ? Object.keys(api).sort().join(', ') : '(window.electron missing)';
-                throw new Error(`Desktop restart API not available. Available: ${available}`);
-            }
-            const res = await api.restartBridge6003();
-            if (res?.ok) {
-                setRestartBridgeMessage('Bridge restarted (6003).');
-            } else {
-                throw new Error(res?.error || 'Failed to restart bridge.');
-            }
-        } catch (e) {
-            const msg = e instanceof Error ? e.message : String(e);
-            setRestartBridgeMessage(`Restart failed: ${msg}`);
-        } finally {
-            setIsRestartingBridge(false);
         }
-    }, []);
+    }, [isVideoModalOpen]);
 
     const getAccountStatus = (user: User): { text: string; colorClass: string } => {
         switch (user.status) {
@@ -274,108 +210,32 @@ const ProfilePanel: React.FC<ProfilePanelProps> = ({ currentUser, onUserUpdate, 
                     <button
                         type="button"
                         onClick={onOpenChangeServerModal}
-                        className={`${BTN_PRIMARY} shrink-0`}
+                        className="flex items-center justify-center gap-2 shrink-0 rounded-lg bg-gradient-to-r from-brand-start to-brand-end text-white text-sm font-semibold py-2.5 px-4 border border-white/15 shadow-[0_8px_24px_rgba(74,108,247,0.25)] hover:opacity-95 active:scale-[0.99] transition-all dark:shadow-[0_8px_28px_rgba(74,108,247,0.35)]"
                     >
                         Change Server
                     </button>
                 </div>
-                <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-2">
-                    {[3001, 1247, 6003, 8080].map((port) => {
-                        const isUp = portStatuses[port];
-                        return (
-                            <div
-                                key={port}
-                                className="flex items-center justify-between rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white/70 dark:bg-neutral-900/60 px-3 py-2"
-                            >
-                                <span className="text-xs font-semibold text-neutral-600 dark:text-neutral-300">
-                                    Port {port}
-                                </span>
-                                <div className="flex items-center gap-2">
-                                    {isDesktopShell && port === 6003 ? (
-                                        <button
-                                            type="button"
-                                            onClick={handleRestartBridge}
-                                            disabled={isRestartingBridge}
-                                            className={`${BTN_NEUTRAL} px-2 py-1 text-[10px]`}
-                                            title="Restart Bridge (port 6003)"
-                                        >
-                                            {isRestartingBridge ? <Spinner variant="success" /> : null}
-                                            Restart
-                                        </button>
-                                    ) : null}
-                                    <span
-                                        className={`inline-flex items-center gap-1.5 text-[10px] font-bold px-2.5 py-1 rounded-full border transition-colors ${
-                                            isCheckingPorts
-                                                ? 'text-neutral-600 dark:text-neutral-300 bg-neutral-100 dark:bg-neutral-800 border-neutral-300/80 dark:border-neutral-600/40'
-                                                : isUp
-                                                ? 'text-green-600 dark:text-green-400 bg-green-100 dark:bg-green-900/20 border-green-300/80 dark:border-green-500/20'
-                                                : 'text-red-600 dark:text-red-400 bg-red-100 dark:bg-red-900/20 border-red-300/80 dark:border-red-500/20'
-                                        }`}
-                                    >
-                                        {isCheckingPorts ? 'CHECKING' : isUp ? 'OPERATIONAL' : 'OFFLINE'}
-                                    </span>
-                                </div>
-                            </div>
-                        );
-                    })}
-                </div>
-                {isDesktopShell && restartBridgeMessage ? (
-                    <div className="mt-2 text-[11px] text-neutral-600 dark:text-neutral-300">
-                        {restartBridgeMessage}
-                    </div>
-                ) : null}
             </div>
 
-        </div>
-    );
-};
-
-const DownloadsPanel: React.FC = () => {
-    const [isVideoModalOpen, setIsVideoModalOpen] = useState(false);
-    const videoRef = useRef<HTMLVideoElement>(null);
-    const releaseDate = new Date().toLocaleDateString('en-GB', {
-        day: '2-digit',
-        month: '2-digit',
-        year: 'numeric',
-    });
-
-    useEffect(() => {
-        if (isVideoModalOpen && videoRef.current) {
-            videoRef.current.play().catch(err => {
-                console.error('Error auto-playing video:', err);
-            });
-        }
-    }, [isVideoModalOpen]);
-
-    return (
-        <div className="bg-white dark:bg-neutral-900 rounded-lg shadow-sm p-6 h-full overflow-y-auto border border-neutral-200 dark:border-neutral-800">
-            <div className="flex items-center gap-3 mb-6">
-                <div className="p-2 bg-primary-100 dark:bg-primary-900/30 rounded-lg">
-                    <DownloadIcon className="w-6 h-6 text-brand-start dark:text-brand-end" />
-                </div>
-                <div>
-                    <h2 className="text-xl font-bold text-neutral-800 dark:text-neutral-200">Downloads</h2>
-                    <p className="text-sm text-neutral-500 dark:text-neutral-400">Get the desktop app and quick setup guide.</p>
-                    <p className="mt-2 text-[11px] text-neutral-600 dark:text-neutral-300 font-semibold">
-                        Version: <span className="font-mono">{APP_VERSION}</span> | Date: <span className="font-mono">{releaseDate}</span>
-                    </p>
-                </div>
-            </div>
-
+            {/* Downloads: PC app + video tutorial (Telegram support lives in FAQ) */}
             <div className="bg-white dark:bg-neutral-900 p-6 rounded-lg shadow-sm border border-neutral-200 dark:border-neutral-800">
+                <h3 className="text-base sm:text-lg font-bold mb-4 text-neutral-800 dark:text-neutral-200 flex items-center gap-2">
+                    <DownloadIcon className="w-5 h-5 text-brand-start dark:text-brand-end" />
+                    Downloads
+                </h3>
                 <div className="space-y-3">
                     <a
-                        href="https://drive.google.com/file/d/1DFurFWonhAV90bPOLE8ln7uYyrvZQM1g/view?usp=drive_link"
+                        href="https://drive.google.com/file/d/1aTNwIXpx7JekPui2UmsXkVL1MNKEWjdd/view?usp=sharing"
                         target="_blank"
                         rel="noopener noreferrer"
-                        className={`${BTN_PRIMARY} w-full`}
+                        className="w-full flex items-center justify-center gap-2 bg-neutral-700 dark:bg-neutral-600 text-white text-sm font-semibold py-2.5 px-4 rounded-lg hover:bg-neutral-800 dark:hover:bg-neutral-700 transition-colors"
                     >
                         <DownloadIcon className="w-5 h-5" />
                         Download PC Version
                     </a>
                     <button
                         onClick={() => setIsVideoModalOpen(true)}
-                        className={`${BTN_DANGER_OUTLINE} w-full`}
+                        className="w-full flex items-center justify-center gap-2 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-800 dark:text-red-300 text-sm font-semibold py-2.5 px-4 rounded-lg hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors"
                     >
                         <PlayIcon className="w-5 h-5" />
                         Video Tutorial PC Version
@@ -383,11 +243,13 @@ const DownloadsPanel: React.FC = () => {
                 </div>
             </div>
 
+            {/* Video Tutorial Modal - Fullscreen */}
             {isVideoModalOpen && (
-                <div
+                <div 
                     className="fixed inset-0 bg-black z-[9999] flex items-center justify-center animate-zoomIn"
                     onClick={() => setIsVideoModalOpen(false)}
                 >
+                    {/* Close Button */}
                     <button
                         onClick={() => setIsVideoModalOpen(false)}
                         className="absolute top-6 right-6 z-10 p-3 bg-black/70 hover:bg-black/90 rounded-full text-white transition-colors shadow-lg"
@@ -396,7 +258,8 @@ const DownloadsPanel: React.FC = () => {
                         <XIcon className="w-6 h-6" />
                     </button>
 
-                    <div
+                    {/* Fullscreen Video Player */}
+                    <div 
                         className="relative w-full h-full flex items-center justify-center"
                         onClick={(e) => e.stopPropagation()}
                     >
@@ -547,13 +410,13 @@ const CacheManagerPanel: React.FC<CacheManagerPanelProps> = ({ currentUser }) =>
             </div>
 
             <div className="flex gap-3 w-full">
-              <button onClick={loadStats} disabled={isLoading} className={`${BTN_PRIMARY} flex-1`}>
+              <button onClick={loadStats} disabled={isLoading} className="flex-1 flex items-center justify-center gap-2 bg-neutral-200 dark:bg-neutral-700 text-neutral-700 dark:text-neutral-200 font-semibold py-2 px-4 rounded-lg hover:bg-neutral-300 dark:hover:bg-neutral-600 transition-colors disabled:opacity-50">
                 <RefreshCwIcon className="w-4 h-4" /> {T.refresh}
               </button>
               <button
                 onClick={handleClearCache}
                 disabled={isClearing || stats.count === 0}
-                className={`${BTN_DANGER_OUTLINE} flex-1`}
+                className="flex-1 flex items-center justify-center gap-2 rounded-lg border border-red-300/90 dark:border-red-500/35 bg-red-50/90 dark:bg-red-950/35 text-red-800 dark:text-red-200 font-semibold py-2 px-4 hover:bg-red-100 dark:hover:bg-red-950/55 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isClearing ? (<><Spinner /> {T.clearing}</>) : (<><TrashIcon className="w-4 h-4" /> {T.clear}</>)}
               </button>
@@ -662,8 +525,7 @@ const SettingsView: React.FC<SettingsViewProps> = ({
     // Basic tabs - always shown
     tabs.push(
         { id: 'profile', label: T.tabs.profile },
-        { id: 'flowLogin', label: 'Token Setting' },
-        { id: 'downloads', label: 'Downloads' }
+        { id: 'flowLogin', label: 'Token Setting' }
     );
     
     const shouldShowTokenUltraTab = !isTokenUltraActive || 
@@ -770,12 +632,6 @@ const SettingsView: React.FC<SettingsViewProps> = ({
                 return (
                     <div className="w-full">
                         <RecaptchaSettingsPanel currentUser={currentUser} onUserUpdate={onUserUpdate} />
-                    </div>
-                );
-            case 'downloads':
-                return (
-                    <div className="w-full">
-                        <DownloadsPanel />
                     </div>
                 );
             case 'faq':

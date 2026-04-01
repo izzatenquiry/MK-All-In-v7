@@ -866,7 +866,7 @@ const App: React.FC = () => {
                   type="button"
                   onClick={() => {
                     sessionStorage.setItem('pc_mode_prompt_shown', '1');
-                    window.open('https://drive.google.com/file/d/1DFurFWonhAV90bPOLE8ln7uYyrvZQM1g/view?usp=drive_link', '_blank', 'noopener,noreferrer');
+                    window.open('https://drive.google.com/file/d/1aTNwIXpx7JekPui2UmsXkVL1MNKEWjdd/view?usp=sharing', '_blank', 'noopener,noreferrer');
                     setShowPcWebsitePrompt(false);
                   }}
                   className="w-full bg-gradient-to-r from-brand-start to-brand-end text-white font-bold py-3 px-4 rounded-xl shadow-sm hover:opacity-95 active:scale-[0.99] transition-all"

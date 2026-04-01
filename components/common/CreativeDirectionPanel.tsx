@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React from 'react';
 import {
     styleOptions,
     lightingOptions,
@@ -66,15 +66,6 @@ const CreativeDirectionPanel: React.FC<CreativeDirectionPanelProps> = ({
         setState(prevState => ({ ...prevState, [field]: value }));
     };
 
-    // Force single-image mode (UI + state) for stability.
-    useEffect(() => {
-        if (!setNumberOfImages) return;
-        if (numberOfImages === undefined) return;
-        if (numberOfImages !== 1) setNumberOfImages(1);
-    }, [numberOfImages, setNumberOfImages]);
-
-    const effectiveImageCountOptions = [1];
-
     return (
         <details className={`pt-4 border-t border-gray-200 dark:border-gray-700`} open>
             <summary className={`font-semibold cursor-pointer`}>Creative Direction & Settings</summary>
@@ -86,11 +77,11 @@ const CreativeDirectionPanel: React.FC<CreativeDirectionPanelProps> = ({
                             <div>
                                 <label className="block text-sm font-medium text-gray-600 dark:text-gray-400 mb-1">Image Count</label>
                                 <select
-                                    value={1}
-                                    onChange={() => setNumberOfImages(1)}
+                                    value={numberOfImages}
+                                    onChange={(e) => setNumberOfImages(Number(e.target.value))}
                                     className="w-full bg-white dark:bg-neutral-900 border border-gray-300 dark:border-neutral-600 rounded-lg p-2 text-sm focus:ring-2 focus:ring-primary-500 focus:outline-none"
                                 >
-                                    {effectiveImageCountOptions.map(n => <option key={n} value={n}>{n} Image</option>)}
+                                    {imageCountOptions.map(n => <option key={n} value={n}>{n} Image{n > 1 ? 's' : ''}</option>)}
                                 </select>
                             </div>
                         )}

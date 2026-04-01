@@ -1,6 +1,6 @@
 import { type AiLogItem, type HistoryItem } from '../types';
 
-const DB_NAME = 'veoly-ai-db';
+const DB_NAME = 'monoklix-ai-db';
 const DB_VERSION = 2; // Incremented version to trigger onupgradeneeded
 const STORES = {
     SETTINGS: 'settings',

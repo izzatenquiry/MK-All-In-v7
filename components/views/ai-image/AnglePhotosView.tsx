@@ -55,9 +55,6 @@ const AnglePhotosView: React.FC<AnglePhotosViewProps> = ({ onReEdit, onCreateVid
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [selectedImageIndex, setSelectedImageIndex] = useState(0);
-    const [imageGenerationStartedAt, setImageGenerationStartedAt] = useState<(number | null)[]>(Array(4).fill(null));
-    const [imageGenerationElapsedSec, setImageGenerationElapsedSec] = useState<number[]>(Array(4).fill(0));
-    const [imageGenerationDurationSec, setImageGenerationDurationSec] = useState<(number | null)[]>(Array(4).fill(null));
 
     const [gender, setGender] = useState('Female');
     const [modelFace, setModelFace] = useState('Random');
@@ -70,28 +67,6 @@ const AnglePhotosView: React.FC<AnglePhotosViewProps> = ({ onReEdit, onCreateVid
     
     const T = getTranslations().anglePhotosView;
     const commonT = getTranslations().common;
-
-    const formatDuration = (totalSec: number) => {
-        const s = Math.max(0, Math.floor(totalSec));
-        const m = Math.floor(s / 60);
-        const r = s % 60;
-        return `${m}:${String(r).padStart(2, '0')}`;
-    };
-
-    useEffect(() => {
-        if (!isLoading) return;
-        if (!imageGenerationStartedAt.some(Boolean)) return;
-        const id = window.setInterval(() => {
-            const now = Date.now();
-            setImageGenerationElapsedSec((prev) =>
-                prev.map((_, i) => {
-                    const startedAt = imageGenerationStartedAt[i];
-                    return startedAt ? Math.max(0, Math.floor((now - startedAt) / 1000)) : 0;
-                })
-            );
-        }, 1000);
-        return () => window.clearInterval(id);
-    }, [isLoading, imageGenerationStartedAt]);
 
     useEffect(() => {
         try {
@@ -133,22 +108,6 @@ const AnglePhotosView: React.FC<AnglePhotosViewProps> = ({ onReEdit, onCreateVid
         randomPose: string
     ) => {
         if (!productMediaId && !faceMediaId) return;
-        const startedAt = Date.now();
-        setImageGenerationStartedAt((prev) => {
-            const next = [...prev];
-            next[index] = startedAt;
-            return next;
-        });
-        setImageGenerationElapsedSec((prev) => {
-            const next = [...prev];
-            next[index] = 0;
-            return next;
-        });
-        setImageGenerationDurationSec((prev) => {
-            const next = [...prev];
-            next[index] = null;
-            return next;
-        });
     
         try {
             const prompt = getAnglePhotosPrompt({
@@ -227,14 +186,6 @@ const AnglePhotosView: React.FC<AnglePhotosViewProps> = ({ onReEdit, onCreateVid
             });
             setProgress(prev => prev + 1);
         }
-        finally {
-            const end = Date.now();
-            setImageGenerationDurationSec((prev) => {
-                const next = [...prev];
-                next[index] = Math.max(0, Math.floor((end - startedAt) / 1000));
-                return next;
-            });
-        }
     }, [gender, modelFace, creativeState, aspectRatio, currentUser, onUserUpdate]);
 
     const handleGenerate = useCallback(async () => {
@@ -247,9 +198,6 @@ const AnglePhotosView: React.FC<AnglePhotosViewProps> = ({ onReEdit, onCreateVid
         setImages(Array(4).fill(null));
         setSelectedImageIndex(0);
         setProgress(0);
-        setImageGenerationStartedAt(Array(4).fill(null));
-        setImageGenerationElapsedSec(Array(4).fill(0));
-        setImageGenerationDurationSec(Array(4).fill(null));
 
         let sharedProductMediaId: string | null = null;
         let sharedFaceMediaId: string | null = null;
@@ -391,22 +339,10 @@ const AnglePhotosView: React.FC<AnglePhotosViewProps> = ({ onReEdit, onCreateVid
           </div>
 
            <div className="pt-4 mt-auto">
-                <div className="flex gap-4">
-                    <button
-                      onClick={handleGenerate}
-                      disabled={isLoading || (!productImage && !faceImage)}
-                      className="w-full flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-brand-start to-brand-end text-white font-semibold py-4 px-4 shadow-[0_10px_24px_rgba(74,108,247,0.28)] hover:shadow-[0_12px_28px_rgba(74,108,247,0.38)] transition-all border border-white/10 disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                        {isLoading ? <Spinner /> : T.generateButton}
-                    </button>
-                    <button
-                      onClick={handleReset}
-                      disabled={isLoading}
-                      className="flex-shrink-0 rounded-xl bg-neutral-100 dark:bg-white/5 hover:bg-neutral-200 dark:hover:bg-white/10 text-sm font-semibold text-neutral-700 dark:text-neutral-300 border border-neutral-200/80 dark:border-white/10 px-4 py-4 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      Reset All
-                    </button>
-                </div>
+                <button onClick={handleGenerate} disabled={isLoading || (!productImage && !faceImage)} className="w-full flex items-center justify-center gap-2 bg-primary-600 text-white font-bold py-4 px-4 rounded-lg hover:bg-primary-700 transition-colors disabled:opacity-50 shadow-sm">
+                    {isLoading ? <Spinner /> : T.generateButton}
+                </button>
+                <button onClick={handleReset} className="w-full mt-2 text-sm text-neutral-500 hover:underline">Reset All</button>
                 {error && <p className="text-red-500 mt-2 text-center text-sm">{error}</p>}
           </div>
       </>
@@ -416,28 +352,7 @@ const AnglePhotosView: React.FC<AnglePhotosViewProps> = ({ onReEdit, onCreateVid
       <>
           {images.length > 0 ? (
                <div className="w-full h-full flex flex-col gap-2 p-2">
-                <div className="flex-1 flex items-center justify-center min-h-0 w-full relative group overflow-hidden rounded-xl bg-neutral-200/60 dark:bg-neutral-800/40">
-                    <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_22%_18%,rgba(74,108,247,0.22),transparent_60%),radial-gradient(circle_at_82%_26%,rgba(160,91,255,0.18),transparent_55%),linear-gradient(135deg,rgba(255,255,255,0.14),rgba(255,255,255,0.0))] dark:bg-[radial-gradient(circle_at_22%_18%,rgba(74,108,247,0.14),transparent_60%),radial-gradient(circle_at_82%_26%,rgba(160,91,255,0.12),transparent_55%),linear-gradient(135deg,rgba(255,255,255,0.04),rgba(255,255,255,0.0))]" />
-                    {(() => {
-                        const elapsed = imageGenerationElapsedSec[selectedImageIndex] ?? 0;
-                        const dur = imageGenerationDurationSec[selectedImageIndex];
-                        const isSlotLoading = images[selectedImageIndex] == null && isLoading;
-                        if (isSlotLoading) {
-                            return (
-                                <div className="absolute bottom-2 right-2 z-10 rounded-lg bg-red-600/80 px-2.5 py-1 text-[11px] font-bold text-white backdrop-blur">
-                                    Time: <span className="font-mono">{formatDuration(elapsed)}</span>
-                                </div>
-                            );
-                        }
-                        if (dur != null) {
-                            return (
-                                <div className="absolute bottom-2 right-2 z-10 rounded-lg bg-red-600/70 px-2.5 py-1 text-[11px] font-bold text-white/95 backdrop-blur">
-                                    Time: <span className="font-mono">{formatDuration(dur)}</span>
-                                </div>
-                            );
-                        }
-                        return null;
-                    })()}
+                <div className="flex-1 flex items-center justify-center min-h-0 w-full relative group">
                     {(() => {
                         const selectedImage = images[selectedImageIndex];
                         if (typeof selectedImage === 'string') {

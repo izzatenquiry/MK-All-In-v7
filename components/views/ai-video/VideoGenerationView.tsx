@@ -84,9 +84,6 @@ const VideoGenerationView: React.FC<VideoGenerationViewProps> = ({ preset, clear
   const [isDownloading, setIsDownloading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loadingMessageIndex, setLoadingMessageIndex] = useState(0);
-  const [generationStartedAt, setGenerationStartedAt] = useState<number | null>(null);
-  const [generationElapsedSec, setGenerationElapsedSec] = useState(0);
-  const [generationDurationSec, setGenerationDurationSec] = useState<number | null>(null);
   const [referenceImage, setReferenceImage] = useState<ImageData | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [resolution, setResolution] = useState("720p");
@@ -190,21 +187,6 @@ const VideoGenerationView: React.FC<VideoGenerationViewProps> = ({ preset, clear
         if (interval) clearInterval(interval);
       };
   }, [isLoading, loadingMessages.length]);
-
-  useEffect(() => {
-    if (!isLoading || !generationStartedAt) return;
-    const id = window.setInterval(() => {
-      setGenerationElapsedSec(Math.max(0, Math.floor((Date.now() - generationStartedAt) / 1000)));
-    }, 1000);
-    return () => window.clearInterval(id);
-  }, [isLoading, generationStartedAt]);
-
-  const formatDuration = (totalSec: number) => {
-    const s = Math.max(0, Math.floor(totalSec));
-    const m = Math.floor(s / 60);
-    const r = s % 60;
-    return `${m}:${String(r).padStart(2, '0')}`;
-  };
 
   useEffect(() => {
       if (preset) {
@@ -314,10 +296,6 @@ const VideoGenerationView: React.FC<VideoGenerationViewProps> = ({ preset, clear
       setIsLoading(true);
       setVeoJobAccepted(false);
       setError(null);
-      const startedAt = Date.now();
-      setGenerationStartedAt(startedAt);
-      setGenerationElapsedSec(0);
-      setGenerationDurationSec(null);
       // Manually revoke the old URL before clearing state
       if (videoUrl && videoUrl.startsWith('blob:')) {
           URL.revokeObjectURL(videoUrl);
@@ -415,9 +393,6 @@ const VideoGenerationView: React.FC<VideoGenerationViewProps> = ({ preset, clear
           const { videoFile, thumbnailUrl: newThumbnailUrl } = await generateVideo(fullPrompt, model, aspectRatio, resolution, dynamicNegativePrompt, image, handleGenerationStatus);
 
           if (videoFile) {
-              if (startedAt) {
-                setGenerationDurationSec(Math.max(0, Math.floor((Date.now() - startedAt) / 1000)));
-              }
               const objectUrl = URL.createObjectURL(videoFile);
               console.log('✅ Video file received and object URL created:', objectUrl);
               setVideoUrl(objectUrl);
@@ -712,15 +687,6 @@ const VideoGenerationView: React.FC<VideoGenerationViewProps> = ({ preset, clear
                       >
                           {statusMessage || 'Generating...'}
                       </p>
-                      {generationStartedAt ? (
-                          <p
-                              className={`text-[11px] font-semibold ${
-                                  previewUrl ? 'text-white/85 drop-shadow' : 'text-neutral-400 dark:text-neutral-500'
-                              }`}
-                          >
-                              Elapsed: <span className="font-mono">{formatDuration(generationElapsedSec)}</span>
-                          </p>
-                      ) : null}
                       <p
                           className={`max-w-sm text-center text-xs ${
                               previewUrl ? 'text-white/85 drop-shadow' : 'text-neutral-400 dark:text-neutral-500'
@@ -766,38 +732,29 @@ const VideoGenerationView: React.FC<VideoGenerationViewProps> = ({ preset, clear
               </div>
           ) : videoUrl ? (
               <div className="flex h-full min-h-0 w-full flex-1 flex-col items-center justify-center gap-4">
-                  <div className="relative max-h-full max-w-full">
-                      {generationDurationSec !== null ? (
-               <div className="absolute bottom-2 right-2 z-10 rounded-lg bg-red-600/75 px-3 py-1.5 text-sm font-bold text-white backdrop-blur">
-                              Time: <span className="font-mono">{formatDuration(generationDurationSec)}</span>
-                          </div>
-                      ) : null}
-                      <video 
-                          key={videoUrl}
-                          src={videoUrl}
-                          poster={thumbnailUrl || undefined}
-                          controls 
-                          autoPlay 
-                          playsInline
-                          muted
-                          className="max-h-full max-w-full rounded-md"
-                      >
-                          Your browser does not support the video tag.
-                      </video>
-                  </div>
+                  <video 
+                      key={videoUrl}
+                      src={videoUrl}
+                      poster={thumbnailUrl || undefined}
+                      controls 
+                      autoPlay 
+                      playsInline
+                      muted
+                      className="max-h-full max-w-full rounded-md"
+                  >
+                      Your browser does not support the video tag.
+                  </video>
                   
                   {error && <p className="text-red-500 dark:text-red-400 text-center text-sm">{error}</p>}
 
-                  <div className="flex items-center justify-center gap-3">
-                      <button
-                        onClick={handleDownloadVideo}
-                        disabled={isDownloading}
-                        className="flex items-center justify-center gap-2 bg-neutral-200 dark:bg-neutral-700 text-neutral-700 dark:text-neutral-200 font-semibold py-2 px-4 rounded-lg hover:bg-neutral-300 dark:hover:bg-neutral-600 transition-colors disabled:opacity-50"
-                      >
-                        {isDownloading ? <Spinner /> : <DownloadIcon className="w-4 h-4" />}
-                        {isDownloading ? 'Downloading...' : 'Download Video'}
-                      </button>
-                  </div>
+                  <button
+                    onClick={handleDownloadVideo}
+                    disabled={isDownloading}
+                    className="flex items-center justify-center gap-2 bg-neutral-200 dark:bg-neutral-700 text-neutral-700 dark:text-neutral-200 font-semibold py-2 px-4 rounded-lg hover:bg-neutral-300 dark:hover:bg-neutral-600 transition-colors disabled:opacity-50"
+                  >
+                    {isDownloading ? <Spinner /> : <DownloadIcon className="w-4 h-4" />}
+                    {isDownloading ? 'Downloading...' : 'Download Video'}
+                  </button>
               </div>
           ) : (
               <div className="flex flex-1 flex-col items-center justify-center text-center text-neutral-500 dark:text-neutral-600 min-h-[240px]">

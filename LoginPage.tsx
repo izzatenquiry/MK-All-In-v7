@@ -10,7 +10,6 @@ import { APP_VERSION } from './services/appConfig';
 import { getTranslations } from './services/translations';
 import { loadData } from './services/indexedDBService';
 import { BRAND_CONFIG } from './services/brandConfig';
-import { isElectron } from './services/environment';
 
 interface LoginPageProps {
     onLoginSuccess: (user: User) => void;
@@ -27,7 +26,6 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
     const T = getTranslations().loginPage;
     const commonT = getTranslations().common;
     const isMonoklix = BRAND_CONFIG.name === 'VEOLY-AI';
-    const isElectronMode = isElectron();
 
     // Load theme from localStorage
     useEffect(() => {
@@ -96,7 +94,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
 
     const loginCard = (
         <div className="w-full max-w-md relative z-10 animate-zoomIn">
-            <div className="bg-white dark:bg-[#1f1f1f] border border-neutral-200 dark:border-white/10 rounded-2xl shadow-md dark:shadow-[0_8px_30px_rgba(0,0,0,0.35)] p-7 sm:p-8">
+            <div className="bg-white dark:bg-[#0b0b0b] border border-neutral-200 dark:border-white/10 rounded-2xl shadow-md dark:shadow-[0_8px_30px_rgba(0,0,0,0.45)] p-7 sm:p-8">
                 <div className="text-center mb-8">
                     {!isMonoklix && (
                         <div className="inline-flex justify-center mb-6 filter drop-shadow-[0_0_15px_rgba(74,108,247,0.3)]">
@@ -195,11 +193,11 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
 
     if (isMonoklix) {
         return (
-            <div className="relative min-h-screen bg-neutral-50 dark:bg-[#161616] overflow-x-hidden">
+            <div className="relative min-h-screen bg-neutral-50 dark:bg-[#050505] overflow-x-hidden">
                 <div className="absolute inset-0 overflow-hidden pointer-events-none">
                     {backgroundGlows}
                 </div>
-                <div className={`relative z-10 flex flex-col min-h-screen ${isElectronMode ? 'justify-center' : ''}`}> 
+                <div className="relative z-10 flex flex-col min-h-screen">
                     <PreLoginLanding
                         onOpenLogin={() => setIsLoginModalOpen(true)}
                         onOpenRegister={() => setIsRegisterModalOpen(true)}
@@ -246,7 +244,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
     }
 
     return (
-        <div className="relative flex items-center justify-center min-h-screen bg-neutral-50 dark:bg-[#161616] overflow-hidden p-4">
+        <div className="relative flex items-center justify-center min-h-screen bg-neutral-50 dark:bg-[#050505] overflow-hidden p-4">
             {backgroundGlows}
             {loginCard}
         </div>

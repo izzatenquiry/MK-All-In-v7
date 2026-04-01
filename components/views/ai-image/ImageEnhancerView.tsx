@@ -61,9 +61,6 @@ const ImageEnhancerView: React.FC<ImageEnhancerViewProps> = ({ onReEdit, onCreat
   const [enhancementType, setEnhancementType] = useState<EnhancementType>('upscale');
   const [resultKind, setResultKind] = useState<ResultKind | null>(null);
   const [imageUploadKey, setImageUploadKey] = useState(Date.now());
-  const [startedAt, setStartedAt] = useState<number | null>(null);
-  const [elapsedSec, setElapsedSec] = useState(0);
-  const [durationSec, setDurationSec] = useState<number | null>(null);
 
   const modeButtonClass = (active: boolean) =>
     `flex-1 min-w-0 px-2 sm:px-3 py-2 rounded-full font-semibold transition-colors text-xs sm:text-sm text-center ${
@@ -99,21 +96,6 @@ const ImageEnhancerView: React.FC<ImageEnhancerViewProps> = ({ onReEdit, onCreat
     }
   }, [enhancementType]);
 
-  const formatDuration = (totalSec: number) => {
-    const s = Math.max(0, Math.floor(totalSec));
-    const m = Math.floor(s / 60);
-    const r = s % 60;
-    return `${m}:${String(r).padStart(2, '0')}`;
-  };
-
-  useEffect(() => {
-    if (!isLoading || !startedAt) return;
-    const id = window.setInterval(() => {
-      setElapsedSec(Math.max(0, Math.floor((Date.now() - startedAt) / 1000)));
-    }, 1000);
-    return () => window.clearInterval(id);
-  }, [isLoading, startedAt]);
-
   const handleImageUpload = useCallback((base64: string, mimeType: string, file: File) => {
     setImageData({ base64, mimeType, previewUrl: URL.createObjectURL(file) });
     setResultImage(null);
@@ -136,10 +118,6 @@ const ImageEnhancerView: React.FC<ImageEnhancerViewProps> = ({ onReEdit, onCreat
     }
 
     setIsLoading(true);
-    const started = Date.now();
-    setStartedAt(started);
-    setElapsedSec(0);
-    setDurationSec(null);
     setError(null);
     setResultImage(null);
     setResultKind(null);
@@ -186,7 +164,6 @@ const ImageEnhancerView: React.FC<ImageEnhancerViewProps> = ({ onReEdit, onCreat
       setError('Failed');
     } finally {
       setIsLoading(false);
-      setDurationSec(started ? Math.max(0, Math.floor((Date.now() - started) / 1000)) : null);
     }
   }, [imageData, enhancementType, currentUser, onUserUpdate]);
 
@@ -256,11 +233,7 @@ const ImageEnhancerView: React.FC<ImageEnhancerViewProps> = ({ onReEdit, onCreat
   const rightPanel = (
     <>
       {isLoading ? (
-        <div className="flex flex-col items-center justify-center h-full gap-4 overflow-hidden rounded-xl bg-neutral-200/60 dark:bg-neutral-800/40 relative">
-            <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_22%_18%,rgba(74,108,247,0.22),transparent_60%),radial-gradient(circle_at_82%_26%,rgba(160,91,255,0.18),transparent_55%),linear-gradient(135deg,rgba(255,255,255,0.14),rgba(255,255,255,0.0))] dark:bg-[radial-gradient(circle_at_22%_18%,rgba(74,108,247,0.14),transparent_60%),radial-gradient(circle_at_82%_26%,rgba(160,91,255,0.12),transparent_55%),linear-gradient(135deg,rgba(255,255,255,0.04),rgba(255,255,255,0.0))]" />
-            <div className="absolute bottom-2 right-2 z-10 rounded-lg bg-red-600/80 px-2.5 py-1 text-[11px] font-bold text-white backdrop-blur">
-              Time: <span className="font-mono">{formatDuration(elapsedSec)}</span>
-            </div>
+        <div className="flex flex-col items-center justify-center h-full gap-4">
             <Spinner />
             <p className="text-neutral-500 dark:text-neutral-400">
               {enhancementType === 'removeBg' ? 'Removing background...' : 'Enhancing image...'}
@@ -279,7 +252,7 @@ const ImageEnhancerView: React.FC<ImageEnhancerViewProps> = ({ onReEdit, onCreat
                           {resultKind === 'removeBg' ? 'Result (Transparent)' : 'Enhanced'}
                         </h4>
                         <div
-                          className={`relative group overflow-hidden rounded-xl ${resultKind === 'removeBg' ? 'bg-gray-200 dark:bg-gray-700' : 'bg-neutral-200/60 dark:bg-neutral-800/40'}`}
+                          className={`relative group rounded-lg ${resultKind === 'removeBg' ? 'bg-gray-200 dark:bg-gray-700' : ''}`}
                           style={
                             resultKind === 'removeBg'
                               ? {
@@ -289,14 +262,6 @@ const ImageEnhancerView: React.FC<ImageEnhancerViewProps> = ({ onReEdit, onCreat
                               : undefined
                           }
                         >
-                            {resultKind !== 'removeBg' ? (
-                              <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_22%_18%,rgba(74,108,247,0.22),transparent_60%),radial-gradient(circle_at_82%_26%,rgba(160,91,255,0.18),transparent_55%),linear-gradient(135deg,rgba(255,255,255,0.14),rgba(255,255,255,0.0))] dark:bg-[radial-gradient(circle_at_22%_18%,rgba(74,108,247,0.14),transparent_60%),radial-gradient(circle_at_82%_26%,rgba(160,91,255,0.12),transparent_55%),linear-gradient(135deg,rgba(255,255,255,0.04),rgba(255,255,255,0.0))]" />
-                            ) : null}
-                            {durationSec != null ? (
-                              <div className="absolute bottom-2 right-2 z-10 rounded-lg bg-red-600/70 px-2.5 py-1 text-[11px] font-bold text-white/95 backdrop-blur">
-                                Time: <span className="font-mono">{formatDuration(durationSec)}</span>
-                              </div>
-                            ) : null}
                             <img
                               src={`data:image/png;base64,${resultImage}`}
                               alt={resultKind === 'removeBg' ? 'Background removed' : 'Enhanced'}

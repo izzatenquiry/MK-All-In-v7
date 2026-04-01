@@ -286,13 +286,14 @@ app.use(cors({
   origin: function(origin, callback) {
     // Allow requests from your domains
     const allowedOrigins = [
-      'https://app.veoly-ai.com',
-      'https://app2.veoly-ai.com',
-      'https://dev.veoly-ai.com',
-      'https://dev1.veoly-ai.com',
-      'https://captcha.veoly-ai.com',
+      'https://app.monoklix.com',
+      'https://app2.monoklix.com',
+      'https://dev.monoklix.com',
+      'https://dev1.monoklix.com',
+      'https://captcha.monoklix.com',
       'https://esaie.tech',
 	  'https://veoly-ai.com',
+	  'https://captcha.veoly-ai.com',
       'http://localhost:8080',
       'http://localhost:3001',
       'http://localhost:6003' // Bridge Server (reCAPTCHA Generator)
@@ -996,7 +997,7 @@ app.get('/api/veo/download-video', async (req, res) => {
 
     const contentType = response.headers.get('content-type') || 'video/mp4';
     const contentLength = response.headers.get('content-length');
-    const filename = `veoly-ai-video-${Date.now()}.mp4`;
+    const filename = `monoklix-video-${Date.now()}.mp4`;
 
     log('log', req, '📦 Video headers received:', { contentType, contentLength });
 
@@ -1259,7 +1260,7 @@ app.listen(PORT, '0.0.0.0', () => {
   const logSystem = (...args) => log('log', null, ...args);
 
   logSystem('\n🚀 ===================================');
-  logSystem('🚀 VEOLY-AI - PROXY SERVER');
+  logSystem('🚀 MONOKLIX - PROXY SERVER');
   logSystem('🚀 ===================================');
   logSystem(`📍 Port: ${PORT}`);
   logSystem(`📍 Local: http://localhost:${PORT}`);

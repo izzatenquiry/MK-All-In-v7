@@ -3,7 +3,6 @@
   "private": true,
   "version": "0.0.0",
   "description": "VEOLY-AI — all-in-one AI platform.",
-  "author": "VEOLY-AI",
   "type": "module",
   "main": "electron/main.cjs",
   "scripts": {
@@ -44,7 +43,6 @@
   "build": {
     "appId": "ai.veoly.desktop",
     "productName": "VEOLY-AI",
-    "copyright": "Copyright (c) VEOLY-AI",
     "directories": {
       "output": "release"
     },
@@ -77,7 +75,7 @@
       "target": [
         "portable"
       ],
-      "signAndEditExecutable": true
+      "signAndEditExecutable": false
     }
   }
 }

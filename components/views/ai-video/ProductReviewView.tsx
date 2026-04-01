@@ -88,7 +88,7 @@ const musicStyleOptions = [
 ];
 
 const PRODUCT_REVIEW_SCENE_IMAGE_TABS: Tab<'standard' | 'pro'>[] = [
-    { id: 'standard', label: 'NanoBanana 2' },
+    { id: 'standard', label: 'NanoBanana (standard)' },
     { id: 'pro', label: 'NanoBanana PRO' },
 ];
 
@@ -125,11 +125,6 @@ const downloadText = (text: string, fileName: string) => {
 const SESSION_KEY = 'productReviewState';
 
 const ProductReviewView: React.FC<ProductReviewViewProps> = ({ onReEdit, onCreateVideo, currentUser, onUserUpdate, language }) => {
-  const isAdmin = currentUser?.role === 'admin';
-  const sceneImageModelTabs = useMemo(
-    () => (isAdmin ? PRODUCT_REVIEW_SCENE_IMAGE_TABS : PRODUCT_REVIEW_SCENE_IMAGE_TABS.filter(t => t.id !== 'pro')),
-    [isAdmin]
-  );
   const [productImage, setProductImage] = useState<MultimodalContent | null>(null);
   const [faceImage, setFaceImage] = useState<MultimodalContent | null>(null);
   const [productDesc, setProductDesc] = useState('');
@@ -149,9 +144,6 @@ const ProductReviewView: React.FC<ProductReviewViewProps> = ({ onReEdit, onCreat
   const [generatedImages, setGeneratedImages] = useState<(string | null)[]>(Array(4).fill(null));
   const [imageGenerationErrors, setImageGenerationErrors] = useState<(string | null)[]>(Array(4).fill(null));
   const [previewingSceneIndex, setPreviewingSceneIndex] = useState<number | null>(null);
-  const [imageGenerationStartedAt, setImageGenerationStartedAt] = useState<(number | null)[]>(Array(4).fill(null));
-  const [imageGenerationElapsedSec, setImageGenerationElapsedSec] = useState<number[]>(Array(4).fill(0));
-  const [imageGenerationDurationSec, setImageGenerationDurationSec] = useState<(number | null)[]>(Array(4).fill(null));
 
   // New state for inline editing
   const [editingSceneIndex, setEditingSceneIndex] = useState<number | null>(null);
@@ -165,9 +157,6 @@ const ProductReviewView: React.FC<ProductReviewViewProps> = ({ onReEdit, onCreat
   const [videoFilenames, setVideoFilenames] = useState<(string | null)[]>(Array(4).fill(null));
   // FIX: Add missing videoGenerationErrors state to resolve 'Cannot find name' errors.
   const [videoGenerationErrors, setVideoGenerationErrors] = useState<(string | null)[]>(Array(4).fill(null));
-  const [videoGenerationStartedAt, setVideoGenerationStartedAt] = useState<(number | null)[]>(Array(4).fill(null));
-  const [videoGenerationElapsedSec, setVideoGenerationElapsedSec] = useState<number[]>(Array(4).fill(0));
-  const [videoGenerationDurationSec, setVideoGenerationDurationSec] = useState<(number | null)[]>(Array(4).fill(null));
   const [downloadingVideoIndex, setDownloadingVideoIndex] = useState<number | null>(null);
   const isVideoCancelledRef = useRef(false);
   
@@ -190,41 +179,6 @@ const ProductReviewView: React.FC<ProductReviewViewProps> = ({ onReEdit, onCreat
   const [voiceoverMode, setVoiceoverMode] = useState<'speak' | 'sing'>('speak');
   const [voiceoverMood, setVoiceoverMood] = useState('Normal');
   const [musicStyle, setMusicStyle] = useState('Pop');
-
-  const formatDuration = (totalSec: number) => {
-    const s = Math.max(0, Math.floor(totalSec));
-    const m = Math.floor(s / 60);
-    const r = s % 60;
-    return `${m}:${String(r).padStart(2, '0')}`;
-  };
-
-  // Tick elapsed timer while any image is generating.
-  useEffect(() => {
-    if (!imageLoadingStatus.some(Boolean)) return;
-    const id = window.setInterval(() => {
-      setImageGenerationElapsedSec((prev) =>
-        prev.map((_, i) => {
-          const startedAt = imageGenerationStartedAt[i];
-          return startedAt ? Math.max(0, Math.floor((Date.now() - startedAt) / 1000)) : 0;
-        })
-      );
-    }, 1000);
-    return () => window.clearInterval(id);
-  }, [imageLoadingStatus, imageGenerationStartedAt]);
-
-  // Tick elapsed timer while any video is generating.
-  useEffect(() => {
-    if (!videoGenerationStatus.some((s) => s === 'loading')) return;
-    const id = window.setInterval(() => {
-      setVideoGenerationElapsedSec((prev) =>
-        prev.map((_, i) => {
-          const startedAt = videoGenerationStartedAt[i];
-          return startedAt ? Math.max(0, Math.floor((Date.now() - startedAt) / 1000)) : 0;
-        })
-      );
-    }, 1000);
-    return () => window.clearInterval(id);
-  }, [videoGenerationStatus, videoGenerationStartedAt]);
 
   useEffect(() => {
     try {
@@ -254,16 +208,11 @@ const ProductReviewView: React.FC<ProductReviewViewProps> = ({ onReEdit, onCreat
             if (state.voiceoverMood) setVoiceoverMood(state.voiceoverMood);
             if (state.musicStyle) setMusicStyle(state.musicStyle);
             if (state.sceneImageModel === 'standard' || state.sceneImageModel === 'pro') {
-                setSceneImageModel(isAdmin ? state.sceneImageModel : 'standard');
+                setSceneImageModel(state.sceneImageModel);
             }
         }
     } catch (e) { console.error("Failed to load state from session storage", e); }
-  }, [isAdmin]);
-
-  // Non-admin users must not access NanoBanana PRO.
-  useEffect(() => {
-    if (!isAdmin && sceneImageModel === 'pro') setSceneImageModel('standard');
-  }, [isAdmin, sceneImageModel]);
+  }, []);
 
   useEffect(() => {
     try {
@@ -423,23 +372,6 @@ const ProductReviewView: React.FC<ProductReviewViewProps> = ({ onReEdit, onCreat
     ) => {
         if (!productMediaId || !parsedScenes[index]) return;
 
-        const startedAt = Date.now();
-        setImageGenerationStartedAt((prev) => {
-          const next = [...prev];
-          next[index] = startedAt;
-          return next;
-        });
-        setImageGenerationElapsedSec((prev) => {
-          const next = [...prev];
-          next[index] = 0;
-          return next;
-        });
-        setImageGenerationDurationSec((prev) => {
-          const next = [...prev];
-          next[index] = null;
-          return next;
-        });
-
         setImageLoadingStatus(prev => {
             const newStatus = [...prev];
             newStatus[index] = true;
@@ -564,12 +496,6 @@ const ProductReviewView: React.FC<ProductReviewViewProps> = ({ onReEdit, onCreat
                 return newErrors;
             });
         } finally {
-            const end = Date.now();
-            setImageGenerationDurationSec((prev) => {
-              const next = [...prev];
-              next[index] = Math.max(0, Math.floor((end - startedAt) / 1000));
-              return next;
-            });
             setImageLoadingStatus(prev => {
                 const newStatus = [...prev];
                 newStatus[index] = false;
@@ -580,23 +506,6 @@ const ProductReviewView: React.FC<ProductReviewViewProps> = ({ onReEdit, onCreat
 
     const generateSceneImage = async (index: number, serverUrl?: string) => {
         if (!productImage || !parsedScenes[index]) return;
-
-        const startedAt = Date.now();
-        setImageGenerationStartedAt((prev) => {
-          const next = [...prev];
-          next[index] = startedAt;
-          return next;
-        });
-        setImageGenerationElapsedSec((prev) => {
-          const next = [...prev];
-          next[index] = 0;
-          return next;
-        });
-        setImageGenerationDurationSec((prev) => {
-          const next = [...prev];
-          next[index] = null;
-          return next;
-        });
 
         setImageLoadingStatus(prev => {
             const newStatus = [...prev];
@@ -744,12 +653,6 @@ const ProductReviewView: React.FC<ProductReviewViewProps> = ({ onReEdit, onCreat
                 return newErrors;
             });
         } finally {
-            const end = Date.now();
-            setImageGenerationDurationSec((prev) => {
-              const next = [...prev];
-              next[index] = Math.max(0, Math.floor((end - startedAt) / 1000));
-              return next;
-            });
             setImageLoadingStatus(prev => {
                 const newStatus = [...prev];
                 newStatus[index] = false;
@@ -763,23 +666,6 @@ const ProductReviewView: React.FC<ProductReviewViewProps> = ({ onReEdit, onCreat
   const handleEditScene = async (index: number) => {
     const baseImage = generatedImages[index];
     if (!baseImage || typeof baseImage !== 'string' || !editPrompt.trim()) return;
-
-    const startedAt = Date.now();
-    setImageGenerationStartedAt((prev) => {
-      const next = [...prev];
-      next[index] = startedAt;
-      return next;
-    });
-    setImageGenerationElapsedSec((prev) => {
-      const next = [...prev];
-      next[index] = 0;
-      return next;
-    });
-    setImageGenerationDurationSec((prev) => {
-      const next = [...prev];
-      next[index] = null;
-      return next;
-    });
 
     setImageLoadingStatus(prev => {
         const newStatus = [...prev];
@@ -883,12 +769,6 @@ const ProductReviewView: React.FC<ProductReviewViewProps> = ({ onReEdit, onCreat
             return newErrors;
         });
     } finally {
-        const end = Date.now();
-        setImageGenerationDurationSec((prev) => {
-          const next = [...prev];
-          next[index] = Math.max(0, Math.floor((end - startedAt) / 1000));
-          return next;
-        });
         setImageLoadingStatus(prev => {
             const newStatus = [...prev];
             newStatus[index] = false;
@@ -1017,23 +897,6 @@ const ProductReviewView: React.FC<ProductReviewViewProps> = ({ onReEdit, onCreat
   const handleGenerateVideo = async (index: number, suppressAlert = false) => {
     const imageBase64 = generatedImages[index];
     if (!imageBase64 || !parsedScenes[index]) return;
-
-    const startedAt = Date.now();
-    setVideoGenerationStartedAt((prev) => {
-      const next = [...prev];
-      next[index] = startedAt;
-      return next;
-    });
-    setVideoGenerationElapsedSec((prev) => {
-      const next = [...prev];
-      next[index] = 0;
-      return next;
-    });
-    setVideoGenerationDurationSec((prev) => {
-      const next = [...prev];
-      next[index] = null;
-      return next;
-    });
 
     setVideoGenerationStatus(prev => {
         const newStatus = [...prev];
@@ -1211,13 +1074,6 @@ const ProductReviewView: React.FC<ProductReviewViewProps> = ({ onReEdit, onCreat
             const newStatus = [...prev];
             newStatus[index] = 'error';
             return newStatus;
-        });
-    } finally {
-        const end = Date.now();
-        setVideoGenerationDurationSec((prev) => {
-          const next = [...prev];
-          next[index] = Math.max(0, Math.floor((end - startedAt) / 1000));
-          return next;
         });
     }
   };
@@ -1488,7 +1344,7 @@ const ProductReviewView: React.FC<ProductReviewViewProps> = ({ onReEdit, onCreat
               className={`flex justify-center sm:justify-end ${isGeneratingImages ? 'pointer-events-none opacity-50' : ''}`}
             >
               <Tabs
-                tabs={sceneImageModelTabs}
+                tabs={PRODUCT_REVIEW_SCENE_IMAGE_TABS}
                 activeTab={sceneImageModel}
                 setActiveTab={setSceneImageModel}
               />
@@ -1516,24 +1372,12 @@ const ProductReviewView: React.FC<ProductReviewViewProps> = ({ onReEdit, onCreat
                                 setPreviewingSceneIndex(i);
                             }
                         }}
-                        className={`overflow-hidden bg-neutral-200 dark:bg-neutral-700/50 rounded-md flex items-center justify-center relative group w-full p-0 border-0 ${generatedImages[i] && typeof generatedImages[i] === 'string' ? 'cursor-pointer' : ''}`}
+                        className={`bg-neutral-200 dark:bg-neutral-700/50 rounded-md flex items-center justify-center relative group w-full p-0 border-0 ${generatedImages[i] && typeof generatedImages[i] === 'string' ? 'cursor-pointer' : ''}`}
                         style={{ aspectRatio: videoAspectRatio.replace(':', ' / ') }}
                         role="button"
                         tabIndex={generatedImages[i] && typeof generatedImages[i] === 'string' ? 0 : -1}
                         aria-label={`Preview scene ${i + 1}`}
                     >
-                        {/* background layer (video-like) */}
-                        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_25%_20%,rgba(74,108,247,0.28),transparent_60%),radial-gradient(circle_at_80%_30%,rgba(160,91,255,0.22),transparent_55%),linear-gradient(135deg,rgba(255,255,255,0.18),rgba(255,255,255,0.0))] dark:bg-[radial-gradient(circle_at_25%_20%,rgba(74,108,247,0.18),transparent_60%),radial-gradient(circle_at_80%_30%,rgba(160,91,255,0.16),transparent_55%),linear-gradient(135deg,rgba(255,255,255,0.04),rgba(255,255,255,0.0))]" />
-                        {/* timer badge */}
-                        {imageLoadingStatus[i] ? (
-                          <div className="absolute bottom-2 right-2 z-10 rounded-lg bg-red-600/80 px-2.5 py-1 text-[11px] font-bold text-white backdrop-blur">
-                            Time: <span className="font-mono">{formatDuration(imageGenerationElapsedSec[i] || 0)}</span>
-                          </div>
-                        ) : imageGenerationDurationSec[i] !== null ? (
-                          <div className="absolute bottom-2 right-2 z-10 rounded-lg bg-red-600/70 px-2.5 py-1 text-[11px] font-bold text-white/95 backdrop-blur">
-                            Time: <span className="font-mono">{formatDuration(imageGenerationDurationSec[i] || 0)}</span>
-                          </div>
-                        ) : null}
                         {step2Disabled ? (
                             <div className="flex flex-col items-center justify-center text-center text-xs text-neutral-500 p-2">
                                 <ImageIcon className="w-8 h-8 mb-2"/>
@@ -1549,7 +1393,7 @@ const ProductReviewView: React.FC<ProductReviewViewProps> = ({ onReEdit, onCreat
                                 <img src={`data:image/png;base64,${generatedImages[i]}`} alt={`Scene ${i+1}`} className="w-full h-full object-cover rounded-md"/>
                                 <div className="absolute top-2 right-2 flex flex-col gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                                     <button onClick={(e) => {e.stopPropagation(); onReEdit({ base64: generatedImages[i]!, mimeType: 'image/png' })}} title="Re-edit" className="p-1.5 bg-black/60 text-white rounded-full"><WandIcon className="w-4 h-4"/></button>
-                                    <button onClick={(e) => {e.stopPropagation(); onCreateVideo({ prompt: parsedScenes[i], image: { base64: generatedImages[i]!, mimeType: 'image/png' } })}} title="Recreate Video" className="p-1.5 bg-black/60 text-white rounded-full"><VideoIcon className="w-4 h-4"/></button>
+                                    <button onClick={(e) => {e.stopPropagation(); onCreateVideo({ prompt: parsedScenes[i], image: { base64: generatedImages[i]!, mimeType: 'image/png' } })}} title="Create Video" className="p-1.5 bg-black/60 text-white rounded-full"><VideoIcon className="w-4 h-4"/></button>
                                 </div>
                             </>
                         ) : null}
@@ -1587,7 +1431,7 @@ const ProductReviewView: React.FC<ProductReviewViewProps> = ({ onReEdit, onCreat
                                 disabled={imageLoadingStatus[i] || !parsedScenes[i]} 
                                 className="w-full text-sm bg-white dark:bg-neutral-700 font-semibold py-2 px-3 rounded-md hover:bg-neutral-200 dark:hover:bg-neutral-600 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
                             >
-                                {imageLoadingStatus[i] ? <Spinner/> : <><ImageIcon className="w-4 h-4"/> Recreate Image</>}
+                                {imageLoadingStatus[i] ? <Spinner/> : <><ImageIcon className="w-4 h-4"/> Create New Image</>}
                             </button>
                             <button 
                                 onClick={() => { setEditingSceneIndex(i); setEditPrompt(''); }} 
@@ -1692,7 +1536,7 @@ const ProductReviewView: React.FC<ProductReviewViewProps> = ({ onReEdit, onCreat
 
         <div className="flex gap-4 mb-4">
             <button onClick={handleGenerateAllVideos} disabled={isGeneratingVideos || step3Disabled} className="w-full bg-primary-600 text-white font-semibold py-3 px-4 rounded-lg hover:bg-primary-700 transition-colors disabled:opacity-50">
-                {isGeneratingVideos ? <Spinner variant="success" /> : 'Create All 4 Videos'}
+                {isGeneratingVideos ? <Spinner/> : 'Create All 4 Videos'}
             </button>
             {isGeneratingVideos && (
                 <button onClick={handleCancelVideos} className="bg-red-600 text-white font-semibold py-3 px-4 rounded-lg hover:bg-red-700 transition-colors">
@@ -1707,7 +1551,7 @@ const ProductReviewView: React.FC<ProductReviewViewProps> = ({ onReEdit, onCreat
                 </div>
                 <div className="space-y-1">
                     <p>This process can take several minutes.</p>
-                    <p><strong>Note:</strong> Voiceover language may be inconsistent. If you are not satisfied, you can regenerate the video individually using the 'Recreate Video' button on each scene.</p>
+                    <p><strong>Note:</strong> Voiceover language may be inconsistent. If you are not satisfied, you can regenerate the video individually using the 'Create Video' button on each scene.</p>
                 </div>
             </div>
          </div>
@@ -1716,25 +1560,13 @@ const ProductReviewView: React.FC<ProductReviewViewProps> = ({ onReEdit, onCreat
             {Array.from({ length: 4 }).map((_, i) => (
                  <div key={`video-scene-${i}`} className="bg-neutral-100 dark:bg-neutral-800/50 p-3 rounded-lg flex flex-col gap-3">
                     <p className="font-bold text-sm">Scene {i+1}</p>
-                    <div className="bg-neutral-200 dark:bg-neutral-700/50 rounded-md flex items-center justify-center relative group overflow-hidden" style={{ aspectRatio: videoAspectRatio.replace(':', ' / ') }}>
-                        {/* background layer (video-like) */}
-                        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_25%_20%,rgba(74,108,247,0.28),transparent_60%),radial-gradient(circle_at_80%_30%,rgba(160,91,255,0.22),transparent_55%),linear-gradient(135deg,rgba(255,255,255,0.18),rgba(255,255,255,0.0))] dark:bg-[radial-gradient(circle_at_25%_20%,rgba(74,108,247,0.18),transparent_60%),radial-gradient(circle_at_80%_30%,rgba(160,91,255,0.16),transparent_55%),linear-gradient(135deg,rgba(255,255,255,0.04),rgba(255,255,255,0.0))]" />
-                        {/* timer badge */}
-                        {videoGenerationStatus[i] === 'loading' ? (
-                          <div className="absolute bottom-2 right-2 z-10 rounded-lg bg-red-600/80 px-2.5 py-1 text-[11px] font-bold text-white backdrop-blur">
-                            Time: <span className="font-mono">{formatDuration(videoGenerationElapsedSec[i] || 0)}</span>
-                          </div>
-                        ) : videoGenerationStatus[i] === 'success' && videoGenerationDurationSec[i] !== null ? (
-                          <div className="absolute bottom-2 right-2 z-10 rounded-lg bg-red-600/70 px-2.5 py-1 text-[11px] font-bold text-white/95 backdrop-blur">
-                            Time: <span className="font-mono">{formatDuration(videoGenerationDurationSec[i] || 0)}</span>
-                          </div>
-                        ) : null}
+                    <div className="bg-neutral-200 dark:bg-neutral-700/50 rounded-md flex items-center justify-center relative group" style={{ aspectRatio: videoAspectRatio.replace(':', ' / ') }}>
                         {step3Disabled || !generatedImages[i] ? (
                             <div className="flex flex-col items-center justify-center text-center text-xs text-neutral-500 p-2">
                                 <VideoIcon className="w-8 h-8 mb-2"/>
                                 <p>Waiting for image</p>
                             </div>
-                        ) : videoGenerationStatus[i] === 'loading' ? <Spinner variant="success" /> : videoGenerationStatus[i] === 'error' ? (
+                        ) : videoGenerationStatus[i] === 'loading' ? <Spinner/> : videoGenerationStatus[i] === 'error' ? (
                             <div className="text-center text-red-500 p-2"><AlertTriangleIcon className="w-8 h-8 mx-auto mb-2"/><p className="text-xs">{videoGenerationErrors[i]}</p></div>
                         ) : videoGenerationStatus[i] === 'success' && generatedVideos[i] ? (
                             <video
@@ -1752,14 +1584,14 @@ const ProductReviewView: React.FC<ProductReviewViewProps> = ({ onReEdit, onCreat
                         )}
                     </div>
                     <button onClick={() => handleGenerateVideo(i)} disabled={!generatedImages[i] || videoGenerationStatus[i] === 'loading' || isGeneratingVideos} className="w-full text-sm bg-white dark:bg-neutral-700 font-semibold py-2 px-3 rounded-md hover:bg-neutral-200 dark:hover:bg-neutral-600 transition-colors disabled:opacity-50 flex items-center justify-center gap-2">
-                       {videoGenerationStatus[i] === 'loading' ? <Spinner variant="success" /> : <><VideoIcon className="w-4 h-4"/> Recreate Video</>}
+                       {videoGenerationStatus[i] === 'loading' ? <Spinner/> : <><VideoIcon className="w-4 h-4"/> Create Video</>}
                     </button>
                     <button
                         onClick={() => handleDownloadVideo(generatedVideos[i], videoFilenames[i] || `veoly-scene-${i+1}.mp4`, i)}
                         disabled={!generatedVideos[i] || downloadingVideoIndex !== null}
                         className="w-full text-sm bg-green-600 text-white font-semibold py-2 px-3 rounded-md hover:bg-green-700 transition-colors flex items-center justify-center gap-2 text-center disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                        {downloadingVideoIndex === i ? <Spinner variant="success" /> : <DownloadIcon className="w-4 h-4"/>}
+                        {downloadingVideoIndex === i ? <Spinner /> : <DownloadIcon className="w-4 h-4"/>}
                         {downloadingVideoIndex === i ? 'Downloading...' : 'Download'}
                     </button>
                 </div>
