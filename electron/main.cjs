@@ -4,7 +4,7 @@
  *
  * Window opens IMMEDIATELY with a splash screen so the .exe never looks "dead" while services start.
  */
-const { app, BrowserWindow, dialog, shell } = require('electron');
+const { app, BrowserWindow, dialog, shell, ipcMain } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const { spawn } = require('child_process');
@@ -31,6 +31,9 @@ let mainWindow = null;
 
 /** True after local stack has started successfully (macOS: avoid duplicate spawns on reopen). */
 let stackReady = false;
+
+/** @type {import('child_process').ChildProcess | null} */
+let bridgeProcess = null;
 
 process.on('uncaughtException', (err) => {
   console.error('[Electron main] uncaughtException:', err);
@@ -251,6 +254,7 @@ function startBridge() {
   });
   child.on('error', (err) => console.error('[Electron main] Bridge spawn error:', err.message));
   childProcesses.push(child);
+  bridgeProcess = child;
   return child;
 }
 
@@ -498,6 +502,32 @@ async function bootstrap() {
   });
 
   await app.whenReady();
+
+  ipcMain.handle('veoly:restart-bridge', async (_evt, payload) => {
+    const port = payload && Number(payload.port);
+    if (port !== BRIDGE_PORT) {
+      return { ok: false, error: `Unsupported port: ${payload?.port}` };
+    }
+    if (SKIP_LOCAL_STACK) {
+      return { ok: false, error: 'Local stack is disabled (ELECTRON_SKIP_LOCAL_STACK=1).' };
+    }
+
+    try {
+      if (bridgeProcess) {
+        killProcessTree(bridgeProcess);
+        bridgeProcess = null;
+      }
+      const br = startBridge();
+      await assertChildSpawned(br, 'Bridge');
+      await waitForHttp(`http://127.0.0.1:${BRIDGE_PORT}/status`, 'Bridge server', 30000);
+      return { ok: true };
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      console.error('[Electron main] Restart bridge failed:', msg);
+      return { ok: false, error: msg };
+    }
+  });
+
   await openApp();
 
   app.on('activate', () => {

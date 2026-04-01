@@ -154,8 +154,9 @@ const Nanobanana2GenerationView: React.FC<Nanobanana2GenerationViewProps> = ({
   const [progress, setProgress] = useState(0);
   const [aspectRatio, setAspectRatio] = useState<'1:1' | '9:16' | '16:9'>('9:16');
   const [creativeState, setCreativeState] = useState<CreativeDirectionState>(getInitialCreativeDirectionState());
-  const [showSizeModal, setShowSizeModal] = useState(false);
-  const [selectedImageForDownload, setSelectedImageForDownload] = useState<{ url: string; base64: string; mediaGenerationId?: string } | null>(null);
+  const [imageGenerationStartedAt, setImageGenerationStartedAt] = useState<(number | null)[]>([]);
+  const [imageGenerationElapsedSec, setImageGenerationElapsedSec] = useState<number[]>([]);
+  const [imageGenerationDurationSec, setImageGenerationDurationSec] = useState<(number | null)[]>([]);
   // Store original generation parameters for regeneration with different sizes
   const [lastGenerationParams, setLastGenerationParams] = useState<{
     prompt: string;
@@ -169,6 +170,58 @@ const Nanobanana2GenerationView: React.FC<Nanobanana2GenerationViewProps> = ({
   const [isBlocked, setIsBlocked] = useState(false);
 
   const isEditing = referenceImages.length > 0;
+
+  const formatDuration = (totalSec: number) => {
+    const s = Math.max(0, Math.floor(totalSec));
+    const m = Math.floor(s / 60);
+    const r = s % 60;
+    return `${m}:${String(r).padStart(2, '0')}`;
+  };
+
+  // Tick elapsed timer while generating any slot.
+  useEffect(() => {
+    if (!isLoading) return;
+    if (!imageGenerationStartedAt.some(Boolean)) return;
+    const id = window.setInterval(() => {
+      setImageGenerationElapsedSec((prev) => {
+        const now = Date.now();
+        return prev.map((_, i) => {
+          const startedAt = imageGenerationStartedAt[i];
+          return startedAt ? Math.max(0, Math.floor((now - startedAt) / 1000)) : 0;
+        });
+      });
+    }, 1000);
+    return () => window.clearInterval(id);
+  }, [isLoading, imageGenerationStartedAt]);
+
+  const markSlotStart = useCallback((index: number) => {
+    const startedAt = Date.now();
+    setImageGenerationStartedAt((prev) => {
+      const next = prev.length ? [...prev] : Array(Math.max(numberOfImages, index + 1)).fill(null);
+      next[index] = startedAt;
+      return next;
+    });
+    setImageGenerationElapsedSec((prev) => {
+      const next = prev.length ? [...prev] : Array(Math.max(numberOfImages, index + 1)).fill(0);
+      next[index] = 0;
+      return next;
+    });
+    setImageGenerationDurationSec((prev) => {
+      const next = prev.length ? [...prev] : Array(Math.max(numberOfImages, index + 1)).fill(null);
+      next[index] = null;
+      return next;
+    });
+    return startedAt;
+  }, [numberOfImages]);
+
+  const markSlotEnd = useCallback((index: number, startedAt: number) => {
+    const end = Date.now();
+    setImageGenerationDurationSec((prev) => {
+      const next = prev.length ? [...prev] : Array(Math.max(numberOfImages, index + 1)).fill(null);
+      next[index] = Math.max(0, Math.floor((end - startedAt) / 1000));
+      return next;
+    });
+  }, [numberOfImages]);
 
   useEffect(() => {
     try {
@@ -295,6 +348,7 @@ const Nanobanana2GenerationView: React.FC<Nanobanana2GenerationViewProps> = ({
   };
 
   const generateOneImage = useCallback(async (index: number, serverUrl?: string) => {
+    const startedAt = markSlotStart(index);
     try {
       const creativeDetails = Object.entries(creativeState)
         .filter(([key, value]) => key !== 'creativityLevel' && value !== 'Random' && value !== 'None')
@@ -432,7 +486,10 @@ const Nanobanana2GenerationView: React.FC<Nanobanana2GenerationViewProps> = ({
       });
       setProgress(prev => prev + 1);
     }
-  }, [prompt, aspectRatio, creativeState, currentUser, onUserUpdate, referenceImages, isEditing]);
+    finally {
+      markSlotEnd(index, startedAt);
+    }
+  }, [prompt, aspectRatio, creativeState, currentUser, onUserUpdate, referenceImages, isEditing, markSlotStart, markSlotEnd]);
 
   const handleGenerate = useCallback(async () => {
     // reCAPTCHA: same resolution as video — configure in Settings / header (ApiKeyStatus), not inline here.
@@ -445,6 +502,9 @@ const Nanobanana2GenerationView: React.FC<Nanobanana2GenerationViewProps> = ({
     setError(null);
     setStatusMessage(numberOfImages > 1 ? 'Initializing parallel generation...' : 'Preparing request...');
     setImages(Array(numberOfImages).fill(null));
+    setImageGenerationStartedAt(Array(numberOfImages).fill(null));
+    setImageGenerationElapsedSec(Array(numberOfImages).fill(0));
+    setImageGenerationDurationSec(Array(numberOfImages).fill(null));
     setSelectedImageIndex(0);
     setProgress(0);
 
@@ -630,7 +690,6 @@ const Nanobanana2GenerationView: React.FC<Nanobanana2GenerationViewProps> = ({
 
       try {
         setStatusMessage(`Regenerating image at ${size} resolution from server...`);
-        setShowSizeModal(false);
         
         // Get current user token and server
         const sharedToken = currentUser.personalAuthToken || undefined;
@@ -719,8 +778,7 @@ const Nanobanana2GenerationView: React.FC<Nanobanana2GenerationViewProps> = ({
       alert('Image not ready for download. Please wait for conversion to complete.');
       return;
     }
-    setSelectedImageForDownload({ url: imageUrl, base64: imageBase64, mediaGenerationId });
-    setShowSizeModal(true);
+    void downloadImageWithSize(imageUrl, imageBase64, '1K');
   };
 
   const ActionButtons: React.FC<{ imageUrl: string; imageBase64: string; mediaGenerationId?: string }> = ({ imageUrl, imageBase64, mediaGenerationId }) => {
@@ -754,7 +812,28 @@ const Nanobanana2GenerationView: React.FC<Nanobanana2GenerationViewProps> = ({
     <>
       {images.length > 0 ? (
         <div className="w-full h-full flex flex-col items-center justify-center gap-2 p-2">
-            <div className="flex-1 flex items-center justify-center min-h-0 w-full relative group">
+            <div className="flex-1 flex items-center justify-center min-h-0 w-full relative group overflow-hidden rounded-xl bg-neutral-200/60 dark:bg-neutral-800/40">
+                <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_22%_18%,rgba(74,108,247,0.22),transparent_60%),radial-gradient(circle_at_82%_26%,rgba(160,91,255,0.18),transparent_55%),linear-gradient(135deg,rgba(255,255,255,0.14),rgba(255,255,255,0.0))] dark:bg-[radial-gradient(circle_at_22%_18%,rgba(74,108,247,0.14),transparent_60%),radial-gradient(circle_at_82%_26%,rgba(160,91,255,0.12),transparent_55%),linear-gradient(135deg,rgba(255,255,255,0.04),rgba(255,255,255,0.0))]" />
+                {(() => {
+                    const elapsed = imageGenerationElapsedSec[selectedImageIndex] ?? 0;
+                    const dur = imageGenerationDurationSec[selectedImageIndex];
+                    const isSlotLoading = images[selectedImageIndex] == null && isLoading;
+                    if (isSlotLoading) {
+                        return (
+                            <div className="absolute bottom-2 right-2 z-10 rounded-lg bg-red-600/80 px-2.5 py-1 text-[11px] font-bold text-white backdrop-blur">
+                                Time: <span className="font-mono">{formatDuration(elapsed)}</span>
+                            </div>
+                        );
+                    }
+                    if (dur != null) {
+                        return (
+                            <div className="absolute bottom-2 right-2 z-10 rounded-lg bg-red-600/70 px-2.5 py-1 text-[11px] font-bold text-white/95 backdrop-blur">
+                                Time: <span className="font-mono">{formatDuration(dur)}</span>
+                            </div>
+                        );
+                    }
+                    return null;
+                })()}
                 {(() => {
                     const selectedImage = images[selectedImageIndex];
                     if (selectedImage && typeof selectedImage === 'object' && 'url' in selectedImage && 'base64' in selectedImage) {
@@ -932,56 +1011,6 @@ const Nanobanana2GenerationView: React.FC<Nanobanana2GenerationViewProps> = ({
       )}
 
       <TwoColumnLayout leftPanel={leftPanel} rightPanel={rightPanel} language={language} />
-      
-      {/* Size Selection Modal */}
-      {showSizeModal && selectedImageForDownload && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => { setShowSizeModal(false); setSelectedImageForDownload(null); }}>
-          <div className="bg-white dark:bg-neutral-800 rounded-lg p-6 max-w-sm w-full mx-4 shadow-xl" onClick={(e) => e.stopPropagation()}>
-            <h3 className="text-lg font-semibold mb-4 text-neutral-900 dark:text-neutral-100">Select Download Size</h3>
-            <div className="space-y-2">
-              <button 
-                onClick={async () => { 
-                  await downloadImageWithSize(selectedImageForDownload.url, selectedImageForDownload.base64, '1K'); 
-                  setShowSizeModal(false); 
-                  setSelectedImageForDownload(null);
-                }}
-                className="w-full flex items-center gap-3 p-3 bg-neutral-100 dark:bg-neutral-700 rounded-lg hover:bg-neutral-200 dark:hover:bg-neutral-600 transition-colors text-left"
-              >
-                <DownloadIcon className="w-5 h-5 text-neutral-600 dark:text-neutral-300" />
-                <span className="text-neutral-900 dark:text-neutral-100">Download 1K (Original)</span>
-              </button>
-              <button 
-                onClick={async () => { 
-                  await downloadImageWithSize(selectedImageForDownload.url, selectedImageForDownload.base64, '2K'); 
-                  setShowSizeModal(false); 
-                  setSelectedImageForDownload(null);
-                }}
-                className="w-full flex items-center gap-3 p-3 bg-neutral-100 dark:bg-neutral-700 rounded-lg hover:bg-neutral-200 dark:hover:bg-neutral-600 transition-colors text-left"
-              >
-                <span className="w-5 h-5 flex items-center justify-center font-bold text-xs text-neutral-600 dark:text-neutral-300">2K</span>
-                <span className="text-neutral-900 dark:text-neutral-100">Download 2K (From Server)</span>
-              </button>
-              <button 
-                onClick={async () => { 
-                  await downloadImageWithSize(selectedImageForDownload.url, selectedImageForDownload.base64, '4K'); 
-                  setShowSizeModal(false); 
-                  setSelectedImageForDownload(null);
-                }}
-                className="w-full flex items-center gap-3 p-3 bg-neutral-100 dark:bg-neutral-700 rounded-lg hover:bg-neutral-200 dark:hover:bg-neutral-600 transition-colors text-left"
-              >
-                <span className="w-5 h-5 flex items-center justify-center font-bold text-xs text-neutral-600 dark:text-neutral-300">4K</span>
-                <span className="text-neutral-900 dark:text-neutral-100">Download 4K (From Server)</span>
-              </button>
-            </div>
-            <button 
-              onClick={() => { setShowSizeModal(false); setSelectedImageForDownload(null); }}
-              className="mt-4 w-full p-2 bg-neutral-200 dark:bg-neutral-700 rounded-lg hover:bg-neutral-300 dark:hover:bg-neutral-600 transition-colors text-neutral-900 dark:text-neutral-100"
-            >
-              Cancel
-            </button>
-          </div>
-        </div>
-      )}
     </>
   );
 };

@@ -17,7 +17,12 @@ interface RegisterTokenUltraProps {
   onUserUpdate?: (user: User) => void;
 }
 
+const BTN_BASE =
+  'inline-flex items-center justify-center gap-1 px-3 py-2 rounded-xl text-xs font-semibold border transition-colors disabled:opacity-50 disabled:cursor-not-allowed';
+const BTN_PRIMARY = `${BTN_BASE} bg-gradient-to-r from-brand-start to-brand-end text-white border border-white/15 shadow-[0_8px_24px_rgba(74,108,247,0.25)] hover:opacity-95 active:scale-[0.99] dark:shadow-[0_8px_28px_rgba(74,108,247,0.35)]`;
+
 const RegisterTokenUltra: React.FC<RegisterTokenUltraProps> = ({ currentUser, onUserUpdate }) => {
+  const isAdminUser = currentUser.role === 'admin';
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitStatus, setSubmitStatus] = useState<'idle' | 'success' | 'error'>('idle');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -173,29 +178,30 @@ const RegisterTokenUltra: React.FC<RegisterTokenUltraProps> = ({ currentUser, on
             </div>
           </div>
 
-          {/* Notice: FLOW accounts (limited availability) — inside card, above package selection */}
-          <div
-            role="alert"
-            className="mb-6 flex gap-3 sm:gap-4 rounded-xl border border-amber-300/90 dark:border-amber-600/50 bg-gradient-to-r from-amber-50 to-amber-100/80 dark:from-amber-950/50 dark:to-amber-900/30 px-4 py-3.5 sm:px-5 sm:py-4 shadow-sm"
-          >
-            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-amber-200/80 dark:bg-amber-900/60 text-amber-900 dark:text-amber-200">
-              <AlertTriangleIcon className="h-5 w-5" aria-hidden />
+          {isAdminUser && (
+            <div
+              role="alert"
+              className="mb-6 flex gap-3 sm:gap-4 rounded-xl border border-amber-300/90 dark:border-amber-600/50 bg-gradient-to-r from-amber-50 to-amber-100/80 dark:from-amber-950/50 dark:to-amber-900/30 px-4 py-3.5 sm:px-5 sm:py-4 shadow-sm"
+            >
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-amber-200/80 dark:bg-amber-900/60 text-amber-900 dark:text-amber-200">
+                <AlertTriangleIcon className="h-5 w-5" aria-hidden />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-bold text-amber-950 dark:text-amber-100">
+                  NOTICE — TOKEN ULTRA CREDIT
+                </p>
+                <ul className="mt-2 list-disc space-y-1.5 pl-4 sm:pl-5 text-[11px] sm:text-xs leading-relaxed text-amber-950/90 dark:text-amber-100/90 marker:text-amber-700 dark:marker:text-amber-300">
+                  <li>Due to high demand, we provide FLOW accounts to make access easier for you.</li>
+                  <li>
+                    FLOW accounts are <span className="font-semibold">limited in availability</span>.
+                  </li>
+                  <li>
+                    <span className="font-semibold">ZERO PROFIT</span> — offered only to help users who need access.
+                  </li>
+                </ul>
+              </div>
             </div>
-            <div className="min-w-0 flex-1">
-              <p className="text-sm font-bold text-amber-950 dark:text-amber-100">
-                NOTICE — TOKEN ULTRA CREDIT
-              </p>
-              <ul className="mt-2 list-disc space-y-1.5 pl-4 sm:pl-5 text-[11px] sm:text-xs leading-relaxed text-amber-950/90 dark:text-amber-100/90 marker:text-amber-700 dark:marker:text-amber-300">
-                <li>Due to high demand, we provide FLOW accounts to make access easier for you.</li>
-                <li>
-                  FLOW accounts are <span className="font-semibold">limited in availability</span>.
-                </li>
-                <li>
-                  <span className="font-semibold">ZERO PROFIT</span> — offered only to help users who need access.
-                </li>
-              </ul>
-            </div>
-          </div>
+          )}
 
           <div className="mb-6 rounded-lg border border-dashed border-neutral-300 bg-neutral-50 p-4 dark:border-neutral-700 dark:bg-neutral-900/40">
             <h3 className="mb-2 text-sm font-semibold text-neutral-800 dark:text-neutral-200">
@@ -267,7 +273,7 @@ const RegisterTokenUltra: React.FC<RegisterTokenUltraProps> = ({ currentUser, on
                 setOrderError(null);
                 setShowPaymentModal(true);
               }}
-              className="mt-4 flex w-full items-center justify-center gap-2 rounded-lg bg-purple-600 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-purple-700 dark:bg-purple-700 dark:hover:bg-purple-600"
+              className={`${BTN_PRIMARY} mt-4 w-full`}
             >
               Proceed to Payment
             </button>
@@ -366,7 +372,7 @@ const RegisterTokenUltra: React.FC<RegisterTokenUltraProps> = ({ currentUser, on
                 <button
                   type="submit"
                   disabled={isCreatingOrder}
-                  className="w-full flex items-center justify-center gap-2 bg-purple-600 dark:bg-purple-700 text-white text-sm font-semibold py-2.5 px-4 rounded-lg hover:bg-purple-700 dark:hover:bg-purple-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  className={`${BTN_PRIMARY} w-full`}
                 >
                   {isCreatingOrder ? (
                     <>

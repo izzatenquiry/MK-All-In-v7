@@ -283,7 +283,7 @@ const PreLoginLanding: React.FC<PreLoginLandingProps> = ({ onOpenLogin, onOpenRe
           <div className="relative w-full overflow-hidden rounded-xl border border-neutral-200/90 dark:border-white/10 bg-black aspect-video">
             <iframe
               className="absolute inset-0 w-full h-full"
-              src="https://www.youtube.com/embed/z2aKxUV915M?rel=0"
+              src="https://www.youtube.com/embed/BGuxsk79sYY?rel=0"
               title="VEOLY-AI tutorial video"
               loading="lazy"
               allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"

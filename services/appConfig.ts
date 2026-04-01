@@ -9,7 +9,7 @@ export const APP_VERSION = isElectron()
   ? BRAND_CONFIG.appVersion.electron
   : BRAND_CONFIG.appVersion.web;
 
-const PROD_API = 'https://api.monoklix.com';
+const PROD_API = `https://api.${BRAND_CONFIG.domain}`;
 
 /** Optional override — `.env`: `VITE_BOT_ADMIN_API_URL` (same-origin proxy, etc.) */
 const envBotAdminBase = (import.meta.env?.VITE_BOT_ADMIN_API_URL as string | undefined)?.trim().replace(/\/$/, '') || '';

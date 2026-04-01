@@ -4,7 +4,7 @@ import localforage from 'localforage';
 // 📦 VIDEO CACHE CONFIGURATION
 // ===============================
 
-const VIDEO_CACHE_KEY = 'monoklix_video_cache';
+const VIDEO_CACHE_KEY = 'veoly_ai_video_cache';
 // Note: This limit is no longer enforced for persistent storage.
 const MAX_CACHE_SIZE_MB = 500;
 const MAX_VIDEOS = 50;
@@ -30,7 +30,7 @@ interface CacheStats {
 
 // Configure localforage for video storage
 const videoStorage = localforage.createInstance({
-  name: 'monoklix',
+  name: 'veoly_ai',
   storeName: 'videos',
   description: 'Persistent video cache'
 });

@@ -250,7 +250,7 @@ export const getAllUsers = async (): Promise<User[] | null> => {
         return null;
     }
 
-    // Both ESAIE and MONOKLIX now use users table only (token_ultra_registrations migrated to users)
+    // Both ESAIE and VEOLY-AI now use users table only (token_ultra_registrations migrated to users)
     return (data as UserProfileData[]).map(profile => {
         const user = mapProfileToUser(profile);
         // email_code is already in users table for both brands
@@ -891,7 +891,7 @@ export const saveUserPersonalAuthToken = async (
   lastCookiesFile?: string | null
 ): Promise<{ success: true; user: User } | { success: false; message: string }> => {
     // FIX: Use the correct table name 'users'.
-    // Supabase client already configured for correct brand project (ESAIE or MONOKLIX)
+    // Supabase client already configured for correct brand project (ESAIE or VEOLY-AI)
     // Update both personal_auth_token and personal_auth_token_updated_at for all brands
     const now = new Date().toISOString();
     const updateData: any = { 

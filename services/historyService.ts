@@ -3,7 +3,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { type HistoryItem } from '../types';
 import { cacheVideo, getCachedVideo, deleteCachedVideo } from './videoCacheService';
 
-const HISTORY_KEY = 'monoklix_history';
+const HISTORY_KEY = 'veoly_ai_history';
 const MAX_HISTORY_ITEMS = 100;
 
 // ===============================

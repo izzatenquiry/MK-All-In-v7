@@ -234,7 +234,7 @@ const VideoCombinerView: React.FC<{ language: Language }> = ({ language }) => {
             ) : outputUrl ? (
                 <div className="w-full h-full flex flex-col items-center justify-center gap-4">
                     <video src={outputUrl} controls autoPlay className="max-w-full max-h-[80%] rounded-md"/>
-                    <a href={outputUrl} download={`monoklix-combined-${Date.now()}.mp4`} className="flex items-center gap-2 bg-green-600 text-white font-semibold py-2 px-6 rounded-lg hover:bg-green-700 transition-colors">
+                    <a href={outputUrl} download={`veoly-ai-combined-${Date.now()}.mp4`} className="flex items-center gap-2 bg-green-600 text-white font-semibold py-2 px-6 rounded-lg hover:bg-green-700 transition-colors">
                         <DownloadIcon className="w-4 h-4"/> Download Combined Video
                     </a>
                 </div>

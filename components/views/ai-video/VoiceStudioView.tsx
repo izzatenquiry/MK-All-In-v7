@@ -247,7 +247,7 @@ const VoiceStudioView: React.FC<VoiceStudioViewProps> = ({ language }) => {
             {audioUrl && audioBlob && (
                 <div className="flex flex-col items-center justify-center h-full gap-6">
                     <audio controls src={audioUrl} className="w-full max-w-sm">Your browser does not support the audio element.</audio>
-                    <a href={audioUrl} download={`monoklix-voiceover-${Date.now()}.wav`} className="flex items-center gap-2 bg-green-600 text-white font-semibold py-2 px-6 rounded-lg hover:bg-green-700 transition-colors">
+                    <a href={audioUrl} download={`veoly-ai-voiceover-${Date.now()}.wav`} className="flex items-center gap-2 bg-green-600 text-white font-semibold py-2 px-6 rounded-lg hover:bg-green-700 transition-colors">
                         <DownloadIcon className="w-4 h-4"/> Download Audio
                     </a>
                 </div>

@@ -18,6 +18,11 @@ interface FlowLoginProps {
     pairWithTokenUltraPanel?: boolean;
 }
 
+const BTN_BASE =
+    'w-full inline-flex items-center justify-center gap-1 px-3 py-2 rounded-xl text-xs font-semibold border transition-colors disabled:opacity-50 disabled:cursor-not-allowed';
+const BTN_PRIMARY = `${BTN_BASE} bg-gradient-to-r from-brand-start to-brand-end text-white border border-white/15 shadow-[0_8px_24px_rgba(74,108,247,0.25)] hover:opacity-95 active:scale-[0.99] dark:shadow-[0_8px_28px_rgba(74,108,247,0.35)]`;
+const BTN_DANGER_OUTLINE = `${BTN_BASE} bg-red-50 dark:bg-red-600/20 hover:bg-red-100 dark:hover:bg-red-600/30 text-red-600 dark:text-red-300 border-red-200 dark:border-red-600/30`;
+
 const FlowLogin: React.FC<FlowLoginProps> = ({
     currentUser,
     onUserUpdate,
@@ -87,6 +92,10 @@ const FlowLogin: React.FC<FlowLoginProps> = ({
     const [generatedTokenSaved, setGeneratedTokenSaved] = useState(false);
     const [countdown, setCountdown] = useState<number | null>(null);
     const countdownIntervalRef = useRef<number | null>(null);
+    const lastAutoCookieGenAtRef = useRef<number>(0);
+    const autoCookieGenInFlightRef = useRef(false);
+    const [isAutoGeneratingCookies, setIsAutoGeneratingCookies] = useState(false);
+    const [autoGeneratingCookieFolder, setAutoGeneratingCookieFolder] = useState<string | null>(null);
 
     useEffect(() => {
         setActiveApiKey(sessionStorage.getItem(BRAND_CONFIG.sessionKey));
@@ -367,7 +376,7 @@ const FlowLogin: React.FC<FlowLoginProps> = ({
                 }
                 
                 // Auto-fill the flow token field and save immediately (no delay for both brands)
-                // Follow same flow as MONOKLIX - save using currentUser.id
+                // Follow same flow as VEOLY-AI - save using currentUser.id
                 // Supabase client already configured for correct brand project
                 if (data.token && currentUser) {
                     setFlowToken(data.token);
@@ -460,6 +469,39 @@ const FlowLogin: React.FC<FlowLoginProps> = ({
         }
     };
 
+    // Auto-generate cookies in Electron when missing (no manual click needed).
+    useEffect(() => {
+        if (!tokenError) return;
+        if (!isElectron()) return;
+        if (generateCookieLoading) return;
+        if (autoCookieGenInFlightRef.current) return;
+
+        if (!/No available cookies found in folder\s+/i.test(tokenError)) return;
+        const match = tokenError.match(/folder\s+([A-Za-z0-9]+)/i);
+        const flowCode = match ? match[1].toUpperCase() : null;
+        if (!flowCode) return;
+
+        const now = Date.now();
+        const COOLDOWN_MS = 2 * 60 * 1000;
+        if (now - lastAutoCookieGenAtRef.current < COOLDOWN_MS) return;
+
+        lastAutoCookieGenAtRef.current = now;
+        autoCookieGenInFlightRef.current = true;
+        setIsAutoGeneratingCookies(true);
+        setAutoGeneratingCookieFolder(flowCode);
+
+        // Fire-and-forget with internal guards; handleGenerateCookiesForFolder already updates UI.
+        void (async () => {
+            try {
+                await handleGenerateCookiesForFolder(flowCode);
+            } finally {
+                autoCookieGenInFlightRef.current = false;
+                setIsAutoGeneratingCookies(false);
+                setAutoGeneratingCookieFolder(null);
+            }
+        })();
+    }, [tokenError, generateCookieLoading]);
+
     const handleSaveGeneratedToken = () => {
         if (generatedToken && currentUser) {
             // Set flowToken which will trigger auto-save after 2 seconds
@@ -470,6 +512,7 @@ const FlowLogin: React.FC<FlowLoginProps> = ({
     };
 
     if (!currentUser) return null;
+    const isAdminUser = currentUser.role === 'admin';
 
     const flowMainGridClass = pairWithTokenUltraPanel
         ? 'grid min-h-0 flex-1 grid-cols-1 gap-8'
@@ -529,40 +572,19 @@ const FlowLogin: React.FC<FlowLoginProps> = ({
                         </div>
                     </div>
 
-                    {/* How to Get Token Instructions (MOVED TO TOP) */}
+                    {/* How to Get Token Instructions (consistent across all statuses) */}
                     <div className="mb-6">
-                            <>
-                                {/* Instructions for Token Ultra Active Users */}
-                                {isTokenUltraActive() && (
-                                    <div className="flex items-start gap-2 sm:gap-3 p-3 sm:p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border-[0.5px] border-blue-200 dark:border-blue-800">
-                                        <InformationCircleIcon className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
-                                        <div className="text-[11px] sm:text-xs text-blue-800 dark:text-blue-200">
-                                            <p className="text-[11px] sm:text-xs font-bold mb-2 uppercase tracking-wide">How to get your Flow Token:</p>
-                                            <ol className="text-[11px] sm:text-xs space-y-1.5 list-decimal list-inside font-medium">
-                                                <li>Click the "Generate NEW Token (Auto)" button below</li>
-                                                <li>Your token will be automatically generated and saved</li>
-                                                <li>You can use it immediately for your session</li>
-                                            </ol>
-                                        </div>
-                                    </div>
-                                )}
-
-                                {/* Instructions for Regular Users */}
-                                {!isTokenUltraActive() && (
-                                    <div className="flex items-start gap-2 sm:gap-3 p-3 sm:p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border-[0.5px] border-blue-200 dark:border-blue-800">
-                                        <InformationCircleIcon className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
-                                        <div className="text-[11px] sm:text-xs text-blue-800 dark:text-blue-200">
-                                            <p className="text-[11px] sm:text-xs font-bold mb-2 uppercase tracking-wide">How to get your Flow Token:</p>
-                                            <ol className="text-[11px] sm:text-xs space-y-1.5 list-decimal list-inside font-medium">
-                                                <li>Click the "Login Google Flow" button to open the Google Flow login page</li>
-                                                <li>After logging in, click the "Copy Token (Manual)" button to retrieve your token</li>
-                                                <li>Copy the token and paste it into the input field above</li>
-                                                <li>Your token will be automatically saved</li>
-                                            </ol>
-                                        </div>
-                                    </div>
-                                )}
-                            </>
+                        <div className="flex items-start gap-2 sm:gap-3 p-3 sm:p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border-[0.5px] border-blue-200 dark:border-blue-800">
+                            <InformationCircleIcon className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
+                            <div className="text-[11px] sm:text-xs text-blue-800 dark:text-blue-200">
+                                <p className="text-[11px] sm:text-xs font-bold mb-2 uppercase tracking-wide">How to get your Flow Token:</p>
+                                <ol className="text-[11px] sm:text-xs space-y-1.5 list-decimal list-inside font-medium">
+                                    <li>Click the "Generate NEW Token (Auto)" button below</li>
+                                    <li>Your token will be automatically generated and saved</li>
+                                    <li>You can use it immediately for your session</li>
+                                </ol>
+                            </div>
+                        </div>
                     </div>
 
                     {pairWithTokenUltraPanel && !isLoadingUltra && !ultraRegistration && (
@@ -817,16 +839,20 @@ const FlowLogin: React.FC<FlowLoginProps> = ({
 
                         <div className="space-y-3">
                                 <>
-                                    <button onClick={handleOpenFlow} className="w-full flex items-center justify-center gap-2 bg-green-600 dark:bg-green-700 text-white text-sm font-semibold py-2.5 px-4 rounded-lg hover:bg-green-700 dark:hover:bg-green-600 transition-colors">
-                                        <KeyIcon className="w-4 h-4" />
-                                        Login Google Flow
-                                    </button>
-                                    <button onClick={handleGetToken} className="w-full flex items-center justify-center gap-2 bg-blue-600 dark:bg-blue-700 text-white text-sm font-semibold py-2.5 px-4 rounded-lg hover:bg-blue-700 transition-colors">
-                                        <KeyIcon className="w-4 h-4" />
-                                        Copy Token (Manual)
-                                    </button>
+                                    {isAdminUser && (
+                                        <>
+                                            <button onClick={handleOpenFlow} className={BTN_PRIMARY}>
+                                                <KeyIcon className="w-4 h-4" />
+                                                Login Google Flow
+                                            </button>
+                                            <button onClick={handleGetToken} className={BTN_PRIMARY}>
+                                                <KeyIcon className="w-4 h-4" />
+                                                Copy Token (Manual)
+                                            </button>
+                                        </>
+                                    )}
                                     {isTokenUltraActive() && (
-                                        <button onClick={handleGetNewToken} disabled={isLoadingToken || !currentUser} className="w-full flex items-center justify-center gap-2 bg-purple-600 dark:bg-purple-700 text-white text-sm font-semibold py-2.5 px-4 rounded-lg hover:bg-purple-700 dark:hover:bg-purple-600 transition-colors disabled:opacity-50">
+                                        <button onClick={handleGetNewToken} disabled={isLoadingToken || !currentUser} className={BTN_PRIMARY}>
                                             {isLoadingToken ? (
                                                 <>
                                                     <Spinner />
@@ -846,10 +872,10 @@ const FlowLogin: React.FC<FlowLoginProps> = ({
                                     )}
                                 </>
                             
-                            <button onClick={handleTestToken} disabled={(!flowToken.trim() && !currentUser?.personalAuthToken) || testStatus === 'testing'} className="w-full flex items-center justify-center gap-2 bg-blue-600 dark:bg-blue-700 text-white text-sm font-semibold py-2.5 px-4 rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50">{testStatus === 'testing' ? <Spinner /> : <SparklesIcon className="w-4 h-4" />}Health Test</button>
+                            <button onClick={handleTestToken} disabled={(!flowToken.trim() && !currentUser?.personalAuthToken) || testStatus === 'testing'} className={BTN_PRIMARY}>{testStatus === 'testing' ? <Spinner /> : <SparklesIcon className="w-4 h-4" />}Health Test</button>
                             <button
                                 onClick={() => setIsVideoModalOpen(true)}
-                                className="w-full flex items-center justify-center gap-2 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-800 dark:text-red-300 text-sm font-semibold py-2.5 px-4 rounded-lg hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors"
+                                className={BTN_DANGER_OUTLINE}
                             >
                                 <PlayIcon className="w-4 h-4" />
                                 Video Tutorial Login Google Flow
@@ -860,7 +886,14 @@ const FlowLogin: React.FC<FlowLoginProps> = ({
                         {tokenError && (
                             <div className="mt-4 p-3 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 rounded-lg">
                                 <p className="text-sm font-semibold text-red-800 dark:text-red-200 mb-1">Error:</p>
-                                <p className="text-sm text-red-700 dark:text-red-300">{tokenError}</p>
+                                <p className="text-sm text-red-700 dark:text-red-300">
+                                    {isElectron() &&
+                                    isAutoGeneratingCookies &&
+                                    autoGeneratingCookieFolder &&
+                                    /No available cookies found in folder\s+/i.test(tokenError)
+                                        ? `No available cookies found in folder ${autoGeneratingCookieFolder}. Generating new cookies...`
+                                        : tokenError}
+                                </p>
                                 {/No available cookies found in folder\s+/i.test(tokenError) && (isLocalhost() || isElectron()) && (() => {
                                     const match = tokenError.match(/folder\s+([A-Za-z0-9]+)/i);
                                     const flowCode = match ? match[1].toUpperCase() : null;
